@@ -66,6 +66,8 @@ def on_distance(mm):
     base = profile["baseline_mm"]
 
     if state["mode"] == "calib_baseline":
+        if time.time() - state.get("calib_t0", 0) < 2.0:   # give the child 2 s to settle
+            return
         state["calib"].append(d)
         if len(state["calib"]) >= 50:  # ~1 s at rest
             profile["baseline_mm"] = statistics.median(state["calib"])
@@ -77,14 +79,21 @@ def on_distance(mm):
         return
 
     if state["mode"] == "calib_reach":
-        reach = base - d
-        if reach > 10 and state["phase"] == "rest":
-            state["phase"], state["peak"] = "out", reach
+        # A rep = leave rest for >= 0.25 s with a peak >= 15 mm, then return.
+        # Sensor jitter around the threshold used to count as extra reps.
+        reach, now = base - d, time.time()
+        if state["phase"] == "rest":
+            if reach > 10 and now - state.get("rest_since", 0) >= 0.3:
+                state["phase"], state["peak"], state["out_since"] = "out", reach, now
+            elif reach <= 10:
+                state.setdefault("rest_since", now)
         elif state["phase"] == "out":
             state["peak"] = max(state["peak"], reach)
             if reach < RETURN_TOL_MM:
+                state["phase"], state["rest_since"] = "rest", now
+                if state["peak"] < 15 or now - state["out_since"] < 0.25:
+                    return  # too small or too quick: jitter, not a reach
                 state["calib"].append(state["peak"])
-                state["phase"] = "rest"
                 emit("calibration_rep", count=len(state["calib"]), reach_mm=state["peak"])
                 if len(state["calib"]) >= 3:
                     profile["comfortable_mm"] = statistics.median(state["calib"])
@@ -192,7 +201,8 @@ def on_pause(_client, _data):
 
 
 def on_calibrate(_client, _data):
-    state.update(mode="calib_baseline", phase="rest", calib=[])
+    state.update(mode="calib_baseline", phase="rest", calib=[], calib_t0=time.time(),
+                 rest_since=0)
     sync_camera()
     emit("calibration_step", step="baseline")
 
