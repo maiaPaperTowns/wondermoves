@@ -54,11 +54,14 @@ distances, diagnoses anything or pushes the child to keep going.
 
 ## Games
 
-| Game | Approach | Sensor | Status |
-|---|---|---|---|
-| Treasure Reach | Goal-directed practice | Distance | **MVP** |
-| Fossil Brush | Action observation + execution | IMU | MVP |
-| Two-Hand Treasure | Bimanual training | Camera (both hands) + IMU | MVP if the vision model runs, otherwise stretch |
+| Game | Approach | Sensors needed | Where the code is | Status |
+|---|---|---|---|---|
+| Treasure Reach | Goal-directed practice | **Modulino Distance**, upright on a cardboard wall facing the hand | `python/main.py` + portal | ✅ tested on the board |
+| Fossil Brush | Action observation + execution | **Modulino Movement**, in a brush handle or wrist strap | `assets/fossil-brush/` (Andrew) + `js/sensor.js` | Game + sensor stream on the board; needs a real brushing test |
+| Two-Hand Treasure | Bimanual training | **Brio camera** (both hands); optional 2nd Movement in the chest | `python/vision.py` | Code done; not yet tested with the camera on the board |
+
+**Thermo** isn't tied to one game: it watches room comfort and suggests breaks. With 3 kits, each game can run on its own board,
+so each person can own one station.
 
 See [docs/PLAN.md](docs/PLAN.md) for the build plan and task split, and [docs/HARDWARE.md](docs/HARDWARE.md) for building the physical game stations.
 
