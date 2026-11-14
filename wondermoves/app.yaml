@@ -1,0 +1,5 @@
+name: WonderMoves
+icon: 🦴
+description: Sensor-controlled digging games for personalised upper-limb movement practice.
+bricks:
+  - arduino:web_ui

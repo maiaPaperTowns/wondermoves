@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WonderMoves</title>
+<!-- Prefer a local copy (board may be offline); falls back to CDN. -->
+<script src="libs/socket.io.min.js"></script>
+<script>window.io || document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"><\/script>')</script>
+<style>
+  :root { --soil:#7a4b2a; --sand:#f3d9a4; --sky:#bfe3ff; --ink:#2b1a0e; --ok:#3aa35a; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family: system-ui, sans-serif; background:var(--sky); color:var(--ink); }
+  header { display:flex; gap:8px; padding:12px 16px; align-items:center; }
+  header h1 { margin:0 auto 0 0; font-size:1.4rem; }
+  button { font-size:1.4rem; padding:18px 28px; border-radius:18px; border:0; cursor:pointer; background:#fff; }
+  button.big { background:var(--ok); color:#fff; min-width:180px; }
+  .tab { font-size:1rem; padding:10px 16px; }
+  main { padding:0 16px 24px; max-width:900px; margin:0 auto; }
+  #dig { position:relative; height:320px; border-radius:24px; overflow:hidden; background:var(--sand); }
+  #treasure { position:absolute; inset:0; display:grid; place-items:center; font-size:96px; }
+  #soil { position:absolute; left:0; right:0; top:0; background:var(--soil); transition:height .6s ease; }
+  #meter { height:24px; background:#fff; border-radius:12px; margin:12px 0; overflow:hidden; }
+  #meter div { height:100%; width:0; background:var(--ok); transition:width .1s; }
+  #subtitle { min-height:3em; font-size:1.5rem; background:#fffc; border-radius:16px; padding:12px 16px; }
+  .controls { display:flex; gap:12px; flex-wrap:wrap; margin:12px 0; }
+  .hidden { display:none; }
+  table { width:100%; border-collapse:collapse; background:#fff; border-radius:12px; }
+  td, th { padding:8px; border-bottom:1px solid #eee; text-align:left; }
+  label { display:block; margin:8px 0; font-size:1.1rem; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🦴 WonderMoves</h1>
+  <button class="tab" onclick="show('child')">Play</button>
+  <button class="tab" onclick="show('parent')">Grown-ups</button>
+</header>
+
+<main id="child">
+  <div class="controls">
+    <button class="big" onclick="start('reach')">▶ Treasure Reach</button>
+    <button class="big" onclick="start('brush')">🖌 Fossil Brush</button>
+    <button onclick="send('pause')">⏸ Break</button>
+  </div>
+  <div id="dig"><div id="treasure">🪙</div><div id="soil" style="height:100%"></div></div>
+  <div id="meter"><div></div></div>
+  <div id="subtitle" aria-live="polite">Hi! I'm Digger. Press a big button when you're ready.</div>
+</main>
+
+<main id="parent" class="hidden">
+  <h2>Calibration & limits</h2>
+  <p>Seat the child comfortably and press <b>Calibrate</b>. Rest the hand for 1 second, then make 3 small, comfortable reaches.</p>
+  <div class="controls"><button onclick="send('calibrate')">Calibrate</button></div>
+  <label>Approved maximum reach (mm, set by caregiver/therapist)
+    <input id="approved" type="number" min="5" max="200" value="50"></label>
+  <label>Level <select id="level"><option>1</option><option>2</option><option>3</option><option>4</option></select></label>
+  <button onclick="saveLimits()">Save limits</button>
+  <p id="profile"></p>
+  <p id="room"></p>
+  <h2>This session</h2>
+  <table><thead><tr><th>Time</th><th>Event</th><th>Detail</th></tr></thead><tbody id="log"></tbody></table>
+  <p><small>WonderMoves is not a medical device. It shows activity only: no scores, no diagnosis and no comparisons with other children.</small></p>
+</main>
+
+<script>
+const socket = io(`http://${window.location.host}`);
+const send = (ev, data = {}) => socket.emit(ev, data);
+const $ = (id) => document.getElementById(id);
+const TREASURES = ['🪙','💎','🦴','🕳️','🧰'];
+let layers = 4, profile = {}, voiceOn = true;
+
+function show(id){ ['child','parent'].forEach(x => $(x).classList.toggle('hidden', x !== id)); }
+function start(game){ layers = 4; $('soil').style.height = '100%'; send('start', { game }); }
+function saveLimits(){ send('set_limits', { approved_max_mm: +$('approved').value, level: +$('level').value }); }
+
+// Digger: templated, event-driven lines only. Never prescribes distances or pressures the child.
+const LINES = {
+  session_started: () => "Let's dig! Reach out whenever you're ready.",
+  reach_completed: () => pick(["Great reach! Some soil is gone!", "You found more dirt to move!", "Nice and steady!"]),
+  brush_stroke:    () => pick(["Swish! Sand brushed away!", "Lovely brushing!"]),
+  gesture_uncertain: () => "Hmm, I couldn't quite tell. Try one more gentle brush when you like.",
+  break_requested: () => "Break time! Your treasure will wait for you.",
+  break_suggested: () => "It's a bit warm in here. Want to take a little break?",
+  level_completed: () => "You uncovered the treasure! Amazing digging!",
+  calibration_step: (d) => d.step === 'baseline' ? "Rest your hand still for me." : "Now make a small, comfy reach, then come back.",
+  calibration_rep: (d) => `Got it, ${d.count}!`,
+  calibration_done: () => "All set up. Thanks!",
+};
+const pick = (a) => a[Math.floor(Math.random() * a.length)];
+function say(text){
+  $('subtitle').textContent = text;
+  if (voiceOn && 'speechSynthesis' in window) {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text); u.rate = 0.95; u.pitch = 1.2;
+    speechSynthesis.speak(u);
+  }
+}
+function log(ev, d){
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td>${new Date().toLocaleTimeString()}</td><td>${ev}</td><td>${JSON.stringify(d).slice(0,80)}</td>`;
+  $('log').prepend(tr);
+}
+function dig(){
+  layers = Math.max(0, layers - 1);
+  $('soil').style.height = `${layers * 25}%`;
+  if (layers === 0) { say(LINES.level_completed()); log('level_completed', {}); }
+}
+
+Object.keys(LINES).forEach(ev => socket.on(ev, (d) => {
+  log(ev, d);
+  if (ev === 'reach_completed' || ev === 'brush_stroke') dig();
+  if (ev === 'level_completed') return;
+  say(LINES[ev](d || {}));
+}));
+socket.on('distance', (d) => {
+  if (!profile.baseline_mm || !profile.target_mm) return;
+  const pct = Math.max(0, Math.min(1, (profile.baseline_mm - d.mm) / profile.target_mm));
+  document.querySelector('#meter div').style.width = `${pct * 100}%`;
+});
+['profile','calibration_done','limits_updated','session_started'].forEach(ev => socket.on(ev, (d) => {
+  if (d && d.baseline_mm !== undefined) profile = { ...profile, ...d };
+  if (d && d.target_mm) profile.target_mm = d.target_mm;
+  $('profile').textContent = `Rest: ${profile.baseline_mm ?? '—'} mm · Comfortable reach: ${profile.comfortable_mm ?? '—'} mm · Current target: ${profile.target_mm ?? '—'} mm`;
+  $('treasure').textContent = TREASURES[(profile.level || 1) - 1] || '🧰';
+}));
+socket.on('room', (d) => $('room').textContent = `Room: ${d.temp_c.toFixed(1)} °C, ${d.humidity.toFixed(0)}% humidity`);
+socket.on('connect', () => send('get_state'));
+</script>
+</body>
+</html>
