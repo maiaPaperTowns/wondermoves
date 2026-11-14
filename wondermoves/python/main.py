@@ -141,10 +141,10 @@ def on_imu(ax, ay, az, gx, gy, gz):
         return
     avg = sum(gyro_window) / len(gyro_window)
     now = time.time()
-    if avg > 40 and now - last_brush > 0.8:
+    if avg > 25 and now - last_brush > 0.8:   # gentle strokes count: CP-friendly threshold
         last_brush = now
         emit("brush_stroke", energy=round(avg, 1))
-    elif 15 < avg <= 40 and now - last_brush > 2.0:
+    elif 8 < avg <= 15 and now - last_brush > 4.0:   # barely moving: gentle encouragement
         last_brush = now
         emit("gesture_uncertain")
 

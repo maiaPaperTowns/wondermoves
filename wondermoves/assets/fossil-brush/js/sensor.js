@@ -12,8 +12,8 @@
   const FB = window.FB;
   if (typeof window.io !== 'function' || !FB || !FB.Game) return;
 
-  const MIN_ENERGY = 15;   // deg/s; below this the hand is resting
-  const FULL_ENERGY = 90;  // deg/s; at or above this the brush moves at full speed
+  const MIN_ENERGY = 12;   // deg/s; below this the hand is resting (~1 when still)
+  const FULL_ENERGY = 60;  // deg/s; gentle brushing measured 20-45 on our sensor
   const socket = window.io(`http://${location.host}`);
   const cursor = document.getElementById('brushCursor');
   let energy = 0, lastMsg = 0, phase = 0, prev = null;
