@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#6EC9F5">
+  <title>Fossil Brush</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ===== Scenery (behind the game) ===== -->
+  <div class="scene" id="scene" aria-hidden="true">
+    <div class="sun"></div>
+    <div class="cloud c1"></div>
+    <div class="cloud c2"></div>
+    <div class="cloud c3"></div>
+    <svg class="hills" viewBox="0 0 1440 800" preserveAspectRatio="none">
+      <path class="far" d="M0 250 C 160 180 320 230 480 205 C 660 178 780 255 960 215 C 1130 178 1290 215 1440 195 L1440 800 L0 800Z"/>
+      <path class="mid" d="M0 330 C 200 285 380 350 600 315 C 820 280 1000 345 1200 308 C 1320 288 1390 305 1440 300 L1440 800 L0 800Z"/>
+      <path class="ground" d="M0 400 C 300 372 560 410 760 392 C 1000 370 1200 402 1440 384 L1440 800 L0 800Z"/>
+    </svg>
+    <div class="decor" id="decor"></div>
+  </div>
+
+  <!-- ===== The game canvas (whole page) ===== -->
+  <canvas id="game" aria-label="Sand pile. Press and drag to brush away the sand."></canvas>
+  <div id="digArea" class="dig-area" aria-hidden="true"></div>
+  <div id="handHint" class="hand-hint" aria-hidden="true"><span>👆</span></div>
+  <div id="brushCursor" class="brush-cursor" aria-hidden="true"><img src="assets/brush.svg" alt="" draggable="false"></div>
+
+  <!-- ===== Top bar ===== -->
+  <header class="topbar">
+    <button id="menuBtn" class="chunky-btn menu-btn" aria-label="Open menu: dig sites and levels">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      <span class="btn-label">Menu</span>
+    </button>
+
+    <div class="level-pill" id="levelPill"></div>
+
+    <div class="top-right">
+      <button id="catalogBtn" class="chunky-btn catalog-btn" aria-label="Open my collection">
+        <span aria-hidden="true">📖</span><span class="btn-label">Collection</span>
+      </button>
+      <button id="helpBtn" class="chunky-btn round help-btn" aria-label="How to play">?</button>
+      <button id="soundBtn" class="chunky-btn round" aria-label="Toggle sound"></button>
+    </div>
+  </header>
+
+  <!-- ===== Depth meter sidebar ===== -->
+  <aside class="meter" id="depthMeter" aria-label="Depth meter">
+    <div class="meter-head"><span aria-hidden="true">⛏️</span> Depth</div>
+    <div class="meter-surface">Surface</div>
+    <div class="meter-body">
+      <div class="meter-labels" id="meterLabels"></div>
+      <div class="meter-track-wrap">
+        <div class="meter-track">
+          <div class="meter-zones" id="meterZones"></div>
+          <div class="meter-cover" id="meterCover"></div>
+        </div>
+        <div class="meter-marker" id="meterMarker"><span id="meterVal">0 m</span></div>
+        <div class="meter-pin" id="meterPin"></div>
+      </div>
+    </div>
+    <div class="meter-bottom">100 m</div>
+  </aside>
+
+  <!-- ===== Mascot buddy ===== -->
+  <div class="buddy" id="buddy" aria-live="polite">
+    <img id="buddyImg" alt="Pip the dig-dino" draggable="false">
+    <div class="buddy-bubble" id="buddyBubble"></div>
+  </div>
+
+  <!-- ===== Menu drawer ===== -->
+  <div class="drawer-backdrop" id="drawerBackdrop"></div>
+  <nav class="drawer" id="drawer" aria-hidden="true" aria-label="Dig sites">
+    <div class="drawer-head">
+      <h2>🗺️ Dig Sites</h2>
+      <button class="close-btn" id="drawerClose" aria-label="Close menu">✕</button>
+    </div>
+    <p class="drawer-sub">Pick a place to dig. Harder sites hide rarer treasures!</p>
+    <div class="level-list" id="levelList"></div>
+    <div class="drawer-actions">
+      <button class="pill-btn primary" id="newDigBtn">🔄 New Dig Here</button>
+      <button class="pill-btn" id="drawerCatalog">📖 My Collection</button>
+      <button class="pill-btn" id="drawerHelp">🎓 How to Play</button>
+      <button class="link-btn" id="resetBtn">Reset collection</button>
+    </div>
+  </nav>
+
+  <!-- ===== Catalog ===== -->
+  <div class="modal" id="catalogModal" aria-hidden="true" role="dialog" aria-label="My collection">
+    <div class="panel catalog-panel">
+      <div class="catalog-head">
+        <div>
+          <h2>📖 My Collection</h2>
+          <div class="cat-progress">
+            <div class="bar"><i id="catBar"></i></div>
+            <span><b id="catCount">0 / 0</b> treasures found</span>
+          </div>
+        </div>
+        <button class="close-btn" id="catClose" aria-label="Close collection">✕</button>
+      </div>
+      <div class="tabs" id="catTabs" role="tablist"></div>
+      <div class="cat-grid" id="catGrid"></div>
+
+      <div class="cat-detail" id="catDetail">
+        <div class="cat-detail-card">
+          <button class="close-btn" id="catDetailClose" aria-label="Back to collection">✕</button>
+          <div id="catDetailBody"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Found card ===== -->
+  <div class="modal" id="foundModal" aria-hidden="true" role="dialog" aria-label="Treasure found">
+    <div class="panel found-panel">
+      <div class="found-burst">
+        <div class="found-rays"></div>
+        <div class="found-art" id="foundArt"></div>
+      </div>
+      <div class="new-badge" id="foundNew">NEW!</div>
+      <div class="rarity-ribbon" id="foundRarity"></div>
+      <h2 id="foundName"></h2>
+      <div class="stars big" id="foundStars"></div>
+      <p class="found-depth" id="foundDepth"></p>
+      <p class="fact" id="foundFact"></p>
+      <div class="found-actions">
+        <button class="pill-btn" id="foundCatalog">📖 Collection</button>
+        <button class="pill-btn primary big" id="foundAgain">Dig Again! 🖌️</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Tutorial ===== -->
+  <div class="tutorial" id="tutorial" aria-hidden="true" role="dialog" aria-label="How to play">
+    <div class="spotlight" id="spotlight"></div>
+    <div class="tut-hand" id="tutHand"><span>👆</span></div>
+    <div class="tut-box" id="tutBox">
+      <img class="tut-mascot" id="tutMascot" alt="" draggable="false">
+      <div class="tut-bubble" id="tutBubble">
+        <div class="tut-name">Pip</div>
+        <p id="tutText" aria-live="polite"></p>
+        <div class="tut-foot">
+          <div class="tut-dots" id="tutDots"></div>
+          <div class="tut-actions">
+            <button class="link-btn" id="tutSkip">Skip</button>
+            <button class="pill-btn" id="tutBack">⬅ Back</button>
+            <button class="pill-btn primary" id="tutNext">Next ➜</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/digsite.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
