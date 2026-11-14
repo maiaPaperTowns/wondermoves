@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- PLACEHOLDER BRUSH CURSOR. The bristle tip sits at (6, 58); keep it there if you replace this. -->
+  <g stroke="#5A3A1A" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M50 4 Q56 2 60 8 Q62 12 58 16 L36 38 L26 28 Z" fill="#E08A3C"/>
+    <path d="M47 10 L54 17" stroke="#FFC98A" stroke-width="2"/>
+    <path d="M26 28 L36 38 L31 43 L21 33 Z" fill="#C9CED6"/>
+    <path d="M21 33 L31 43 Q24 56 6 58 Q8 40 21 33 Z" fill="#F2D49B"/>
+    <path d="M14 42 L20 48 M11 47 L16 52" stroke="#C9A060" stroke-width="2"/>
+  </g>
+</svg>
