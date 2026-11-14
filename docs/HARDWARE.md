@@ -65,11 +65,14 @@ Make a "fossil" tray to brush over: a shallow box lid with a printed dinosaur bo
 ```
 
 1. Put the Brio on top of the monitor, or on a stack of books just below it, facing the child. Both arms must be in view when stretched out.
-2. Use a plain background and good light from the front, not a bright window behind the child.
-3. The view is mirrored like a mirror: moving the right hand moves the orange **R** dot. The green **L** dot is the left hand.
-4. Colourful bubbles pop with either hand. **Blue pair bubbles** joined by a dotted line need both hands at the same time, one on each side.
-5. The caregiver sets the **reach area** (Small → Extra large) in the Grown-ups tab. Bubbles only appear inside it, and it never grows by itself.
-6. No timer: bubbles float gently until they're popped, and Break stops the game at any time.
+2. **Tilt it down** so the child's head is near the top of the picture and the resting hands are mid-picture.
+   Measured on our setup: aimed too high, the hands sat at the bottom edge and were tracked in ~30% of frames;
+   after tilting, left 100% / right 57% / both 57%, and the first real pair pop.
+3. Use a plain background and good light from the front, not a bright window behind the child.
+4. The view is mirrored like a mirror: moving the right hand moves the orange **R** dot. The green **L** dot is the left hand.
+5. Colourful bubbles pop with either hand. **Blue pair bubbles** joined by a dotted line need both hands at the same time, one on each side.
+6. The caregiver sets the **reach area** (Small → Extra large) in the Grown-ups tab. Bubbles only appear inside it, and it never grows by itself.
+7. No timer: bubbles float gently until they're popped, and Break stops the game at any time.
 
 ## 5. Station checklist
 
