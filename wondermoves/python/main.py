@@ -131,6 +131,12 @@ def on_imu(ax, ay, az, gx, gy, gz):
         return
     energy = math.sqrt(gx * gx + gy * gy + gz * gz)
     gyro_window.append(energy)
+    if len(gyro_window) % 5 == 0 or len(gyro_window) == gyro_window.maxlen:
+        # ~10 Hz stream of recent motion energy (deg/s) for Fossil Brush's virtual brush.
+        recent = list(gyro_window)[-5:]
+        if int(time.time() * 10) != state.get("motion_tick"):
+            state["motion_tick"] = int(time.time() * 10)
+            ui.send_message("brush_motion", {"energy": round(sum(recent) / len(recent), 1)})
     if len(gyro_window) < gyro_window.maxlen:
         return
     avg = sum(gyro_window) / len(gyro_window)

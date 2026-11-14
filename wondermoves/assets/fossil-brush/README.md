@@ -9,7 +9,7 @@ You don't need to build or install anything. Open `index.html` in a browser.
 You can also serve the folder, which is better for tablets on your local network:
 
 ```bash
-cd fossil-brush
+cd wondermoves/assets/fossil-brush
 python3 -m http.server 8000   # then visit http://localhost:8000
 ```
 
@@ -59,3 +59,13 @@ js/digsite.js     sand heightmap, brushing, rendering, particles
 js/ui.js          depth meter, menu, collection, found card, tutorial
 js/main.js        game loop, input, dig → reveal → collect flow
 ```
+
+## Playing with the WonderMoves board
+
+When the UNO Q app serves this page (portal → 🖌 Fossil Brush, or `http://<board>:7000/fossil-brush/index.html`),
+`js/sensor.js` connects to the board and brushes with the **Modulino Movement** sensor. Put the sensor in a chunky brush
+handle or wrist strap and brush back and forth: faster strokes sweep faster. Touch or mouse still works too.
+Opened standalone, the sensor bridge stays off.
+
+- `MIN_ENERGY` / `FULL_ENERGY` in `js/sensor.js` set how much motion counts (°/s from the gyro, ~1 at rest).
+- The only change to the game itself is `FB.site = …` in `js/main.js`, which exposes the dig site to the bridge.

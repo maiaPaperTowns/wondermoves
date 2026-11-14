@@ -10,7 +10,7 @@
   FB.Sound.setMuted(!!FB.Store.data.muted);
 
   const canvas = $('#game');
-  const site = new FB.DigSite(canvas);
+  const site = FB.site = new FB.DigSite(canvas);  // FB.site: used by js/sensor.js (WonderMoves board input)
   const cursor = $('#brushCursor');
   const hand = $('#handHint');
   const digArea = $('#digArea');
