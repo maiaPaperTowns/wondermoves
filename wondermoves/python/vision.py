@@ -181,6 +181,31 @@ def make_backend(prefer: str = "auto"):
 # Background camera loop
 # ---------------------------------------------------------------------------
 
+def find_camera() -> str:
+    """Pick the USB webcam. On the UNO Q, /dev/video0 and /dev/video1 are the Qualcomm
+    Venus codec, not cameras, so we look devices up by name and skip those."""
+    if os.environ.get("WM_CAMERA"):
+        return os.environ["WM_CAMERA"]
+    base = "/sys/class/video4linux"
+    if os.path.isdir(base):
+        found = []
+        for dev in os.listdir(base):
+            try:
+                name = open(os.path.join(base, dev, "name")).read().strip().lower()
+            except OSError:
+                continue
+            if any(k in name for k in ("venus", "codec", "m2m", "encoder", "decoder")):
+                continue
+            path = f"/dev/{dev}"
+            if os.path.exists(path):
+                found.append((int(dev.replace("video", "") or 0), path, name))
+        if found:
+            # A UVC camera exposes a capture node and a metadata node; the lower one captures.
+            return sorted(found)[0][1]
+        return ""  # Linux, but no webcam plugged in
+    return "0"     # macOS / laptop: default webcam
+
+
 class Vision:
     """Owns the camera thread. Call `start()` and read results through the callbacks."""
 
@@ -189,13 +214,14 @@ class Vision:
                  camera: Optional[str] = None, assist_hand: str = "left",
                  width: int = 640, height: int = 480, preview: bool = False):
         self.on_event, self.on_hands = on_event, on_hands
-        self.camera = camera if camera is not None else os.environ.get("WM_CAMERA", "0")
+        self.camera = camera  # None = auto-detect each time the camera opens
         self.size = (width, height)
         self.detector = TwoHandDetector(assist_hand=assist_hand)
         self.enabled = threading.Event()   # only process frames while a camera game is running
         self.preview = preview
         self.fps = 0.0
         self.backend_name = None
+        self.device = None
         self._stop = threading.Event()
         self._thread: Optional[threading.Thread] = None
 
@@ -212,8 +238,15 @@ class Vision:
 
     def _open(self):
         import cv2
-        src = int(self.camera) if str(self.camera).isdigit() else self.camera
-        cap = cv2.VideoCapture(src)
+        dev = self.camera if self.camera is not None else find_camera()
+        self.device = dev
+        if not dev:
+            return None
+        if str(dev).isdigit():
+            cap = cv2.VideoCapture(int(dev))
+        else:
+            cap = cv2.VideoCapture(dev, cv2.CAP_V4L2)
+            cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))  # cheaper over USB
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.size[0])
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.size[1])
         return cap
@@ -239,11 +272,12 @@ class Vision:
                 continue
             if cap is None:
                 cap = self._open()
-                ok = cap.isOpened()
+                ok = cap is not None and cap.isOpened()
                 self.on_event("camera_status", {"ok": ok, "on": ok, "backend": backend.name,
-                                                "camera": str(self.camera)})
+                                                "camera": self.device or "none found"})
                 if not ok:
-                    cap.release()
+                    if cap is not None:
+                        cap.release()
                     cap = None
                     self.enabled.clear()
                     continue
@@ -290,7 +324,7 @@ class Vision:
 if __name__ == "__main__":
     import argparse
     p = argparse.ArgumentParser()
-    p.add_argument("--camera", default=os.environ.get("WM_CAMERA", "0"))
+    p.add_argument("--camera", default=None, help="device index or path; default auto-detect")
     p.add_argument("--assist", default="left", choices=["left", "right"])
     p.add_argument("--preview", action="store_true")
     args = p.parse_args()

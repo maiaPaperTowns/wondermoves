@@ -60,7 +60,15 @@ distances, diagnoses anything or pushes the child to keep going.
 | Fossil Brush | Action observation + execution | IMU | MVP |
 | Two-Hand Treasure | Bimanual training | Camera (both hands) + IMU | MVP if the vision model runs, otherwise stretch |
 
-See [docs/PLAN.md](docs/PLAN.md) for the build plan and task split.
+See [docs/PLAN.md](docs/PLAN.md) for the build plan and task split, and [docs/HARDWARE.md](docs/HARDWARE.md) for building the physical game stations.
+
+## Board quirks we hit (UNO Q at MadHacks)
+
+- **Wrong clock:** the board boots thinking it's 9 Sep 2025, and UWNet blocks NTP. HTTPS downloads (sketch libraries, pip) then fail with "certificate not valid yet". Fix: join a phone hotspot so NTP works, or set the clock by hand with `adb shell -t "sudo date -u -s '<UTC time>'"`.
+- **Sketchless app:** `wondermoves-live` is a copy of the app without `sketch/`, so it starts without downloading any libraries. Portal and camera work, the Modulinos don't.
+- **Port 7000 clash:** port 7000 on the Mac is taken by AirPlay Receiver. Forward to 7070: `adb forward tcp:7070 tcp:7000`, then open http://127.0.0.1:7070.
+- **Camera device:** `/dev/video0` and `/dev/video1` are the Qualcomm video codec, not cameras. `vision.py` finds the Brio by name. App Lab only passes in cameras that are plugged in when the app starts, so plug the Brio in first, then (re)start the app.
+- **Python packages:** the board's Python is 3.13 with OpenCV 4.12 and numpy. MediaPipe isn't installed, so vision uses the OpenCV motion fallback.
 
 ## Team
 

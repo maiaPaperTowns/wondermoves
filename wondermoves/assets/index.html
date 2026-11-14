@@ -90,7 +90,10 @@ function saveLimits(){ send('set_limits', { approved_max_mm: +$('approved').valu
 
 // Digger: templated, event-driven lines only. Never prescribes distances or pressures the child.
 const LINES = {
-  session_started: () => "Let's dig! Reach out whenever you're ready.",
+  session_started: (d) => ({
+    brush: "Let's brush! Watch me first, then try a gentle brush.",
+    twohand: "Helper hand holds the chest steady, the other hand turns the key!",
+  })[d.game] || "Let's dig! Reach out whenever you're ready.",
   reach_completed: () => pick(["Great reach! Some soil is gone!", "You found more dirt to move!", "Nice and steady!"]),
   brush_stroke:    () => pick(["Swish! Sand brushed away!", "Lovely brushing!"]),
   gesture_uncertain: (d) => d.hint === 'steady_helper_hand'

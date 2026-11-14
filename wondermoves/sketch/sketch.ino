@@ -3,7 +3,7 @@
 // All game logic, calibration and detection live in python/main.py.
 
 #include <Arduino_RouterBridge.h>
-#include <Arduino_Modulino.h>
+#include <Modulino.h>
 
 ModulinoDistance distance;
 ModulinoMovement movement;
@@ -14,7 +14,7 @@ unsigned long lastFast = 0, lastSlow = 0;
 
 void setup() {
   Bridge.begin();
-  Modulino.begin();
+  Modulino.begin(Wire1);  // Qwiic connector is on Wire1 on the UNO Q
   hasDistance = distance.begin();
   hasMovement = movement.begin();
   hasThermo = thermo.begin();
