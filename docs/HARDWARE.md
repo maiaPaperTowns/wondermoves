@@ -54,25 +54,22 @@ Run the cable along the arm, not across the hand, with slack so it never pulls. 
 
 Make a "fossil" tray to brush over: a shallow box lid with a printed dinosaur bone and some sand or paper confetti.
 
-## 4. Two-Hand Treasure: "treasure chest" (camera)
+## 4. Bubble Pop Adventure (camera)
 
 ```
-            Brio camera, 60–80 cm away, slightly above, both hands in frame
-                                   ▼
-        ┌─────────────────────────────────────────┐
-        │   helper hand          active hand       │
-        │   rests on / steadies  turns the key or  │
-        │   the chest            lifts the lid     │
-        │      ┌───────────────────────┐           │
-        │      │   cardboard chest 🧰  │──(key)    │
-        │      └───────────────────────┘           │
-        └─────────────────────────────────────────┘
+   screen / monitor  ←  bubbles float here, inside the caregiver-set reach area
+          ▲
+   Brio camera on top of the screen, 1–1.5 m from the child, both arms in view
+          │
+        child seated, both hands free (no object to hold)
 ```
 
-1. Make a chest from a small cardboard box with a hinged lid and a big cardboard "key" or knob on the side.
-2. The helper hand (set in the Grown-ups tab, often the affected side) rests on top of the chest to hold it steady. The active hand turns the key or lifts the lid.
-3. Camera setup: put the Brio about 60–80 cm away, slightly above table height. Use a plain background and good light, and keep both hands in view. The portal draws two dots (green for the helper, orange for the mover), so you can check the framing without any video showing.
-4. Optional upgrade: tape a second Movement sensor, from another kit, inside the chest. The IMU then measures how steady the helper hand holds it, which is more reliable than the camera. Needs a small code change.
+1. Put the Brio on top of the monitor, or on a stack of books just below it, facing the child. Both arms must be in view when stretched out.
+2. Use a plain background and good light from the front, not a bright window behind the child.
+3. The view is mirrored like a mirror: moving the right hand moves the orange **R** dot. The green **L** dot is the left hand.
+4. Colourful bubbles pop with either hand. **Blue pair bubbles** joined by a dotted line need both hands at the same time, one on each side.
+5. The caregiver sets the **reach area** (Small → Extra large) in the Grown-ups tab. Bubbles only appear inside it, and it never grows by itself.
+6. No timer: bubbles float gently until they're popped, and Break stops the game at any time.
 
 ## 5. Station checklist
 

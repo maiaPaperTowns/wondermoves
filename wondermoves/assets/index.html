@@ -44,15 +44,13 @@
   <div class="controls">
     <button class="big" onclick="start('reach')">▶ Treasure Reach</button>
     <button class="big" onclick="location.href = 'fossil-brush/index.html'">🖌 Fossil Brush</button>
-    <button class="big" onclick="start('twohand')">🧰 Two-Hand Treasure</button>
+    <button class="big" onclick="location.href = 'bubbles/index.html'">🫧 Bubble Pop</button>
     <button onclick="send('pause')">⏸ Break</button>
     <span id="cam" aria-live="polite">📷 Camera off</span>
   </div>
   <div id="dig"><div id="treasure">🪙</div><div id="soil" style="height:100%"></div></div>
   <div id="meter"><div></div></div>
   <div id="subtitle" aria-live="polite">Hi! I'm Digger. Press a big button when you're ready.</div>
-  <!-- Two-Hand Treasure: only hand positions are drawn. The camera image never leaves the board. -->
-  <canvas id="hands" class="hidden" width="600" height="120" aria-label="Your hands"></canvas>
 </main>
 
 <main id="parent" class="hidden">
@@ -61,10 +59,16 @@
   <div class="controls"><button onclick="send('calibrate')">Calibrate</button></div>
   <label>Approved maximum reach (mm, set by caregiver/therapist)
     <input id="approved" type="number" min="5" max="200" value="50"></label>
-  <label>Level <select id="level"><option>1</option><option>2</option><option>3</option><option>4</option></select></label>
-  <label>Helper (steady) hand for Two-Hand Treasure
-    <select id="assist"><option value="left">Left</option><option value="right">Right</option></select></label>
-  <p><small>The camera turns on only during Two-Hand Treasure. Video is processed on the board and never saved or sent anywhere. Only hand positions reach this page.</small></p>
+  <label>Level <select id="level">
+    <option value="1">1 · First Dig (coin)</option><option value="2">2 · Hidden Gems (gemstone)</option>
+    <option value="3">3 · Fossil Hunt (fossil)</option><option value="4">4 · Deep Explorer (cave)</option>
+    <option value="5">5 · Treasure Master (chest)</option></select></label>
+  <p><small>Levels unlock new treasures. The reach target is never above the approved maximum or the child's calibrated comfortable reach.</small></p>
+  <p id="found">Treasures found: none yet</p>
+  <label>Bubble Pop reach area (bubbles only appear inside it; it never grows by itself)
+    <select id="bubbleArea"><option value="0.15">Small</option><option value="0.25">Medium</option>
+      <option value="0.35">Large</option><option value="0.45">Extra large</option></select></label>
+  <p><small>The camera turns on only during Bubble Pop. Video is processed on the device and never saved or sent anywhere. Only hand positions reach the game.</small></p>
   <button onclick="saveLimits()">Save limits</button>
   <p id="profile"></p>
   <p id="sensors">Sensors: waiting for the board…</p>
@@ -84,16 +88,14 @@ let layers = 4, profile = {}, voiceOn = true;
 function show(id){ ['child','parent'].forEach(x => $(x).classList.toggle('hidden', x !== id)); }
 function start(game){
   layers = 4; $('soil').style.height = '100%';
-  $('hands').classList.toggle('hidden', game !== 'twohand');
   send('start', { game });
 }
-function saveLimits(){ send('set_limits', { approved_max_mm: +$('approved').value, level: +$('level').value, assist_hand: $('assist').value }); }
+function saveLimits(){ send('set_limits', { approved_max_mm: +$('approved').value, level: +$('level').value, bubble_area: +$('bubbleArea').value }); }
 
 // Digger: templated, event-driven lines only. Never prescribes distances or pressures the child.
 const LINES = {
   session_started: (d) => ({
     brush: "Let's brush! Watch me first, then try a gentle brush.",
-    twohand: "Helper hand holds the chest steady, the other hand turns the key!",
   })[d.game] || "Let's dig! Reach out whenever you're ready.",
   reach_completed: () => pick(["Great reach! Some soil is gone!", "You found more dirt to move!", "Nice and steady!"]),
   brush_stroke:    () => pick(["Swish! Sand brushed away!", "Lovely brushing!"]),
@@ -122,28 +124,54 @@ function log(ev, d){
   tr.innerHTML = `<td>${new Date().toLocaleTimeString()}</td><td>${ev}</td><td>${JSON.stringify(d).slice(0,80)}</td>`;
   $('log').prepend(tr);
 }
-function dig(){
-  layers = Math.max(0, layers - 1);
+function dig(d){
+  // Treasure Reach: the board counts layers. Other games: count locally.
+  if (d && d.layers_total) layers = d.layers_total - d.layers_cleared;
+  else layers = Math.max(0, layers - 1);
   $('soil').style.height = `${layers * 25}%`;
-  if (layers === 0) { say(LINES.level_completed()); log('level_completed', {}); }
+  if (layers === 0 && !(d && d.layers_total)) say("You uncovered the treasure! Amazing digging!");
 }
 
 Object.keys(LINES).forEach(ev => socket.on(ev, (d) => {
   log(ev, d);
-  if (ev === 'reach_completed' || ev === 'brush_stroke' || ev === 'two_hand_action') dig();
+  if (ev === 'reach_completed' || ev === 'brush_stroke' || ev === 'two_hand_action') dig(d);
   if (ev === 'level_completed') return;
+  if (ev === 'reach_completed' && d.layers_cleared >= d.layers_total) return;  // level_completed speaks
   say(LINES[ev](d || {}));
 }));
+
+// Treasure Reach level finished: celebrate the reward, then set up the next dig.
+socket.on('level_completed', (d) => {
+  log('level_completed', d);
+  $('soil').style.height = '0%';
+  say(`You found a ${d.reward}! ${d.icon} Amazing digging!`);
+  profile.found = [...(profile.found || []), d.reward];
+  showFound();
+  setTimeout(() => {
+    layers = 4; $('soil').style.height = '100%';
+    $('treasure').textContent = d.next.icon;
+    profile = { ...profile, ...d.next };
+    say(`Next dig: ${d.next.level_name}! Rest your hand, then reach when you're ready.`);
+  }, 4000);
+});
+function showFound(){
+  $('found').textContent = (profile.found && profile.found.length)
+    ? `Treasures found: ${profile.found.join(', ')}` : 'Treasures found: none yet';
+}
 socket.on('distance', (d) => {
   if (!profile.baseline_mm || !profile.target_mm) return;
   const pct = Math.max(0, Math.min(1, (profile.baseline_mm - d.mm) / profile.target_mm));
   document.querySelector('#meter div').style.width = `${pct * 100}%`;
 });
 ['profile','calibration_done','limits_updated','session_started'].forEach(ev => socket.on(ev, (d) => {
-  if (d && d.baseline_mm !== undefined) profile = { ...profile, ...d };
-  if (d && d.target_mm) profile.target_mm = d.target_mm;
-  $('profile').textContent = `Rest: ${profile.baseline_mm ?? '—'} mm · Comfortable reach: ${profile.comfortable_mm ?? '—'} mm · Current target: ${profile.target_mm ?? '—'} mm`;
-  $('treasure').textContent = TREASURES[(profile.level || 1) - 1] || '🧰';
+  if (d) profile = { ...profile, ...d };
+  $('profile').textContent = `Rest: ${profile.baseline_mm ?? '—'} mm · Comfortable reach: ${profile.comfortable_mm ?? '—'} mm · ` +
+    `Level ${profile.level ?? 1} (${profile.level_name ?? 'First Dig'}) target: ${profile.target_mm ?? '—'} mm` +
+    (profile.capped ? ' (capped at the approved range)' : '');
+  $('treasure').textContent = profile.icon || TREASURES[(profile.level || 1) - 1] || '🧰';
+  if (profile.level) $('level').value = String(profile.level);
+  if (profile.approved_max_mm) $('approved').value = profile.approved_max_mm;
+  showFound();
 }));
 socket.on('room', (d) => $('room').textContent = `Room: ${d.temp_c.toFixed(1)} °C, ${d.humidity.toFixed(0)}% humidity`);
 socket.on('sensors', (s) => {
@@ -161,19 +189,7 @@ socket.on('camera_status', (d) => {
   $('cam').classList.toggle('on', on);
   $('cam').textContent = d && d.ok === false ? '📷 Camera not found' : on ? '🔴 Camera on' : '📷 Camera off';
 });
-socket.on('hands', (d) => {
-  const c = $('hands'), g = c.getContext('2d');
-  g.clearRect(0, 0, c.width, c.height);
-  for (const side of ['left', 'right']) {
-    const p = d.hands[side]; if (!p) continue;
-    const helper = side === d.assist;
-    g.fillStyle = helper ? '#3aa35a' : '#f08a24';
-    g.beginPath(); g.arc(p[0] * c.width, p[1] * c.height, 22, 0, Math.PI * 2); g.fill();
-    g.fillStyle = '#2b1a0e'; g.font = '16px system-ui';
-    g.fillText(helper ? 'helper ✋' : 'mover 🤚', p[0] * c.width - 30, p[1] * c.height + 42);
-  }
-});
-socket.on('profile', (d) => { if (d && d.assist_hand) $('assist').value = d.assist_hand; });
+socket.on('profile', (d) => { if (d && d.bubble_area) $('bubbleArea').value = String(d.bubble_area); });
 socket.on('connect', () => send('get_state'));
 </script>
 </body>

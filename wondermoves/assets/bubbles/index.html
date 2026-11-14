@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bubble Pop Adventure</title>
+<script src="../libs/socket.io.min.js"></script>
+<style>
+  :root { --sky1:#bfe8ff; --sky2:#e9f7ff; --ink:#1d3557; --ok:#3aa35a; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; height:100%; overflow:hidden; font-family: system-ui, sans-serif; color:var(--ink);
+    background: linear-gradient(var(--sky1), var(--sky2)); }
+  canvas { position:fixed; inset:0; width:100vw; height:100vh; display:block; }
+  .bar { position:fixed; left:12px; right:12px; top:12px; display:flex; gap:10px; align-items:center; z-index:2; flex-wrap:wrap; }
+  .bar h1 { margin:0 auto 0 0; font-size:1.3rem; background:#fffc; padding:8px 14px; border-radius:14px; }
+  button, a.btn { font-size:1.2rem; padding:14px 22px; border-radius:16px; border:0; cursor:pointer; background:#fff;
+    color:var(--ink); text-decoration:none; box-shadow:0 2px 6px #0002; }
+  button.go { background:var(--ok); color:#fff; }
+  #score, #cam { background:#fffc; padding:8px 14px; border-radius:14px; font-weight:600; }
+  #cam.on { background:#ffe1e1; color:#a01818; }
+  #subtitle { position:fixed; left:50%; bottom:16px; transform:translateX(-50%); max-width:min(720px, calc(100vw - 32px));
+    font-size:1.4rem; background:#fffe; border-radius:16px; padding:12px 18px; z-index:2; text-align:center; }
+</style>
+</head>
+<body>
+<canvas id="c" aria-label="Bubbles and your hands"></canvas>
+<div class="bar">
+  <h1>🫧 Bubble Pop Adventure</h1>
+  <span id="score">Pops: 0</span>
+  <span id="cam" aria-live="polite">📷 Camera off</span>
+  <button class="go" id="startBtn">▶ Start</button>
+  <button id="breakBtn">⏸ Break</button>
+  <a class="btn" href="../index.html">⬅ WonderMoves</a>
+</div>
+<div id="subtitle" aria-live="polite">Hi! I'm Digger. Press Start, then move your hands to pop the bubbles!</div>
+
+<script>
+/* Bubble Pop Adventure: bilateral reaching and coordination.
+   The camera (board or laptop) sends hand positions only; no video reaches this page.
+   - Single bubbles: reach with either hand.
+   - Pair bubbles (joined by a dotted line): touch both at the same time, one hand each.
+   Bubbles only appear inside the caregiver-set bubble area and float gently: there is no timer. */
+const $ = (id) => document.getElementById(id);
+const canvas = $('c'), g = canvas.getContext('2d');
+const socket = window.io ? io(`http://${location.host}`) : null;
+const send = (ev, d = {}) => socket && socket.emit(ev, d);
+
+let W = 0, H = 0, playing = false, pops = 0, area = 0.3, assist = 'left';
+let hands = { left: null, right: null }, shown = { left: null, right: null }, lastHandsAt = 0;
+let bubbles = [], particles = [], nextSpawn = 0, sinceLine = 0;
+
+function resize() { W = canvas.width = innerWidth * devicePixelRatio; H = canvas.height = innerHeight * devicePixelRatio; }
+addEventListener('resize', resize); resize();
+
+/* ---------- voice + subtitles (Digger) ---------- */
+function say(text) {
+  $('subtitle').textContent = text;
+  if ('speechSynthesis' in window) {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text); u.rate = 0.95; u.pitch = 1.2; speechSynthesis.speak(u);
+  }
+}
+const pick = (a) => a[(Math.random() * a.length) | 0];
+
+/* ---------- sound ---------- */
+let actx = null;
+function pop(pitch = 1) {
+  try {
+    actx = actx || new AudioContext();
+    const o = actx.createOscillator(), v = actx.createGain(), t = actx.currentTime;
+    o.type = 'sine'; o.frequency.setValueAtTime(700 * pitch, t); o.frequency.exponentialRampToValueAtTime(180 * pitch, t + 0.12);
+    v.gain.setValueAtTime(0.25, t); v.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+    o.connect(v).connect(actx.destination); o.start(t); o.stop(t + 0.16);
+  } catch (_) {}
+}
+
+/* ---------- bubbles ---------- */
+const COLORS = ['#ff7eb6', '#7ec8ff', '#9be37b', '#ffd166', '#c39bff', '#ff9f6e'];
+function inArea() {
+  // Normalised position inside the caregiver-set area around the middle of the view.
+  return { x: 0.5 + (Math.random() * 2 - 1) * area, y: 0.5 + (Math.random() * 2 - 1) * Math.min(area, 0.3) };
+}
+function spawn() {
+  if (bubbles.length >= 3) return;
+  const r = 0.06 + Math.random() * 0.02;
+  if (Math.random() < 0.35 && !bubbles.some(b => b.pair)) {
+    // Pair: one bubble on each side of the middle, popped together with both hands.
+    const y = 0.5 + (Math.random() * 2 - 1) * Math.min(area, 0.25);
+    const dx = Math.max(0.12, area * 0.8);
+    const id = Math.random();
+    bubbles.push({ x: 0.5 - dx, y, r, c: '#7ec8ff', pair: id, side: 'left', born: performance.now(), hit: 0 });
+    bubbles.push({ x: 0.5 + dx, y, r, c: '#7ec8ff', pair: id, side: 'right', born: performance.now(), hit: 0 });
+  } else {
+    const p = inArea();
+    bubbles.push({ ...p, r, c: pick(COLORS), born: performance.now(), hit: 0 });
+  }
+}
+function burst(b) {
+  for (let i = 0; i < 14; i++) {
+    const a = Math.random() * Math.PI * 2, s = 0.004 + Math.random() * 0.006;
+    particles.push({ x: b.x, y: b.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 1, c: b.c });
+  }
+}
+
+/* ---------- hands (from the camera) ---------- */
+function onHands(d) {
+  hands = d.hands || { left: null, right: null };
+  assist = d.assist || assist;
+  lastHandsAt = performance.now();
+}
+if (socket) {
+  socket.on('connect', () => send('get_state'));
+  socket.on('hands', onHands);
+  socket.on('profile', (p) => { if (p && p.bubble_area) area = p.bubble_area; });
+  socket.on('camera_status', (d) => {
+    const on = !!(d && d.on);
+    $('cam').classList.toggle('on', on);
+    $('cam').textContent = d && d.ok === false ? '📷 Camera not found' : on ? '🔴 Camera on' : '📷 Camera off';
+  });
+}
+window.WM_bubbles = { onHands };  // test hook: feed hand positions without a camera
+
+function touching(hand, b) {
+  if (!hand) return false;
+  const dx = (hand[0] - b.x) * W, dy = (hand[1] - b.y) * H;
+  return Math.hypot(dx, dy) < (b.r + 0.035) * Math.min(W, H) * 1.0;
+}
+
+function update(now) {
+  const stale = now - lastHandsAt > 600;
+  for (const k of ['left', 'right']) {
+    const h = stale ? null : hands[k];
+    if (!h) { shown[k] = null; continue; }
+    shown[k] = shown[k] ? [shown[k][0] + (h[0] - shown[k][0]) * 0.35, shown[k][1] + (h[1] - shown[k][1]) * 0.35] : h.slice();
+  }
+  if (!playing) return;
+  if (now > nextSpawn) { spawn(); nextSpawn = now + 1800; }
+
+  for (const b of bubbles) {
+    b.y += Math.sin((now - b.born) / 900 + b.x * 9) * 0.0004;  // gentle bob, no timer
+    b.touched = touching(shown.left, b) || touching(shown.right, b);
+  }
+  // Singles pop on touch.
+  for (const b of bubbles.filter(b => !b.pair && b.touched)) {
+    b.dead = true; burst(b); pop(1 + Math.random() * 0.3); pops++;
+    send('bubble_pop', { kind: 'single' });
+  }
+  // Pairs pop when each side is touched by its own hand at the same time.
+  const pairIds = [...new Set(bubbles.filter(b => b.pair).map(b => b.pair))];
+  for (const id of pairIds) {
+    const [L, R] = ['left', 'right'].map(s => bubbles.find(b => b.pair === id && b.side === s));
+    if (!L || !R) continue;
+    const both = touching(shown.left, L) && touching(shown.right, R);
+    if (both) {
+      L.dead = R.dead = true; burst(L); burst(R); pop(0.8); pop(1.2); pops += 2;
+      send('bubble_pop', { kind: 'pair' });
+      say(pick(['Both hands! Double pop!', 'Teamwork hands! 🫧🫧', 'Wow, two at once!']));
+      sinceLine = now;
+    } else if ((touching(shown.left, L) || touching(shown.right, R)) && now - sinceLine > 4000) {
+      say('Pair bubbles need both hands, one on each side!');
+      sinceLine = now;
+    }
+  }
+  if (bubbles.some(b => b.dead && !b.pair) && now - sinceLine > 2500) {
+    say(pick(['Pop!', 'Great reach!', 'You got it!', 'Nice and smooth!'])); sinceLine = now;
+  }
+  bubbles = bubbles.filter(b => !b.dead);
+  $('score').textContent = `Pops: ${pops}`;
+  if (pops && pops % 10 === 0 && !update.cheered?.[pops]) {
+    (update.cheered = update.cheered || {})[pops] = true;
+    say(`${pops} pops! You're a bubble champion! Want a little break?`);
+  }
+}
+
+function draw(now) {
+  g.clearRect(0, 0, W, H);
+  const S = Math.min(W, H);
+  // caregiver-set reach area (soft guide)
+  g.fillStyle = '#ffffff40';
+  g.beginPath(); g.ellipse(W / 2, H / 2, area * W + 0.08 * S, Math.min(area, 0.3) * H + 0.08 * S, 0, 0, Math.PI * 2); g.fill();
+  // pair links
+  g.setLineDash([10, 10]); g.strokeStyle = '#1d355766'; g.lineWidth = 4;
+  for (const b of bubbles.filter(b => b.pair && b.side === 'left')) {
+    const R = bubbles.find(x => x.pair === b.pair && x.side === 'right');
+    if (R) { g.beginPath(); g.moveTo(b.x * W, b.y * H); g.lineTo(R.x * W, R.y * H); g.stroke(); }
+  }
+  g.setLineDash([]);
+  for (const b of bubbles) {
+    const x = b.x * W, y = b.y * H, r = b.r * S;
+    const grd = g.createRadialGradient(x - r * 0.35, y - r * 0.35, r * 0.1, x, y, r);
+    grd.addColorStop(0, '#ffffffee'); grd.addColorStop(0.35, b.c + 'aa'); grd.addColorStop(1, b.c + '55');
+    g.fillStyle = grd; g.beginPath(); g.arc(x, y, r * (b.touched ? 1.08 : 1), 0, Math.PI * 2); g.fill();
+    g.strokeStyle = '#ffffffcc'; g.lineWidth = 3; g.stroke();
+    if (b.pair) { g.fillStyle = '#1d3557'; g.font = `${r * 0.6}px system-ui`; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(b.side === 'left' ? '✋' : '🤚', x, y); }
+  }
+  particles = particles.filter(p => (p.life -= 0.03) > 0);
+  for (const p of particles) {
+    p.x += p.vx; p.y += p.vy;
+    g.globalAlpha = p.life; g.fillStyle = p.c; g.beginPath(); g.arc(p.x * W, p.y * H, 6 * devicePixelRatio, 0, Math.PI * 2); g.fill();
+  }
+  g.globalAlpha = 1;
+  // hands
+  for (const k of ['left', 'right']) {
+    const h = shown[k]; if (!h) continue;
+    g.fillStyle = k === 'left' ? '#3aa35acc' : '#f08a24cc';
+    g.beginPath(); g.arc(h[0] * W, h[1] * H, 0.035 * S, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#fff'; g.font = `${0.03 * S}px system-ui`; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(k === 'left' ? 'L' : 'R', h[0] * W, h[1] * H);
+  }
+}
+
+function frame(now) { update(now); draw(now); requestAnimationFrame(frame); }
+requestAnimationFrame(frame);
+
+$('startBtn').onclick = () => {
+  playing = true; nextSpawn = 0; send('start', { game: 'bubbles' });
+  say('Here come the bubbles! Reach out to pop them. Blue pairs need both hands!');
+};
+$('breakBtn').onclick = () => { playing = false; bubbles = []; send('pause'); say('Break time! The bubbles will wait for you.'); };
+addEventListener('pagehide', () => send('pause'));
+</script>
+</body>
+</html>

@@ -31,20 +31,42 @@ def load_profile():
         return json.loads(PROFILE.read_text())
     # approved_max_mm and assist_hand are set by the caregiver / therapist, never by the game
     return {"baseline_mm": None, "comfortable_mm": None, "approved_max_mm": 50, "level": 1,
-            "assist_hand": "left"}
+            "assist_hand": "left", "bubble_area": 0.25}
 
 
 profile = load_profile()
-LEVEL_TARGETS_MM = {1: 50, 2: 70, 3: 100, 4: 120}
+profile.setdefault("found", [])  # rewards the child has uncovered (shown in the Grown-ups tab)
+profile.setdefault("bubble_area", 0.25)  # caregiver-set reach area for Bubble Pop (0.15-0.45 of the view)
+
+# Illustrative game settings, not prescribed distances. Level 5 uses the child's own range.
+LEVELS = {
+    1: {"name": "First Dig", "target_mm": 50, "reward": "coin", "icon": "🪙"},
+    2: {"name": "Hidden Gems", "target_mm": 70, "reward": "gemstone", "icon": "💎"},
+    3: {"name": "Fossil Hunt", "target_mm": 100, "reward": "fossil", "icon": "🦴"},
+    4: {"name": "Deep Explorer", "target_mm": 120, "reward": "cave", "icon": "🕳️"},
+    5: {"name": "Treasure Master", "target_mm": None, "reward": "treasure chest", "icon": "🧰"},
+}
+LAYERS_PER_LEVEL = 4  # valid reaches to clear the soil
 
 
-def target_mm():
-    """Target for the current level, never above the approved or comfortable range."""
+def target_mm(level=None):
+    """Target for a level. NEVER above the caregiver-approved maximum or the child's
+    calibrated comfortable reach: finishing a level does not push the child further.
+    A child with a 2 cm range plays every level at 2 cm."""
+    lv = LEVELS[level or profile["level"]]
     caps = [profile["approved_max_mm"]]
     if profile["comfortable_mm"]:
         caps.append(profile["comfortable_mm"])
-    lvl = LEVEL_TARGETS_MM.get(profile["level"], profile["approved_max_mm"])
-    return min([lvl] + caps)
+    return min(([lv["target_mm"]] if lv["target_mm"] else []) + caps)
+
+
+def level_info(level=None):
+    level = level or profile["level"]
+    lv = LEVELS[level]
+    return {"level": level, "level_name": lv["name"], "reward": lv["reward"], "icon": lv["icon"],
+            "target_mm": target_mm(level),
+            # True when the level's example distance was capped to the approved range
+            "capped": bool(lv["target_mm"] and target_mm(level) < lv["target_mm"])}
 
 
 def emit(event, **data):
@@ -111,7 +133,16 @@ def on_distance(mm):
             state["hold_start"] = time.time()
         elif time.time() - state["hold_start"] >= HOLD_S:
             state["phase"], state["hold_start"] = "reached", None
-            emit("reach_completed", reach_mm=round(reach), target_mm=target_mm())
+            state["layers"] = state.get("layers", 0) + 1
+            emit("reach_completed", reach_mm=round(reach), target_mm=target_mm(),
+                 layers_cleared=state["layers"], layers_total=LAYERS_PER_LEVEL)
+            if state["layers"] >= LAYERS_PER_LEVEL:
+                done = level_info()
+                profile["found"].append(done["reward"])
+                profile["level"] = min(profile["level"] + 1, max(LEVELS))
+                PROFILE.write_text(json.dumps(profile, indent=2))
+                state["layers"] = 0
+                emit("level_completed", **done, next=level_info())
     elif state["phase"] == "rest":
         state["hold_start"] = None
     elif state["phase"] == "reached" and reach < RETURN_TOL_MM:
@@ -157,15 +188,15 @@ def on_thermo(temp_c, humidity):
 
 
 # ---------------- Two-Hand Treasure (camera) ----------------
-CAMERA_GAMES = {"twohand"}
+CAMERA_GAMES = {"bubbles"}  # Bubble Pop Adventure (replaced Two-Hand Treasure)
 
 
 def on_vision_event(event, data):
     if event == "camera_status":
         ui.send_message("camera_status", data)
         return
-    if state["mode"] == "playing" and state["game"] in CAMERA_GAMES:
-        emit(event, **data)
+    # Bubble Pop does its hit-testing in the browser from the hand positions, so the
+    # old two-hand detector events are not forwarded.
 
 
 vision = Vision(on_event=on_vision_event,
@@ -175,11 +206,27 @@ vision.start()
 
 
 def sync_camera():
-    """The camera is on only while a camera game is being played."""
-    if state["mode"] == "playing" and state["game"] in CAMERA_GAMES:
+    """The camera is on only while a camera game is being played.
+    If a laptop camera (tools/mac_camera.py) is connected, it does the tracking instead."""
+    if state["mode"] == "playing" and state["game"] in CAMERA_GAMES and not state.get("remote_camera"):
         vision.enabled.set()
     else:
         vision.enabled.clear()
+
+
+def on_vision_hello(_client, data):
+    state["remote_camera"] = True
+    sync_camera()
+    ui.send_message("camera_status", {"ok": True, "on": False, "remote": True})
+
+
+def on_remote_vision_event(_client, msg):
+    """Events from tools/mac_camera.py, handled exactly like the board's own camera."""
+    on_vision_event(msg.get("event"), {**(msg.get("data") or {}), "remote": True})
+
+
+def on_remote_hands(_client, d):
+    ui.send_message("hands", d)
 
 
 sensor_status = {}
@@ -195,9 +242,10 @@ def on_sensor_status(has_d, has_m, has_t, distance_hz, imu_hz, last_mm):
 
 # ---------------- Browser -> board messages ----------------
 def on_start(_client, data):
-    state.update(mode="playing", phase="rest", game=(data or {}).get("game", "reach"))
+    state.update(mode="playing", phase="rest", game=(data or {}).get("game", "reach"),
+                 layers=0, hold_start=None)
     sync_camera()
-    emit("session_started", game=state["game"], target_mm=target_mm())
+    emit("session_started", game=state["game"], **level_info())
 
 
 def on_pause(_client, _data):
@@ -216,16 +264,24 @@ def on_calibrate(_client, _data):
 def on_set_limits(_client, data):
     # Caregiver portal only: sets the approved maximum and level.
     profile["approved_max_mm"] = int(data.get("approved_max_mm", profile["approved_max_mm"]))
-    profile["level"] = int(data.get("level", profile["level"]))
+    profile["level"] = min(max(int(data.get("level", profile["level"])), 1), max(LEVELS))
+    if "bubble_area" in data:
+        profile["bubble_area"] = min(max(float(data["bubble_area"]), 0.15), 0.45)
     if data.get("assist_hand") in ("left", "right"):
         profile["assist_hand"] = data["assist_hand"]
         vision.set_assist_hand(profile["assist_hand"])
     PROFILE.write_text(json.dumps(profile, indent=2))
-    emit("limits_updated", **profile, target_mm=target_mm())
+    emit("limits_updated", **{**profile, **level_info()})
+
+
+def on_bubble_pop(_client, data):
+    """Logged for the caregiver view; the browser decides when a bubble is popped."""
+    if state["mode"] == "playing" and state["game"] == "bubbles":
+        emit("bubble_popped", kind=(data or {}).get("kind", "single"))
 
 
 def on_get_state(client, _data):
-    ui.send_message("profile", {**profile, "target_mm": target_mm()})
+    ui.send_message("profile", {**profile, **level_info()})
     ui.send_message("camera_status", {"ok": True, "on": vision.enabled.is_set(),
                                       "backend": vision.backend_name})
 
@@ -240,5 +296,9 @@ ui.on_message("pause", on_pause)
 ui.on_message("calibrate", on_calibrate)
 ui.on_message("set_limits", on_set_limits)
 ui.on_message("get_state", on_get_state)
+ui.on_message("vision_hello", on_vision_hello)
+ui.on_message("vision_event", on_remote_vision_event)
+ui.on_message("vision_hands", on_remote_hands)
+ui.on_message("bubble_pop", on_bubble_pop)
 
 App.run()

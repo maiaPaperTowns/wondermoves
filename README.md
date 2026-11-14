@@ -25,14 +25,14 @@ movement activities: reaching, controlled positioning and repeated movement sequ
 
 ### Why the camera matters (Qualcomm edge-AI story)
 The QRB2210 can run a small hand/pose model on the Brio feed locally. Nothing leaves the board.
-- **Two-Hand Treasure is no longer a stretch.** The camera checks that both hands are in frame and that one is holding still while the other moves. This solves the "one distance sensor can't verify both hands" problem.
+- **Bubble Pop Adventure:** the camera tracks both hands, so bubbles across the screen are popped by reaching with one or both hands. Blue pair bubbles need both hands at once, for bilateral coordination.
 - **Fossil Brush mirror:** Digger demonstrates a stroke and the camera shows the child's own movement beside it (action observation).
 - **Sensor fusion:** the camera confirms what the ToF/IMU detect, which cuts false triggers. The game emits `gesture_uncertain` instead of guessing.
 - **Privacy:** process frames in memory only. Never save or stream video, and show a visible "camera on" indicator in the child portal.
 
 ### Using 3 kits
 - **Board A (main):** Treasure Reach + Fossil Brush, the web portal and Digger.
-- **Board B:** Two-Hand Treasure station (camera + second Movement sensor on the stabilising hand).
+- **Board B:** Bubble Pop station (camera).
 - **Board C:** spare / dev board, so teammates can develop in parallel and a dead board doesn't kill the demo.
 
 ## Architecture
@@ -58,7 +58,7 @@ distances, diagnoses anything or pushes the child to keep going.
 |---|---|---|---|---|
 | Treasure Reach | Goal-directed practice | **Modulino Distance**, upright on a cardboard wall facing the hand | `python/main.py` + portal | ✅ tested on the board |
 | Fossil Brush | Action observation + execution | **Modulino Movement**, in a brush handle or wrist strap | `assets/fossil-brush/` (Andrew) + `js/sensor.js` | Game + sensor stream on the board; needs a real brushing test |
-| Two-Hand Treasure | Bimanual training | **Brio camera** (both hands); optional 2nd Movement in the chest | `python/vision.py` | Code done; not yet tested with the camera on the board |
+| Bubble Pop Adventure | Bilateral reaching and coordination (shoulder control, active range of motion, both hands together) | **Brio camera**, 1–1.5 m in front of the child with both arms in view | `assets/bubbles/` + `python/vision.py` (or `tools/mac_camera.py` on a laptop) | ✅ game tested on the board with simulated hands; needs a live camera test |
 
 **Thermo** isn't tied to one game: it watches room comfort and suggests breaks. With 3 kits, each game can run on its own board,
 so each person can own one station.
@@ -77,16 +77,28 @@ See [docs/PLAN.md](docs/PLAN.md) for the build plan and task split, and [docs/HA
 
 Maia Le (@maiaPaperTowns) · Joy Hong (@schae4999) · Andrew Kim (@Minulion) · @ArneshXCode
 
+## Bubble Pop with the camera on a laptop (dev setup)
+
+While the Brio is plugged into the Mac instead of the board, the Mac does the hand tracking (MediaPipe) and the board runs the game:
+
+```bash
+uv venv -p 3.12 --managed-python .venv && uv pip install -p .venv/bin/python opencv-python numpy "mediapipe==0.10.21" "python-socketio[client]"
+adb forward tcp:7070 tcp:7000
+.venv/bin/python tools/mac_camera.py      # camera index 1 = Brio on most Macs (0 = FaceTime)
+```
+
+macOS must allow camera access for the app that runs it (System Settings → Privacy & Security → Camera).
+
 ## Camera / vision quick test (laptop, before the board)
 
 ```bash
 cd wondermoves/python
 python3 test_vision.py                       # detector logic, no camera needed
 pip install mediapipe opencv-python numpy    # then, with a webcam:
-python3 vision.py --preview --assist left    # green = helper hand, orange = mover; q quits
+python3 vision.py --preview                  # green = left hand, orange = right; q quits
 ```
 
-On the board, `main.py` turns the camera on only during Two-Hand Treasure, and the portal shows a 🔴 badge while it's on.
+On the board, `main.py` turns the camera on only during Bubble Pop, and the portal shows a 🔴 badge while it's on.
 If MediaPipe won't install on the UNO Q, `vision.py` falls back to OpenCV motion detection on its own. Check the `backend`
 and `fps` values in the `hands` messages to see which one is running.
 

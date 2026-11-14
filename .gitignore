@@ -3,3 +3,4 @@ wondermoves/data/
 __pycache__/
 *.pyc
 .env
+.venv/

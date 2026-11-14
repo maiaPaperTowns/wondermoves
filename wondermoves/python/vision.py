@@ -161,10 +161,8 @@ class MotionBackend:
             ys, xs = np.nonzero(diff[:, sl])
             if len(xs) >= self._min:
                 out[side] = ((xs.mean() + sl.start) / w, ys.mean() / h)
-            else:
-                # A still hand produces no motion. Report it as present at a fixed point so
-                # "steady helper hand" can still be satisfied. Weaker than MediaPipe.
-                out[side] = (0.25 if side == "left" else 0.75, 0.5)
+            # else: no motion on this side. Report no hand rather than a made-up position,
+            # which would pop bubbles at a fixed spot. Weaker than MediaPipe.
         return out
 
 
@@ -296,7 +294,7 @@ class Vision:
             if now - t_fps >= 2.0:
                 self.fps = frames / (now - t_fps)
                 frames, t_fps = 0, now
-            if self.on_hands and now - last_hands_push >= 0.1:   # 10 Hz to the UI
+            if self.on_hands and now - last_hands_push >= 0.066:   # ~15 Hz to the UI
                 last_hands_push = now
                 self.on_hands({
                     "hands": {k: (None if v is None else [round(v[0], 3), round(v[1], 3)])
