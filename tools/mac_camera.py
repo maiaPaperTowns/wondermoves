@@ -23,7 +23,7 @@ from vision import Vision  # noqa: E402
 
 p = argparse.ArgumentParser()
 p.add_argument("--portal", default="http://127.0.0.1:7070")
-p.add_argument("--camera", default="1", help="OpenCV index; on a Mac 0 is usually FaceTime, 1 the Brio")
+p.add_argument("--camera", default="0", help="OpenCV camera number. Order differs per Mac: on our MacBook the Brio is 0 and the built-in FaceTime camera is 1. Check with --preview.")
 p.add_argument("--assist", default="left", choices=["left", "right"])
 p.add_argument("--always-on", action="store_true", help="keep the camera on even outside the game")
 p.add_argument("--preview", action="store_true", help="show the camera window locally (laptop only)")

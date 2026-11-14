@@ -84,7 +84,7 @@ While the Brio is plugged into the Mac instead of the board, the Mac does the ha
 ```bash
 uv venv -p 3.12 --managed-python .venv && uv pip install -p .venv/bin/python opencv-python numpy "mediapipe==0.10.21" "python-socketio[client]"
 adb forward tcp:7070 tcp:7000
-.venv/bin/python tools/mac_camera.py      # camera index 1 = Brio on most Macs (0 = FaceTime)
+.venv/bin/python tools/mac_camera.py      # camera 0 = Brio on our Mac (check with --preview; try --camera 1 if you see the built-in camera)
 ```
 
 macOS must allow camera access for the app that runs it (System Settings → Privacy & Security → Camera).
