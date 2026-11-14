@@ -140,6 +140,75 @@ class MediaPipeBackend:
         return out
 
 
+class SideMapper:
+    """Decides which Pose wrist is the child's left hand.
+
+    On a mirrored frame we expect Pose's anatomical labels to come out swapped, but rather
+    than trust that, we vote: whenever the Hands model also sees a hand (its labels are
+    correct on mirrored input), we check which Pose wrist is closer to it."""
+
+    def __init__(self):
+        self.score = 0          # > 0: child's left = Pose RIGHT wrist (expected when mirrored)
+
+    @property
+    def swapped(self) -> bool:
+        return self.score >= 0
+
+    def vote(self, hand_side: str, hand_pos, pose_l, pose_r):
+        if hand_pos is None or pose_l is None or pose_r is None:
+            return
+        d = lambda a, b: (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2
+        closer_to_pose_r = d(hand_pos, pose_r) < d(hand_pos, pose_l)
+        # The child's LEFT hand matching Pose's RIGHT wrist supports "swapped".
+        supports_swap = closer_to_pose_r if hand_side == "left" else not closer_to_pose_r
+        self.score = max(-20, min(20, self.score + (1 if supports_swap else -1)))
+
+    def assign(self, pose_l, pose_r) -> dict:
+        return {"left": pose_r, "right": pose_l} if self.swapped else {"left": pose_l, "right": pose_r}
+
+
+def fuse(hands: dict, pose_l, pose_r, mapper: SideMapper) -> dict:
+    """Prefer the precise Hands position; fall back to the Pose wrist for that side."""
+    for side in ("left", "right"):
+        mapper.vote(side, hands.get(side), pose_l, pose_r)
+    from_pose = mapper.assign(pose_l, pose_r)
+    return {s: hands.get(s) or from_pose[s] for s in ("left", "right")}
+
+
+class PoseHandsBackend(MediaPipeBackend):
+    """Hands + Pose. Pose finds wrists from the whole upper body, so it keeps tracking
+    when hands are small, partly out of frame, or turned sideways, which is common
+    for a seated child 1-1.5 m from the camera."""
+    name = "mediapipe_pose+hands"
+
+    def __init__(self):
+        super().__init__()
+        import mediapipe as mp
+        self._pose = mp.solutions.pose.Pose(
+            static_image_mode=False, model_complexity=1, smooth_landmarks=True,
+            min_detection_confidence=0.4, min_tracking_confidence=0.4)
+        self.mapper = SideMapper()
+
+    @staticmethod
+    def _point(lm, ids, min_vis=0.4):
+        pts = [lm[i] for i in ids if lm[i].visibility >= min_vis]
+        if not pts:
+            return None
+        x, y = sum(p.x for p in pts) / len(pts), sum(p.y for p in pts) / len(pts)
+        return (x, y) if 0.0 <= x <= 1.0 and 0.0 <= y <= 1.0 else None
+
+    def process(self, frame_bgr) -> dict:
+        import cv2
+        hands = super().process(frame_bgr)
+        res = self._pose.process(cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB))
+        if not res.pose_landmarks:
+            return hands
+        lm = res.pose_landmarks.landmark
+        # Pose 15/19 = left wrist/index, 16/20 = right wrist/index (anatomical labels).
+        pose_l, pose_r = self._point(lm, (15, 19)), self._point(lm, (16, 20))
+        return fuse(hands, pose_l, pose_r, self.mapper)
+
+
 class MotionBackend:
     """Fallback: motion centroid in each half of the mirrored frame."""
     name = "opencv_motion"
@@ -169,9 +238,27 @@ class MotionBackend:
         return out
 
 
+def hold_through_dropouts(hands: dict, last_seen: dict, now: float, hold_s: float = 0.3) -> dict:
+    """Keep a hand's last position for up to `hold_s` when detection misses a few frames,
+    so the on-screen dot doesn't flicker. Mutates `last_seen` {side: (t, pos)}."""
+    out = {}
+    for side in ("left", "right"):
+        pos = hands.get(side)
+        if pos is not None:
+            last_seen[side] = (now, pos)
+            out[side] = pos
+        elif side in last_seen and now - last_seen[side][0] <= hold_s:
+            out[side] = last_seen[side][1]
+        else:
+            out[side] = None
+    return out
+
+
 def make_backend(prefer: str = "auto"):
     if prefer in ("auto", "mediapipe"):
         try:
+            if os.environ.get("WM_POSE", "1") == "1":
+                return PoseHandsBackend()
             return MediaPipeBackend()
         except Exception as e:  # ImportError, missing libGL, etc.
             print(f"[vision] MediaPipe unavailable ({e!r}); using motion fallback")
@@ -223,6 +310,7 @@ class Vision:
         self.fps = 0.0
         self.backend_name = None
         self.device = None
+        self._last_seen = {}
         self._stop = threading.Event()
         self._thread: Optional[threading.Thread] = None
 
@@ -289,7 +377,7 @@ class Vision:
                 continue
             frame = cv2.flip(frame, 1)       # selfie view
             now = time.time()
-            hands = backend.process(frame)
+            hands = hold_through_dropouts(backend.process(frame), self._last_seen, now)
             for ev, data in self.detector.update(now, hands):
                 self.on_event(ev, data)
 

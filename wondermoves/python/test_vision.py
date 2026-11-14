@@ -4,7 +4,7 @@
 """
 import math
 
-from vision import TwoHandDetector
+from vision import TwoHandDetector, SideMapper, fuse, hold_through_dropouts
 
 FPS = 30
 
@@ -57,6 +57,33 @@ def test_small_tremor_on_helper_hand_still_counts():
     # Lenient "steady": a small tremor on the helper hand is fine.
     ev = run(TwoHandDetector(assist_hand="left"), 3, wiggle(0.25, amp=0.01, hz=3), wiggle(0.75))
     assert "two_hand_action" in ev, ev
+
+
+def test_fuse_prefers_hands_and_learns_pose_sides():
+    m = SideMapper()
+    # Mirrored frame: child's left hand at image left (x 0.3). Pose labels it RIGHT wrist.
+    pose_l, pose_r = (0.7, 0.6), (0.3, 0.6)
+    out = fuse({"left": (0.31, 0.58), "right": None}, pose_l, pose_r, m)
+    assert out["left"] == (0.31, 0.58)           # Hands wins when present
+    assert out["right"] == (0.7, 0.6)            # Pose fills the missing side
+    out = fuse({"left": None, "right": None}, pose_l, pose_r, m)
+    assert out == {"left": (0.3, 0.6), "right": (0.7, 0.6)}, out
+
+
+def test_mapper_flips_if_pose_labels_are_not_swapped():
+    m = SideMapper()
+    pose_l, pose_r = (0.3, 0.6), (0.7, 0.6)      # pose labels already match the child
+    for _ in range(5):
+        fuse({"left": (0.3, 0.6), "right": (0.7, 0.6)}, pose_l, pose_r, m)
+    assert not m.swapped
+    assert fuse({"left": None, "right": None}, pose_l, pose_r, m) == {"left": (0.3, 0.6), "right": (0.7, 0.6)}
+
+
+def test_hold_through_short_dropouts():
+    seen = {}
+    assert hold_through_dropouts({"left": (0.4, 0.5), "right": None}, seen, 10.0)["left"] == (0.4, 0.5)
+    assert hold_through_dropouts({"left": None, "right": None}, seen, 10.2)["left"] == (0.4, 0.5)
+    assert hold_through_dropouts({"left": None, "right": None}, seen, 10.5)["left"] is None
 
 
 if __name__ == "__main__":
