@@ -153,6 +153,9 @@ socket.on('sensors', (s) => {
     : '✅ connected, nothing in range (point it at the hand)';
   $('sensors').innerHTML = `Distance: ${dist}<br>Movement: ${s.movement ? `✅ (${s.imu_hz}/s)` : mark(false)}<br>Thermo: ${mark(s.thermo)}`;
 });
+socket.on('i2c_scan', (d) => {
+  $('sensors').innerHTML += `<br><small>I2C bus answers: ${d.found || 'nothing'} (Thermo 0x44, Distance 0x29, Movement 0x6a/0x6b)</small>`;
+});
 socket.on('camera_status', (d) => {
   const on = !!(d && d.on);
   $('cam').classList.toggle('on', on);

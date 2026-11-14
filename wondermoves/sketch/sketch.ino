@@ -21,6 +21,20 @@ void probeSensors() {
   if (!hasThermo) hasThermo = thermo.begin();
 }
 
+// Lists every I2C address that answers on the Qwiic bus, e.g. "0x44 0x29 0x6A".
+// Thermo = 0x44, Distance = 0x29, Movement = 0x6A/0x6B.
+String scanI2C() {
+  String found;
+  for (uint8_t addr = 0x08; addr < 0x78; addr++) {
+    Wire1.beginTransmission(addr);
+    if (Wire1.endTransmission() == 0) {
+      if (found.length()) found += " ";
+      found += "0x" + String(addr, HEX);
+    }
+  }
+  return found;
+}
+
 void setup() {
   Bridge.begin();
   Modulino.begin(Wire1);  // Qwiic connector is on Wire1 on the UNO Q
@@ -60,5 +74,8 @@ void loop() {
     Bridge.notify("sensor_status", hasDistance, hasMovement, hasThermo,
                   (int)distanceSeen, (int)imuSeen, lastDistanceMm);
     distanceSeen = imuSeen = 0;
+    if (!hasDistance || !hasMovement || !hasThermo) {
+      Bridge.notify("i2c_scan", scanI2C());
+    }
   }
 }

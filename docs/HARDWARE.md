@@ -15,7 +15,11 @@ UNO Q [QWIIC] ──► Modulino Thermo ──► Modulino Distance ──► Mo
 ```
 
 - The Qwiic chain order doesn't matter, because every Modulino has its own I2C address. Put whichever sensor needs the longest reach at the end of the chain.
-- Unplug power before adding or removing Modulinos, and pull the white plug, not the wires.
+- Unplug power before adding or removing Modulinos, and pull the white plug, not the wires. Hot-plugging froze our I2C bus once, and only a restart fixed it.
+- **Troubleshooting:** the Grown-ups tab shows each sensor's status and, while any sensor is missing, a live I2C scan
+  (`Thermo 0x44`, `Distance 0x29`, `Movement 0x6a`). If a sensor disappears only when it sits *after* a certain
+  board, that board's second socket is bad. Put that board at the **end** of the chain. On our kit, the Thermo's
+  second socket was dead, so the working chain is **board → Movement → Distance → Thermo**.
 - **Dev mode:** board ⇄ Mac over USB-C, which gives `adb` and the portal at http://127.0.0.1:7070 via `adb forward tcp:7070 tcp:7000`.
 - **Demo mode:** board on the dock with the camera. The portal opens in the board's own browser on the HDMI screen at http://localhost:7000. Everything runs on the Qualcomm chip.
 - UWNet blocks device-to-device traffic. To reach the board from the Mac in demo mode, put both on the same phone hotspot.
