@@ -82,16 +82,31 @@ function pop(pitch = 1) {
 
 /* ---------- bubbles ---------- */
 const COLORS = ['#ff7eb6', '#7ec8ff', '#9be37b', '#ffd166', '#c39bff', '#ff9f6e'];
+// The bubble area follows where the child's hands actually rest: centred a little ABOVE the
+// resting hands (a small reach up), so a camera placed high or low still works.
+let restY = [], centerY = 0.5;
+function noteRest(h) {
+  if (!h) return;
+  restY.push(h[1]); if (restY.length > 150) restY.shift();
+  const sorted = [...restY].sort((a, b) => a - b), med = sorted[sorted.length >> 1];
+  centerY = Math.min(0.75, Math.max(0.25, med - Math.max(0.12, area * 0.6)));
+}
+// Never place a bubble at or below the resting hands: it must take a reach to pop.
+function aboveRest(y) {
+  if (!restY.length) return y;
+  const sorted = [...restY].sort((a, b) => a - b), med = sorted[sorted.length >> 1];
+  return Math.min(y, med - 0.1);
+}
 function inArea() {
-  // Normalised position inside the caregiver-set area around the middle of the view.
-  return { x: 0.5 + (Math.random() * 2 - 1) * area, y: 0.5 + (Math.random() * 2 - 1) * Math.min(area, 0.3) };
+  // Normalised position inside the caregiver-set area.
+  return { x: 0.5 + (Math.random() * 2 - 1) * area, y: aboveRest(centerY + (Math.random() * 2 - 1) * Math.min(area, 0.12)) };
 }
 function spawn() {
   if (bubbles.length >= 3) return;
   const r = 0.06 + Math.random() * 0.02;
   if (Math.random() < 0.35 && !bubbles.some(b => b.pair)) {
     // Pair: one bubble on each side of the middle, popped together with both hands.
-    const y = 0.5 + (Math.random() * 2 - 1) * Math.min(area, 0.25);
+    const y = aboveRest(centerY + (Math.random() * 2 - 1) * Math.min(area, 0.1));
     const dx = Math.max(0.12, area * 0.8);
     const id = Math.random();
     bubbles.push({ x: 0.5 - dx, y, r, c: '#7ec8ff', pair: id, side: 'left', born: performance.now(), hit: 0 });
@@ -113,6 +128,7 @@ function onHands(d) {
   hands = d.hands || { left: null, right: null };
   assist = d.assist || assist;
   lastHandsAt = performance.now();
+  noteRest(hands.left); noteRest(hands.right);
   if (!$('cam').classList.contains('on')) { $('cam').classList.add('on'); $('cam').textContent = '🔴 Camera on'; }
 }
 if (socket) {
@@ -184,7 +200,7 @@ function draw(now) {
   const S = Math.min(W, H);
   // caregiver-set reach area (soft guide)
   g.fillStyle = '#ffffff40';
-  g.beginPath(); g.ellipse(W / 2, H / 2, area * W + 0.08 * S, Math.min(area, 0.3) * H + 0.08 * S, 0, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.ellipse(W / 2, centerY * H, area * W + 0.08 * S, Math.min(area, 0.2) * H + 0.08 * S, 0, 0, Math.PI * 2); g.fill();
   // pair links
   g.setLineDash([10, 10]); g.strokeStyle = '#1d355766'; g.lineWidth = 4;
   for (const b of bubbles.filter(b => b.pair && b.side === 'left')) {
