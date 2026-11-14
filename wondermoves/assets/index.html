@@ -67,6 +67,7 @@
   <p><small>The camera turns on only during Two-Hand Treasure. Video is processed on the board and never saved or sent anywhere. Only hand positions reach this page.</small></p>
   <button onclick="saveLimits()">Save limits</button>
   <p id="profile"></p>
+  <p id="sensors">Sensors: waiting for the board…</p>
   <p id="room"></p>
   <h2>This session</h2>
   <table><thead><tr><th>Time</th><th>Event</th><th>Detail</th></tr></thead><tbody id="log"></tbody></table>
@@ -145,6 +146,13 @@ socket.on('distance', (d) => {
   $('treasure').textContent = TREASURES[(profile.level || 1) - 1] || '🧰';
 }));
 socket.on('room', (d) => $('room').textContent = `Room: ${d.temp_c.toFixed(1)} °C, ${d.humidity.toFixed(0)}% humidity`);
+socket.on('sensors', (s) => {
+  const mark = (ok) => ok ? '✅' : '❌ not found (check the Qwiic plug)';
+  const dist = !s.distance ? mark(false)
+    : s.distance_hz > 0 ? `✅ ${s.last_distance_mm} mm (${s.distance_hz}/s)`
+    : '✅ connected, nothing in range (point it at the hand)';
+  $('sensors').innerHTML = `Distance: ${dist}<br>Movement: ${s.movement ? `✅ (${s.imu_hz}/s)` : mark(false)}<br>Thermo: ${mark(s.thermo)}`;
+});
 socket.on('camera_status', (d) => {
   const on = !!(d && d.on);
   $('cam').classList.toggle('on', on);

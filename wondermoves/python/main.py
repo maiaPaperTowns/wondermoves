@@ -167,8 +167,15 @@ def sync_camera():
         vision.enabled.clear()
 
 
-def on_ready(has_d, has_m, has_t):
-    ui.send_message("sensors", {"distance": has_d, "movement": has_m, "thermo": has_t})
+sensor_status = {}
+
+
+def on_sensor_status(has_d, has_m, has_t, distance_hz, imu_hz, last_mm):
+    """1 Hz from the sketch: which Modulinos are plugged in and whether they send data."""
+    sensor_status.update(distance=bool(has_d), movement=bool(has_m), thermo=bool(has_t),
+                         distance_hz=distance_hz, imu_hz=imu_hz,
+                         last_distance_mm=last_mm if last_mm >= 0 else None)
+    ui.send_message("sensors", sensor_status)
 
 
 # ---------------- Browser -> board messages ----------------
@@ -210,7 +217,7 @@ def on_get_state(client, _data):
 Bridge.provide("distance", on_distance)
 Bridge.provide("imu", on_imu)
 Bridge.provide("thermo", on_thermo)
-Bridge.provide("sensors_ready", on_ready)
+Bridge.provide("sensor_status", on_sensor_status)
 ui.on_message("start", on_start)
 ui.on_message("pause", on_pause)
 ui.on_message("calibrate", on_calibrate)
