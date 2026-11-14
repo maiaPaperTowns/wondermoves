@@ -209,6 +209,78 @@ class PoseHandsBackend(MediaPipeBackend):
         return fuse(hands, pose_l, pose_r, self.mapper)
 
 
+def _sigmoid(v: float) -> float:
+    import math
+    return v if 0.0 <= v <= 1.0 else 1.0 / (1.0 + math.exp(-v))
+
+
+class OpenCVPoseBackend:
+    """MediaPipe's pose landmark model (ONNX, from the OpenCV model zoo) run with OpenCV's
+    DNN module. Used on the UNO Q, whose ARMv8.0 cores can't run MediaPipe's own library.
+
+    No separate person detector: a seated child is roughly centred, so the first frame uses
+    the whole picture, and later frames crop around the body found in the previous frame."""
+    name = "opencv_pose"
+    SIZE = 256
+
+    def __init__(self, model_path: Optional[str] = None):
+        import cv2
+        model_path = model_path or os.path.join(os.path.dirname(__file__), "models",
+                                                "pose_estimation_mediapipe_2023mar.onnx")
+        if not os.path.exists(model_path):
+            raise FileNotFoundError(model_path)
+        cv2.setNumThreads(4)
+        self._net = cv2.dnn.readNet(model_path)
+        self._outs = self._net.getUnconnectedOutLayersNames()
+        self._roi = None            # (x0, y0, size) in frame pixels, or None = whole frame
+        self.mapper = SideMapper()  # no Hands model to vote with: assumes mirrored labels
+
+    def _full_frame_roi(self, w, h):
+        size = max(w, h)
+        return ((w - size) / 2, (h - size) / 2, size)
+
+    def process(self, frame_bgr) -> dict:
+        import cv2
+        import numpy as np
+        h, w = frame_bgr.shape[:2]
+        x0, y0, size = self._roi or self._full_frame_roi(w, h)
+        s = self.SIZE / size
+        m = np.float32([[s, 0, -x0 * s], [0, s, -y0 * s]])
+        crop = cv2.warpAffine(frame_bgr, m, (self.SIZE, self.SIZE), borderValue=(0, 0, 0))
+        blob = (cv2.cvtColor(crop, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0)[None]
+        self._net.setInput(blob)
+        outs = self._net.forward(self._outs)
+        lms = next(o for o in outs if o.shape == (1, 195)).reshape(39, 5)
+        conf = _sigmoid(float(next(o for o in outs if o.shape == (1, 1))[0, 0]))
+        if conf < 0.5:
+            self._roi = None        # lost the body: look at the whole picture again
+            return {"left": None, "right": None}
+
+        def to_frame(i):
+            x, y = lms[i, 0] / s + x0, lms[i, 1] / s + y0
+            return x, y, _sigmoid(float(lms[i, 3]))
+
+        pts = [to_frame(i) for i in range(33)]
+        seen = [(x, y) for x, y, v in pts if v > 0.5]
+        if len(seen) >= 4:          # follow the body: square crop around it, with margin
+            xs, ys = [p[0] for p in seen], [p[1] for p in seen]
+            cx, cy = (min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2
+            side = max(max(xs) - min(xs), max(ys) - min(ys)) * 1.5
+            side = max(side, 0.4 * max(w, h))
+            self._roi = (cx - side / 2, cy - side / 2, side)
+
+        def hand(ids):
+            got = [pts[i] for i in ids if pts[i][2] > 0.5]
+            if not got:
+                return None
+            x = sum(p[0] for p in got) / len(got) / w
+            y = sum(p[1] for p in got) / len(got) / h
+            return (x, y) if 0.0 <= x <= 1.0 and 0.0 <= y <= 1.0 else None
+
+        # 15/19 = anatomical left wrist/index, 16/20 = right.
+        return self.mapper.assign(hand((15, 19)), hand((16, 20)))
+
+
 class MotionBackend:
     """Fallback: motion centroid in each half of the mirrored frame."""
     name = "opencv_motion"
@@ -255,13 +327,20 @@ def hold_through_dropouts(hands: dict, last_seen: dict, now: float, hold_s: floa
 
 
 def make_backend(prefer: str = "auto"):
+    # WM_BACKEND=opencv_pose|mediapipe|motion forces one (e.g. test the board's backend on a laptop)
+    prefer = os.environ.get("WM_BACKEND", prefer)
     if prefer in ("auto", "mediapipe"):
         try:
             if os.environ.get("WM_POSE", "1") == "1":
                 return PoseHandsBackend()
             return MediaPipeBackend()
-        except Exception as e:  # ImportError, missing libGL, etc.
-            print(f"[vision] MediaPipe unavailable ({e!r}); using motion fallback")
+        except Exception as e:  # ImportError on the UNO Q (no MediaPipe build for its CPU)
+            print(f"[vision] MediaPipe unavailable ({e!r})")
+    if prefer in ("auto", "opencv_pose"):
+        try:
+            return OpenCVPoseBackend()
+        except Exception as e:
+            print(f"[vision] OpenCV pose unavailable ({e!r}); using motion fallback")
     return MotionBackend()
 
 
