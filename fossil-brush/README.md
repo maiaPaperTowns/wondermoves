@@ -15,6 +15,38 @@ python3 -m http.server 8000   # then visit http://localhost:8000
 
 The game works offline. Only the Fredoka font and the confetti effect load from a CDN, and the game still runs without them.
 
+## Modes
+
+### ✏️ Copy Pip (default): guided motor-skill practice
+
+1. The child picks a **challenge tier**. Each tier is tied to a rarity:
+
+   | Tier | Sequence |
+   | --- | --- |
+   | Common | 2 straight lines |
+   | Uncommon | 3 lines and arcs |
+   | Rare | 3 curvy shapes (waves, zigzags) |
+   | Epic | 4 shapes (circle, square, triangle, snake) |
+   | Legendary | 5 shapes (spiral, figure-8, heart, star) |
+
+   A tier unlocks after the child finishes the tier below it.
+2. Pip's brush draws a shape on the sand pile.
+3. The child traces it by following a glowing dot along a soft lane. Each finished shape digs one layer deeper, and the last one reveals the treasure.
+
+Accessibility choices, aimed at children with cerebral palsy and other motor difficulties:
+
+- No timers and no fail states.
+- Progress is kept if the finger lifts. Going back over an already-traced part never counts as a mistake.
+- The lane shows how much wobble is allowed. Grown-ups can set its width to Gentle, Normal or Precise.
+- If the child makes no progress for about 9 seconds, Pip demonstrates the shape again. The **👀 Show me** button replays it at any time.
+- Each stroke is logged on the device with its shape, tier, time, accuracy and off-path fraction. Grown-ups can download the log as JSON from **Menu → For grown-ups**. There is also an **Unlock all** switch for therapists.
+
+Shapes and tiers live at the top of `js/trace.js`. A shape is a list of points in a -1..1 box, so adding new ones is easy.
+
+### 🖌️ Free Play
+
+The original mode: brush the sand freely, and treasure rarity is random according to each site's odds.
+
 ## How it plays
 
 - **Brush:** press and drag on the sand pile. Sand comes off as you swipe back and forth.
@@ -56,6 +88,7 @@ js/data.js        levels, treasures, rarities, mascot lines  ← edit me
 js/store.js       save/load progress
 js/audio.js       sound effects
 js/digsite.js     sand heightmap, brushing, rendering, particles
-js/ui.js          depth meter, menu, collection, found card, tutorial
+js/trace.js       Copy Pip: shapes, tiers, path following, practice log
+js/ui.js          depth meter, menu, challenge picker, collection, found card, tutorial
 js/main.js        game loop, input, dig → reveal → collect flow
 ```

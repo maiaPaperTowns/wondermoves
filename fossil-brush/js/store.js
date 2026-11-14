@@ -9,7 +9,14 @@ FB.Store = {
     let saved = {};
     try { saved = JSON.parse(localStorage.getItem(this.key)) || {}; } catch (e) { saved = {}; }
     this.data = Object.assign(
-      { found: {}, tutorialDone: false, level: 'beach', muted: false, digs: 0 },
+      {
+        found: {}, tutorialDone: false, level: 'beach', muted: false, digs: 0,
+        mode: 'trace',          // 'trace' (Copy Pip) | 'free' (Free Play)
+        tolerance: 'gentle',    // Copy Pip lane width: gentle | normal | precise
+        unlocked: 0,            // highest Copy Pip challenge tier unlocked (0 = Common)
+        unlockAll: false,       // grown-up override
+        traceLog: [],           // per-stroke practice records
+      },
       saved
     );
   },
@@ -33,9 +40,30 @@ FB.Store = {
   isFound(id) { return !!(this.data.found[id] && this.data.found[id].count); },
   record(id) { return this.data.found[id] || null; },
 
+  /** Copy Pip: finishing tier `t` unlocks tier t+1. Returns the newly unlocked rarity, if any. */
+  unlockAfter(t) {
+    const next = t + 1;
+    if (next < FB.RARITIES.length && next > this.data.unlocked) {
+      this.data.unlocked = next;
+      this.save();
+      return FB.RARITIES[next];
+    }
+    return null;
+  },
+  tierUnlocked(t) { return this.data.unlockAll || t <= this.data.unlocked; },
+
+  /** Practice log for grown-ups / therapists (kept on this device only). */
+  logTrace(rec) {
+    this.data.traceLog.push(rec);
+    if (this.data.traceLog.length > 2000) this.data.traceLog.splice(0, this.data.traceLog.length - 2000);
+    this.save();
+  },
+
+  /** Clears the collection and challenge unlocks (keeps the practice log). */
   reset() {
     this.data.found = {};
     this.data.digs = 0;
+    this.data.unlocked = 0;
     this.save();
   },
 };

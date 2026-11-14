@@ -75,6 +75,13 @@
     <div class="buddy-bubble" id="buddyBubble"></div>
   </div>
 
+  <!-- ===== Copy Pip: step tracker ===== -->
+  <div class="trace-hud" id="traceHud" aria-live="polite">
+    <span class="trace-label" id="traceLabel">Shape 1 of 2</span>
+    <div class="trace-steps" id="traceSteps"></div>
+    <button class="pill-btn" id="traceReplay">👀 Show me</button>
+  </div>
+
   <!-- ===== Menu drawer ===== -->
   <div class="drawer-backdrop" id="drawerBackdrop"></div>
   <nav class="drawer" id="drawer" aria-hidden="true" aria-label="Dig sites">
@@ -82,14 +89,37 @@
       <h2>🗺️ Dig Sites</h2>
       <button class="close-btn" id="drawerClose" aria-label="Close menu">✕</button>
     </div>
+    <div class="mode-toggle" id="modeToggle" role="group" aria-label="Game mode">
+      <button data-mode="trace">✏️ Copy Pip</button>
+      <button data-mode="free">🖌️ Free Play</button>
+    </div>
+    <p class="mode-hint" id="modeHint"></p>
     <p class="drawer-sub">Pick a place to dig. Harder sites hide rarer treasures!</p>
     <div class="level-list" id="levelList"></div>
     <div class="drawer-actions">
       <button class="pill-btn primary" id="newDigBtn">🔄 New Dig Here</button>
       <button class="pill-btn" id="drawerCatalog">📖 My Collection</button>
       <button class="pill-btn" id="drawerHelp">🎓 How to Play</button>
-      <button class="link-btn" id="resetBtn">Reset collection</button>
     </div>
+    <details class="grownups">
+      <summary>👪 For grown-ups</summary>
+      <div class="gu-row">
+        <span class="gu-label">Copy Pip tracing help</span>
+        <div class="seg" id="tolToggle" role="group" aria-label="Tracing tolerance">
+          <button data-tol="gentle">Gentle</button>
+          <button data-tol="normal">Normal</button>
+          <button data-tol="precise">Precise</button>
+        </div>
+        <span class="gu-note">How far from the line still counts. Gentle gives the widest lane.</span>
+      </div>
+      <label class="gu-check"><input type="checkbox" id="unlockAll"> Unlock all Copy Pip challenges</label>
+      <div class="gu-row">
+        <span class="gu-label">Practice log</span>
+        <span class="gu-note" id="practiceStats"></span>
+        <button class="pill-btn small" id="exportLog">⬇️ Download log (JSON)</button>
+      </div>
+      <button class="link-btn" id="resetBtn">Reset collection &amp; unlocks</button>
+    </details>
   </nav>
 
   <!-- ===== Catalog ===== -->
@@ -130,9 +160,29 @@
       <div class="stars big" id="foundStars"></div>
       <p class="found-depth" id="foundDepth"></p>
       <p class="fact" id="foundFact"></p>
+      <p class="trace-result" id="foundTrace" hidden></p>
+      <p class="unlock-note" id="foundUnlock" hidden></p>
       <div class="found-actions">
         <button class="pill-btn" id="foundCatalog">📖 Collection</button>
         <button class="pill-btn primary big" id="foundAgain">Dig Again! 🖌️</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Copy Pip: challenge picker ===== -->
+  <div class="modal" id="challengeModal" aria-hidden="true" role="dialog" aria-label="Pick a challenge">
+    <div class="panel challenge-panel">
+      <div class="ch-head">
+        <img id="chMascot" alt="" draggable="false">
+        <div>
+          <h2>Which treasure will you dig for?</h2>
+          <p>Copy my shapes to dig. Harder shapes reach rarer treasures! <span class="ch-site" id="chSite"></span></p>
+        </div>
+      </div>
+      <div class="ch-grid" id="chGrid"></div>
+      <div class="ch-foot">
+        <button class="pill-btn" id="chSites">🗺️ Dig Sites</button>
+        <button class="link-btn" id="chFree">Switch to Free Play</button>
       </div>
     </div>
   </div>
@@ -163,6 +213,7 @@
   <script src="js/store.js"></script>
   <script src="js/audio.js"></script>
   <script src="js/digsite.js"></script>
+  <script src="js/trace.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/main.js"></script>
 </body>

@@ -1,5 +1,8 @@
 /* ==========================================================================
    Main game controller: input, game loop, dig → reveal → collect flow.
+   Two modes:
+     'trace' — Copy Pip: Pip draws shapes, the child traces them to dig.
+     'free'  — Free Play: brush the sand freely.
    ========================================================================== */
 (function () {
   const FB = window.FB;
@@ -10,19 +13,15 @@
   FB.Sound.setMuted(!!FB.Store.data.muted);
 
   const canvas = $('#game');
-  const site = new FB.DigSite(canvas);
+  const site = FB.site = new FB.DigSite(canvas);
   const cursor = $('#brushCursor');
   const hand = $('#handHint');
   const digArea = $('#digArea');
 
   /* ---------------- choosing a treasure ---------------- */
-  function pickItem(level) {
-    const w = level.weights;
-    const total = w.reduce((a, b) => a + b, 0);
-    let roll = Math.random() * total, ri = 0;
-    for (; ri < w.length - 1; ri++) { roll -= w[ri]; if (roll < 0) break; }
+  function pickItemOfRarity(level, ri) {
     let pool = [];
-    // if a level has no item of the rolled rarity, step down until one exists
+    // if a level has no item of this rarity, step down until one exists
     for (let k = ri; k >= 0 && !pool.length; k--) {
       pool = level.items.filter(i => i.rarity === FB.RARITIES[k].id);
     }
@@ -33,10 +32,24 @@
     return pick(pool);
   }
 
+  function pickItem(level) {
+    const w = level.weights;
+    const total = w.reduce((a, b) => a + b, 0);
+    let roll = Math.random() * total, ri = 0;
+    for (; ri < w.length - 1; ri++) { roll -= w[ri]; if (roll < 0) break; }
+    return pickItemOfRarity(level, ri);
+  }
+
+  function depthFor(item) {
+    const r = FB.rarityById(item.rarity);
+    return r.min + 4 + Math.random() * (r.max - r.min - 8);
+  }
+
   /* ---------------- game state ---------------- */
   const Game = FB.Game = {
-    state: 'idle',
-    level: null, item: null, depth: 0,
+    state: 'idle', // idle | choosing | digging | revealing | found
+    mode: FB.Store.data.mode === 'free' ? 'free' : 'trace',
+    level: null, item: null, depth: 0, tier: 0,
     target: 0, shown: 0, zone: 0,
     said: {}, startAt: 0, lastBrushAt: 0,
 
@@ -51,23 +64,55 @@
       this.newDig();
     },
 
-    newDig() {
-      const item = pickItem(this.level);
-      const r = FB.rarityById(item.rarity);
-      this.item = item;
-      this.depth = r.min + 4 + Math.random() * (r.max - r.min - 8);
+    setMode(mode) {
+      this.mode = mode === 'free' ? 'free' : 'trace';
+      FB.Store.data.mode = this.mode; FB.Store.save();
+      document.body.dataset.mode = this.mode;
+      layout();
+      FB.UI.updateLevelPill(this.level);
+      this.newDig();
+    },
+
+    resetDig() {
+      FB.Trace.stop();
+      hideHand();
       this.target = 0; this.shown = 0; this.zone = 0;
       this.said = {};
-      this.state = 'digging';
       this.startAt = performance.now();
       this.lastBrushAt = 0;
-      site.setup(this.level, item, this.depth, (Math.random() * 1e9) | 0);
       FB.Meter.reset();
-      hideHand();
+    },
+
+    newDig() {
+      this.resetDig();
+      if (this.mode === 'trace') {
+        // show a fresh pile behind the challenge picker; the real treasure is chosen with the tier
+        this.state = 'choosing';
+        this.item = pickItem(this.level);
+        this.depth = depthFor(this.item);
+        site.setup(this.level, this.item, this.depth, (Math.random() * 1e9) | 0);
+        return; // the game loop opens the challenge picker
+      }
+      this.item = pickItem(this.level);
+      this.depth = depthFor(this.item);
+      this.state = 'digging';
+      site.setup(this.level, this.item, this.depth, (Math.random() * 1e9) | 0);
       if (!FB.UI.blocking()) FB.Buddy.say(pick(FB.LINES.start));
     },
 
-    afterBrush() {
+    /** Copy Pip: start a dig for the chosen challenge tier. */
+    startTrace(tierIdx) {
+      this.resetDig();
+      const tier = FB.TRACE.TIERS[tierIdx];
+      this.tier = tierIdx;
+      this.item = pickItemOfRarity(this.level, FB.rarityIndex(tier.rarity));
+      this.depth = depthFor(this.item);
+      this.state = 'digging';
+      site.setup(this.level, this.item, this.depth, (Math.random() * 1e9) | 0);
+      FB.Trace.start(tierIdx);
+    },
+
+    updateDepth() {
       const st = site.stats();
       this.target = Math.max(this.target, st.removed * this.depth);
       const z = Math.min(4, Math.floor(this.target / 20));
@@ -77,16 +122,33 @@
         FB.Meter.flashZone(z);
         FB.Sound.chime();
         FB.Buddy.say(`We reached the ${r.name} zone! ${r.icon} Keep going!`);
-      } else if (!this.said.peek && st.uncovered > 0.3) {
+      }
+      return st;
+    },
+
+    afterBrush() {
+      const zoneBefore = this.zone;
+      const st = this.updateDepth();
+      if (this.zone === zoneBefore && !this.said.peek && st.uncovered > 0.3) {
         this.said.peek = true;
         FB.Buddy.say(pick(FB.LINES.peek));
       }
       if (st.uncovered >= 0.8) this.reveal();
     },
 
+    finishTrace() {
+      if (this.state === 'digging') this.reveal();
+    },
+
     reveal() {
       this.state = 'revealing';
       const item = this.item, r = FB.rarityById(item.rarity), rank = FB.rarityIndex(item.rarity);
+      let extra = null;
+      if (this.mode === 'trace') {
+        extra = FB.Trace.summary();
+        extra.unlocked = FB.Store.unlockAfter(this.tier);
+        FB.Trace.stop();
+      }
       FB.Sound.brush(0);
       site.startReveal(900, r.color);
       this.target = this.depth;
@@ -100,10 +162,11 @@
         const isNew = FB.Store.addFind(item, this.depth);
         this.state = 'found';
         FB.Meter.pin(item, this.depth);
-        FB.Found.show(item, this.depth, isNew);
+        FB.Found.show(item, this.depth, isNew, extra);
       }, 2100);
     },
   };
+  document.body.dataset.mode = Game.mode;
 
   /* ---------------- confetti ---------------- */
   function fireConfetti(r, rank) {
@@ -129,7 +192,7 @@
     const narrow = w < 640;
     const meterW = narrow ? 76 : 150;
     const top = narrow ? 76 : 92;
-    const bottom = narrow ? 24 : 28;
+    const bottom = Game.mode === 'trace' ? (narrow ? 92 : 104) : (narrow ? 24 : 28);
     const availW = w - meterW - 16;
     const availH = h - top - bottom;
     const S = Math.max(220, Math.min(availW * 0.94, availH * 0.98, 780));
@@ -138,6 +201,7 @@
     Object.assign(digArea.style, {
       left: L.cx - S / 2 + 'px', top: L.cy - S / 2 + 'px', width: S + 'px', height: S + 'px',
     });
+    FB.Trace.relayout();
     FB.Tutorial.reposition();
   }
   window.addEventListener('resize', layout);
@@ -164,6 +228,9 @@
     moveCursor(last.x, last.y);
     updateCursorVisibility(e);
     cursor.classList.add('brushing');
+
+    if (Game.mode === 'trace') { FB.Trace.onDown(last.x, last.y); return; }
+
     const removed = site.tap(last.x, last.y, Game.params());
     if (removed > 0) { site.spawnDust(last.x, last.y, 0, -1, 4); Game.lastBrushAt = performance.now(); hideHand(); Game.afterBrush(); }
   });
@@ -173,6 +240,9 @@
     updateCursorVisibility(e);
     if (!down || e.pointerId !== pointerId || !Game.canDig()) return;
     const x = e.clientX, y = e.clientY;
+
+    if (Game.mode === 'trace') { FB.Trace.onMove(x, y); last = { x, y }; return; }
+
     const dx = x - last.x, dy = y - last.y;
     const removed = site.brushStroke(last.x, last.y, x, y, Game.params());
     if (removed > 0.02) {
@@ -188,6 +258,7 @@
   function endStroke(e) {
     if (e.pointerId !== pointerId) return;
     down = false; pointerId = null;
+    FB.Trace.onUp();
     cursor.classList.remove('brushing');
     if (e.pointerType !== 'mouse') cursor.classList.remove('show');
   }
@@ -195,7 +266,7 @@
   canvas.addEventListener('pointercancel', endStroke);
   canvas.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse' && !down) cursor.classList.remove('show'); });
 
-  /* ---------------- hand hint ---------------- */
+  /* ---------------- hand hint (Free Play) ---------------- */
   function showHand() {
     if (hand.classList.contains('show')) return;
     const L = site.layout;
@@ -210,18 +281,27 @@
   function frame(t) {
     const dt = Math.min(0.05, (t - lastT) / 1000);
     lastT = t;
+    const blocking = FB.UI.blocking();
+
+    if (Game.mode === 'trace') {
+      FB.Trace.update(dt);
+      if (Game.state === 'digging') Game.updateDepth();
+      if (Game.state === 'choosing' && !blocking && FB.Store.data.tutorialDone) FB.Challenge.open();
+    }
+
     Game.shown += (Game.target - Game.shown) * Math.min(1, dt * 6);
     FB.Meter.set(Game.shown);
     site.update(dt);
     site.draw();
+    FB.Trace.draw(site.ctx);
 
-    if (Game.state === 'digging' && !FB.UI.blocking()) {
+    if (Game.mode === 'free' && Game.state === 'digging' && !blocking) {
       if (!Game.lastBrushAt && t - Game.startAt > 4500) showHand();
       if (Game.lastBrushAt && t - Game.lastBrushAt > 9000 && !Game.said.idle) {
         Game.said.idle = true;
         FB.Buddy.say(pick(FB.LINES.idle));
       }
-    } else if (FB.UI.blocking()) {
+    } else if (blocking) {
       hideHand();
     }
     requestAnimationFrame(frame);

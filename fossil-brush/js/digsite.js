@@ -145,7 +145,7 @@ window.FB = window.FB || {};
           const idx = j * N + i;
           const u = ((i + 0.5) / N) * 2 - 1, v = ((j + 0.5) / N) * 2 - 1;
           const ang = Math.atan2(v, u);
-          const wob = 0.8 + 0.34 * nz.fbm(Math.cos(ang) * 1.8 + 30, Math.sin(ang) * 1.8 + 30, 3);
+          const wob = 0.85 + 0.25 * nz.fbm(Math.cos(ang) * 1.8 + 30, Math.sin(ang) * 1.8 + 30, 3);
           const r = Math.min(1.2, Math.hypot(u, v) / Math.min(1, wob));
           this.edge[idx] = r >= 1 ? 0 : 1 - smoothstep(0.93, 1, r);
           let h0 = 0;
@@ -174,7 +174,7 @@ window.FB = window.FB || {};
       this.particles.length = 0;
       this.sparkles.length = 0;
       this.glow = 0; this.glowTarget = 0; this.pop = 0;
-      this.reveal = null; this.revealed = false;
+      this.reveal = null; this.revealed = false; this.lower = null;
       this.buildBed();
       this.buildFossil();
       this.dirty = true;
@@ -290,8 +290,8 @@ window.FB = window.FB || {};
     }
 
     /* ---------- brushing ---------- */
-    dab(gx, gy, rc, amt) {
-      const N = this.N, h = this.h, hard = this.hard;
+    dab(gx, gy, rc, amt, floor = 0) {
+      const N = this.N, h = this.h, h0 = this.h0, hard = this.hard;
       const i0 = Math.max(0, Math.floor(gx - rc)), i1 = Math.min(N - 1, Math.ceil(gx + rc));
       const j0 = Math.max(0, Math.floor(gy - rc)), j1 = Math.min(N - 1, Math.ceil(gy + rc));
       const inv = 1 / (rc * rc);
@@ -304,10 +304,11 @@ window.FB = window.FB || {};
           if (d2 >= 1) continue;
           const idx = j * N + i;
           const cur = h[idx];
-          if (cur <= 0) continue;
+          const lim = floor > 0 ? h0[idx] * floor : 0;
+          if (cur <= lim) continue;
           const f = (1 - d2) * (1 - d2);
           const nh = cur - (amt * f) / hard[idx];
-          const v = nh > 0 ? nh : 0;
+          const v = nh > lim ? nh : lim;
           removed += cur - v;
           h[idx] = v;
         }
@@ -338,6 +339,37 @@ window.FB = window.FB || {};
     tap(x, y, p) {
       const [gx, gy] = this.toGrid(x, y);
       return this.dab(gx, gy, p.radius * this.N * 0.8, 0.03 * p.strength / this.depthFactor);
+    }
+
+    /** Copy Pip: carve a groove at a screen point, never deeper than `floor` × original height. */
+    groove(x, y, rPx, floor) {
+      const [gx, gy] = this.toGrid(x, y);
+      return this.dab(gx, gy, (rPx / this.layout.S) * this.N, 0.5, floor);
+    }
+
+    /** Copy Pip: smoothly lower the sand over the treasure to `floor` × original height. */
+    lowerTo(floor, ms) {
+      const N = this.N, cells = [], start = [], target = [];
+      const R1 = this.fr * 1.1, R2 = this.fr * 1.75;
+      for (let j = 0; j < N; j++) {
+        for (let i = 0; i < N; i++) {
+          const u = ((i + 0.5) / N) * 2 - 1, v = ((j + 0.5) / N) * 2 - 1;
+          const d = Math.hypot(u - this.fx, v - this.fy);
+          if (d >= R2) continue;
+          const idx = j * N + i;
+          const w = 1 - smoothstep(R1, R2, d);
+          const tgt = this.h0[idx] * (1 - (1 - floor) * w);
+          if (tgt < this.h[idx]) { cells.push(idx); start.push(this.h[idx]); target.push(tgt); }
+        }
+      }
+      this.lower = { t: 0, dur: ms / 1000, cells, start, target };
+    }
+
+    burst(x, y, color, count) {
+      for (let k = 0; k < count; k++) {
+        const a = Math.random() * Math.PI * 2, sp = 40 + Math.random() * 120;
+        this.particles.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 90, life: 0, max: 0.5 + Math.random() * 0.4, size: 2 + Math.random() * 2.5, c: color });
+      }
     }
 
     stats() {
@@ -437,6 +469,19 @@ window.FB = window.FB || {};
           this.spawnDust(F.x + Math.cos(a) * F.r, F.y + Math.sin(a) * F.r, Math.cos(a), Math.sin(a), 2);
         }
         if (p >= 1) this.reveal = null;
+      }
+
+      if (this.lower) {
+        const L = this.lower;
+        L.t += dt;
+        const p = Math.min(1, L.t / L.dur), e = 1 - Math.pow(1 - p, 3);
+        for (let k = 0; k < L.cells.length; k++) {
+          const idx = L.cells[k];
+          const v = L.start[k] + (L.target[k] - L.start[k]) * e;
+          if (v < this.h[idx]) this.h[idx] = v;
+        }
+        this.dirty = true;
+        if (p >= 1) this.lower = null;
       }
 
       // twinkles on uncovered bits of the treasure
