@@ -62,6 +62,23 @@ distances, diagnoses anything or pushes the child to keep going.
 
 See [docs/PLAN.md](docs/PLAN.md) for the build plan and task split.
 
+## Team
+
+Maia Le (@maiaPaperTowns) · Joy Hong (@schae4999) · Andrew Kim (@Minulion) · @ArneshXCode
+
+## Camera / vision quick test (laptop, before the board)
+
+```bash
+cd wondermoves/python
+python3 test_vision.py                       # detector logic, no camera needed
+pip install mediapipe opencv-python numpy    # then, with a webcam:
+python3 vision.py --preview --assist left    # green = helper hand, orange = mover; q quits
+```
+
+On the board, `main.py` turns the camera on only during Two-Hand Treasure, and the portal shows a 🔴 badge while it's on.
+If MediaPipe won't install on the UNO Q, `vision.py` falls back to OpenCV motion detection on its own. Check the `backend`
+and `fps` values in the `hands` messages to see which one is running.
+
 ## Board setup (from the lab's guide)
 
 1. Install **Arduino App Lab** (not Arduino IDE): https://www.arduino.cc/en/software/

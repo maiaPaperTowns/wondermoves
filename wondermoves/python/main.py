@@ -13,6 +13,8 @@ from pathlib import Path
 from arduino.app_bricks.web_ui import WebUI
 from arduino.app_utils import App, Bridge
 
+from vision import Vision
+
 ui = WebUI()
 DATA = Path(__file__).resolve().parent.parent / "data"
 DATA.mkdir(exist_ok=True)
@@ -27,8 +29,9 @@ WARM_ROOM_C = 28.0      # suggest a break above this room temperature
 def load_profile():
     if PROFILE.exists():
         return json.loads(PROFILE.read_text())
-    # approved_max_mm is set by the caregiver / therapist, never by the game
-    return {"baseline_mm": None, "comfortable_mm": None, "approved_max_mm": 50, "level": 1}
+    # approved_max_mm and assist_hand are set by the caregiver / therapist, never by the game
+    return {"baseline_mm": None, "comfortable_mm": None, "approved_max_mm": 50, "level": 1,
+            "assist_hand": "left"}
 
 
 profile = load_profile()
@@ -138,6 +141,32 @@ def on_thermo(temp_c, humidity):
         emit("break_suggested", reason="warm_room", temp_c=round(temp_c, 1))
 
 
+# ---------------- Two-Hand Treasure (camera) ----------------
+CAMERA_GAMES = {"twohand"}
+
+
+def on_vision_event(event, data):
+    if event == "camera_status":
+        ui.send_message("camera_status", data)
+        return
+    if state["mode"] == "playing" and state["game"] in CAMERA_GAMES:
+        emit(event, **data)
+
+
+vision = Vision(on_event=on_vision_event,
+                on_hands=lambda d: ui.send_message("hands", d),
+                assist_hand=profile.get("assist_hand", "left"))
+vision.start()
+
+
+def sync_camera():
+    """The camera is on only while a camera game is being played."""
+    if state["mode"] == "playing" and state["game"] in CAMERA_GAMES:
+        vision.enabled.set()
+    else:
+        vision.enabled.clear()
+
+
 def on_ready(has_d, has_m, has_t):
     ui.send_message("sensors", {"distance": has_d, "movement": has_m, "thermo": has_t})
 
@@ -145,16 +174,19 @@ def on_ready(has_d, has_m, has_t):
 # ---------------- Browser -> board messages ----------------
 def on_start(_client, data):
     state.update(mode="playing", phase="rest", game=(data or {}).get("game", "reach"))
+    sync_camera()
     emit("session_started", game=state["game"], target_mm=target_mm())
 
 
 def on_pause(_client, _data):
     state["mode"] = "idle"
+    sync_camera()
     emit("break_requested")
 
 
 def on_calibrate(_client, _data):
     state.update(mode="calib_baseline", phase="rest", calib=[])
+    sync_camera()
     emit("calibration_step", step="baseline")
 
 
@@ -162,12 +194,17 @@ def on_set_limits(_client, data):
     # Caregiver portal only: sets the approved maximum and level.
     profile["approved_max_mm"] = int(data.get("approved_max_mm", profile["approved_max_mm"]))
     profile["level"] = int(data.get("level", profile["level"]))
+    if data.get("assist_hand") in ("left", "right"):
+        profile["assist_hand"] = data["assist_hand"]
+        vision.set_assist_hand(profile["assist_hand"])
     PROFILE.write_text(json.dumps(profile, indent=2))
     emit("limits_updated", **profile, target_mm=target_mm())
 
 
 def on_get_state(client, _data):
     ui.send_message("profile", {**profile, "target_mm": target_mm()})
+    ui.send_message("camera_status", {"ok": True, "on": vision.enabled.is_set(),
+                                      "backend": vision.backend_name})
 
 
 Bridge.provide("distance", on_distance)
