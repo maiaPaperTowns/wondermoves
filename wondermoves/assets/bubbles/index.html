@@ -225,7 +225,7 @@ $('startBtn').onclick = () => {
   say('Here come the bubbles! Reach out to pop them. Blue pairs need both hands!');
 };
 $('breakBtn').onclick = () => { playing = false; bubbles = []; send('pause'); say('Break time! The bubbles will wait for you.'); };
-addEventListener('pagehide', () => send('pause'));
+addEventListener('pagehide', () => { if (playing) send('pause'); });  // only if this page started the game
 
 // Optional live camera view (off by default). getUserMedia keeps the video inside this
 // browser window: nothing is uploaded, recorded or sent to the board.
