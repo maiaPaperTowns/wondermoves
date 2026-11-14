@@ -11,6 +11,10 @@
   html, body { margin:0; height:100%; overflow:hidden; font-family: system-ui, sans-serif; color:var(--ink);
     background: linear-gradient(var(--sky1), var(--sky2)); }
   canvas { position:fixed; inset:0; width:100vw; height:100vh; display:block; }
+  /* Optional live view: mirrored like the hand dots, stretched to the same box so dots line up. */
+  #view { position:fixed; inset:0; width:100vw; height:100vh; object-fit:fill; transform:scaleX(-1);
+    opacity:0.55; display:none; }
+  #view.on { display:block; }
   .bar { position:fixed; left:12px; right:12px; top:12px; display:flex; gap:10px; align-items:center; z-index:2; flex-wrap:wrap; }
   .bar h1 { margin:0 auto 0 0; font-size:1.3rem; background:#fffc; padding:8px 14px; border-radius:14px; }
   button, a.btn { font-size:1.2rem; padding:14px 22px; border-radius:16px; border:0; cursor:pointer; background:#fff;
@@ -23,6 +27,7 @@
 </style>
 </head>
 <body>
+<video id="view" autoplay muted playsinline aria-label="Camera view"></video>
 <canvas id="c" aria-label="Bubbles and your hands"></canvas>
 <div class="bar">
   <h1>🫧 Bubble Pop Adventure</h1>
@@ -30,6 +35,7 @@
   <span id="cam" aria-live="polite">📷 Camera off</span>
   <button class="go" id="startBtn">▶ Start</button>
   <button id="breakBtn">⏸ Break</button>
+  <button id="viewBtn" title="Shows the camera behind the bubbles. The video stays in this browser and is never sent or saved.">📷 Show camera</button>
   <a class="btn" href="../index.html">⬅ WonderMoves</a>
 </div>
 <div id="subtitle" aria-live="polite">Hi! I'm Digger. Press Start, then move your hands to pop the bubbles!</div>
@@ -107,6 +113,7 @@ function onHands(d) {
   hands = d.hands || { left: null, right: null };
   assist = d.assist || assist;
   lastHandsAt = performance.now();
+  if (!$('cam').classList.contains('on')) { $('cam').classList.add('on'); $('cam').textContent = '🔴 Camera on'; }
 }
 if (socket) {
   socket.on('connect', () => send('get_state'));
@@ -219,6 +226,32 @@ $('startBtn').onclick = () => {
 };
 $('breakBtn').onclick = () => { playing = false; bubbles = []; send('pause'); say('Break time! The bubbles will wait for you.'); };
 addEventListener('pagehide', () => send('pause'));
+
+// Optional live camera view (off by default). getUserMedia keeps the video inside this
+// browser window: nothing is uploaded, recorded or sent to the board.
+let viewStream = null;
+$('viewBtn').onclick = async () => {
+  const v = $('view');
+  if (viewStream) {
+    viewStream.getTracks().forEach(t => t.stop()); viewStream = null;
+    v.classList.remove('on'); $('viewBtn').textContent = '📷 Show camera'; return;
+  }
+  try {
+    // Ask once so device labels are visible, then prefer the Brio.
+    let stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    const cams = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput');
+    const brio = cams.find(d => /brio|logi/i.test(d.label));
+    if (brio && stream.getVideoTracks()[0].getSettings().deviceId !== brio.deviceId) {
+      stream.getTracks().forEach(t => t.stop());
+      stream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: brio.deviceId }, width: 1280, height: 720 } });
+    }
+    viewStream = stream; v.srcObject = stream; v.classList.add('on');
+    $('viewBtn').textContent = '🙈 Hide camera';
+  } catch (e) {
+    say('I could not open the camera view here. Check the browser camera permission.');
+    console.warn('camera view', e);
+  }
+};
 </script>
 </body>
 </html>

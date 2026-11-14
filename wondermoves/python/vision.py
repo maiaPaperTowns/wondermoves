@@ -118,9 +118,12 @@ class MediaPipeBackend:
 
     def __init__(self):
         import mediapipe as mp  # noqa: F401 — raises if unavailable
+        # Seated children are 1-1.5 m away, so hands are small in the frame: use the more
+        # accurate model and lenient thresholds (WM_MP_COMPLEXITY=0 for slower machines).
+        complexity = int(os.environ.get("WM_MP_COMPLEXITY", "1"))
         self._hands = mp.solutions.hands.Hands(
-            static_image_mode=False, max_num_hands=2, model_complexity=0,
-            min_detection_confidence=0.5, min_tracking_confidence=0.5)
+            static_image_mode=False, max_num_hands=2, model_complexity=complexity,
+            min_detection_confidence=0.3, min_tracking_confidence=0.3)
 
     def process(self, frame_bgr) -> dict:
         import cv2

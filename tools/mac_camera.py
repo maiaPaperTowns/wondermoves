@@ -44,7 +44,9 @@ def on_hands(d):
         sio.emit("vision_hands", d)
 
 
-vision = Vision(on_event=on_event, on_hands=on_hands, camera=args.camera, assist_hand=args.assist)
+# Full 720p on the laptop: hands 1-1.5 m away are too small at 640x480.
+vision = Vision(on_event=on_event, on_hands=on_hands, camera=args.camera, assist_hand=args.assist,
+                width=1280, height=720)
 if args.always_on:
     vision.enabled.set()
 
