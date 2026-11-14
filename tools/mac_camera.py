@@ -60,6 +60,8 @@ def connect():
 def on_profile(d):
     if d and d.get("assist_hand"):
         vision.set_assist_hand(d["assist_hand"])
+    if d and d.get("playing") == "bubbles":   # game already running when we connected
+        vision.enabled.set()
 
 
 @sio.on("session_started")

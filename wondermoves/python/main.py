@@ -281,7 +281,8 @@ def on_bubble_pop(_client, data):
 
 
 def on_get_state(client, _data):
-    ui.send_message("profile", {**profile, **level_info()})
+    playing = state["game"] if state["mode"] == "playing" else None
+    ui.send_message("profile", {**profile, **level_info(), "playing": playing})
     ui.send_message("camera_status", {"ok": True, "on": vision.enabled.is_set(),
                                       "backend": vision.backend_name})
 
