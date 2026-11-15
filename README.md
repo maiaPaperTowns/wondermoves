@@ -80,7 +80,7 @@ See [docs/PLAN.md](docs/PLAN.md) for the build plan and task split, and [docs/HA
 
 Maia Le (@maiaPaperTowns) · Joy Hong (@schae4999) · Andrew Kim (@Minulion) · @ArneshXCode
 
-## Bubble Pop with the camera on a laptop (dev setup)
+## Bubble Lift with the camera on a laptop (dev setup)
 
 While the Brio is plugged into the Mac instead of the board, the Mac does the hand tracking (MediaPipe) and the board runs the game:
 
@@ -101,7 +101,7 @@ pip install mediapipe opencv-python numpy    # then, with a webcam:
 python3 vision.py --preview                  # green = left hand, orange = right; q quits
 ```
 
-On the board, `main.py` turns the camera on only during Bubble Pop, and the portal shows a 🔴 badge while it's on.
+On the board, `main.py` turns the camera on only during Bubble Lift, and the portal shows a 🔴 badge while it's on.
 If MediaPipe won't install on the UNO Q, `vision.py` falls back to OpenCV motion detection on its own. Check the `backend`
 and `fps` values in the `hands` messages to see which one is running.
 
