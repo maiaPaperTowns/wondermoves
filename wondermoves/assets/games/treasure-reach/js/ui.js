@@ -94,7 +94,7 @@ window.TR = window.TR || {};
     close() { closeLayer('#drawer'); $('#drawerBackdrop').classList.remove('open'); },
     render() {
       const d = TR.Store.data, s = TR.Store.s;
-      const cam = d.inputMode === 'camera' || d.inputMode === 'board'; // 'board' = camera + Distance sensor
+      const cam = d.inputMode === 'camera' || d.inputMode === 'board'; // 'board' = camera + Distance sensor (switch / mouse / sensor: no camera)
       $('#inputToggle [data-input="sensor"]').hidden = !TR.hasSensor();
       $$('#inputToggle [data-input]').forEach(b => b.classList.toggle('active', b.dataset.input === (d.inputMode === 'board' ? 'camera' : d.inputMode)));
       $('#recalBtn').hidden = !cam;
@@ -156,23 +156,27 @@ window.TR = window.TR || {};
 
   TR.tutorialSteps = function () {
     const mode = TR.Store.data.inputMode;
-    const sensor = mode === 'sensor', mouse = mode === 'mouse';
+    const sensor = mode === 'sensor', mouse = mode === 'mouse', sw = mode === 'switch';
     const show = fn => (sensor ? fn : () => Demo.stop());
     return [
       { text: `Hi, I'm ${WM.PIP.name}! Every reach opens a treasure chest. Let me show you how! 💰`,
         target: '#chest', round: true, pad: 4, onShow: () => Demo.stop() },
-      { text: sensor ? 'First, rest your arm on the table. Put your hand about a ruler away from the little sensor. 🖐️'
+      { text: sw ? 'Find the big button. You can also hold the Space key, or your own switch. 🔘'
+          : sensor ? 'First, rest your arm on the table. Put your hand about a ruler away from the little sensor. 🖐️'
           : mouse ? 'First, put the mouse near the bottom of the screen. 🖱️'
           : 'First, rest both hands on the table in front of the camera. 🙌',
         target: null, onShow: () => Demo.stop() },
-      { text: sensor ? 'Now watch! Slide your hand slowly all the way to the sensor and touch it. Slow is great! 🐢'
+      { text: sw ? 'Press it and keep holding. The bar fills up all by itself! 🐢'
+          : sensor ? 'Now watch! Slide your hand slowly all the way to the sensor and touch it. Slow is great! 🐢'
           : mouse ? 'Now move the blue circle up to the chest. 🔵'
           : 'Now push both hands toward the laptop, nice and slow. 🐢',
         target: '#chest', round: true, pad: 4, onShow: show(() => Demo.reach()) },
-      { text: sensor ? 'This bar fills as you get closer. Touch the sensor and hold still until the star ⭐ fills. Then the chest opens!'
+      { text: sw ? 'This bar fills while you hold the button. Keep holding until the star ⭐ fills, and the chest opens!'
+          : sensor ? 'This bar fills as you get closer. Touch the sensor and hold still until the star ⭐ fills. Then the chest opens!'
           : 'This bar fills as you reach. Get to the star ⭐ and hold still for a moment. Then the chest opens!',
         target: '#reachMeter', onShow: show(() => Demo.reach()) },
-      { text: sensor ? 'Then slide your hand back home to rest, and a new chest appears. Each treasure goes in your Collection! 📖'
+      { text: sw ? 'Then let go of the button, and a new chest appears. Each treasure goes in your Collection! 📖'
+          : sensor ? 'Then slide your hand back home to rest, and a new chest appears. Each treasure goes in your Collection! 📖'
           : 'Then rest your hand again, and a new chest appears. Each treasure goes in your Collection! 📖',
         target: '#collectionBtn', onShow: () => Demo.stop() },
       { text: 'Want to see this again? Tap ? any time. Ready? Let\'s find treasure! 🎉',
@@ -238,6 +242,7 @@ window.TR = window.TR || {};
       Menu.close();
       if (b.dataset.input === 'mouse') TR.Game.useMouse();
       else if (b.dataset.input === 'sensor') TR.Game.useSensor();
+      else if (b.dataset.input === 'switch') TR.Game.useSwitch();
       else TR.Calib.open(false);
     });
     $('#recalBtn').addEventListener('click', () => { Menu.close(); TR.Calib.open(true); });

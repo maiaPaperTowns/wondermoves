@@ -93,6 +93,12 @@
     </div>
   </div>
 
+  <!-- One-button play: a big hold-to-reach button (also Space / Enter / a USB switch) -->
+  <button class="switch-btn" id="switchBtn" hidden aria-label="Hold to reach (or hold Space)">
+    <span class="sw-emoji wm-emoji" aria-hidden="true">✋</span><span>Hold to reach</span>
+    <small>or hold Space</small>
+  </button>
+
   <!-- hands + coins -->
   <canvas id="fx" aria-hidden="true"></canvas>
 
@@ -146,6 +152,7 @@
     <p class="wm-menu-label">Play with</p>
     <div class="seg two" id="inputToggle" style="grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:1fr" role="group" aria-label="Play with">
       <button data-input="sensor" hidden>📏 Sensor</button>
+      <button data-input="switch">🔘 Button</button>
       <button data-input="camera">📷 Camera</button>
       <button data-input="mouse">🖱️ Mouse</button>
     </div>

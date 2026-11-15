@@ -46,6 +46,20 @@ window.TR = window.TR || {};
     return B.distMm > 0 && B.distMm <= TR.SENSE.trustMm ? B.distMm : null;
   };
 
+  /** Like sensorMm, but a finger resting ON the sensor still counts as there.
+      Right against the sensor window the chip only gives weak readings, which the board drops
+      (sketch WARN_MIN_MM), so the readings simply stop. If the last reading before they stopped
+      was very close (touchMm), the hand is touching the sensor, not gone: a hand pulling away
+      always passes through the middle distances first (the sensor reads ~34 times a second). */
+  TR.sensorTouchMm = function () {
+    const d = TR.sensorMm();
+    if (d != null) return d;
+    const B = window.WM && WM.Board;
+    if (!B || !B.available || B.distMm == null) return null;
+    const age = performance.now() - B.distAt;
+    return B.distMm <= TR.SENSE.touchMm && age <= TR.SENSE.touchHoldMs ? B.distMm : null;
+  };
+
   /** Sensor distance that opens the chest (camera + sensor 'board' mode). */
   TR.sensorGoalMm = () => TR.SENSE.openMm;
 
@@ -263,7 +277,8 @@ window.TR = window.TR || {};
       const steps = ['max', 'space', 'home'];
       const idx = steps.indexOf(this.step);
       const stepper = `<ol class="wm-stepper">${['Tilt down', 'Make space', 'Start spot'].map((n, i) => `<li class="${i < idx || this.step === 'done' ? 'done' : i === idx ? 'on' : ''}"><b>${i + 1}</b>${n}</li>`).join('')}</ol>`;
-      const mouseLink = '<button class="wm-link" data-cal="mouse">🖱️ Play with a mouse instead</button>';
+      const mouseLink = '<button class="wm-link" data-cal="mouse">🖱️ Play with a mouse instead</button>'
+        + ' · <button class="wm-link" data-cal="switch">🔘 Play with one big button</button>';
       const saved = TR.Store.data.calib && TR.Store.data.calib.v === 2;
 
       if (this.step === 'start') {
@@ -309,6 +324,7 @@ window.TR = window.TR || {};
     const act = b.dataset.cal;
     if (act === 'start') Calib.startCamera();
     else if (act === 'mouse') { Calib.active = false; TR.Game.useMouse(); }
+    else if (act === 'switch') { Calib.active = false; TR.Game.useSwitch(); }
     else if (act === 'next') Calib.go('home');
     else if (act === 'saved') Calib.finish();
   });

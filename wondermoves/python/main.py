@@ -222,7 +222,9 @@ recent = deque(maxlen=5)
 
 def on_distance(mm):
     recent.append(mm)
-    d = statistics.median(recent)
+    # Treasure Reach on screen: median of the last 3 (~90 ms) so the chest reacts quickly (from the
+    # reach-test tuning); calibration and the board game keep 5 for steadier numbers.
+    d = statistics.median(list(recent)[-3:] if state.get("game") == "reach_ui" else recent)
     ui.send_message("distance", {"mm": d})
     base = profile["baseline_mm"]
 

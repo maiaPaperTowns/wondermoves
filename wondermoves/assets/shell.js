@@ -168,8 +168,10 @@
   });
 
   /* ---------- start ---------- */
-  // Start on Home unless the URL names a game (e.g. index.html#bubble-pop).
+  // Start in Treasure Reach, the first game (it uses the Distance sensor), unless the URL names
+  // another screen (e.g. index.html#home or #bubble-pop). Home is one tap away in the tab bar.
   const first = location.hash.slice(1);
-  activate(TABS.some(g => g.id === first) ? first : HOME.id);
+  activate(TABS.some(g => g.id === first) ? first : GAMES[0].id);
+  loadToday();   // the hello, today's counts and WM_CHILD (for the voice agent), even when starting in a game
   window.addEventListener('hashchange', () => activate(location.hash.slice(1)));
 })();

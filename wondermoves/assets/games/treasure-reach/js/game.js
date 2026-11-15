@@ -76,6 +76,17 @@
       this.startPlay();
     },
 
+    /** One button (Space / Enter / on-screen / USB switch). */
+    useSwitch() {
+      WM.Hands.stop();
+      TR.Calib.active = false;
+      TR.Store.data.inputMode = 'switch'; TR.Store.save();
+      WM.Buddy.hide();          // clear any camera-setup line still showing
+      WM.CamPanel.dock();
+      WM.CamPanel.show(false);
+      this.startPlay();
+    },
+
     useMouse() {
       WM.Hands.stop();
       TR.Calib.active = false;
@@ -87,7 +98,8 @@
 
     nudge(force) {
       if (this.state !== 'rest' && !force) return;
-      WM.Buddy.say(pick(this.mode === 'mouse' ? TR.LINES.mouse : this.mode === 'sensor' ? TR.LINES.sensor : TR.LINES.rest), 3600);
+      WM.Buddy.say(pick(this.mode === 'mouse' ? TR.LINES.mouse : this.mode === 'sensor' ? TR.LINES.sensor
+        : this.mode === 'switch' ? TR.LINES.switch : TR.LINES.rest), 3600);
     },
 
     resetRep() {
@@ -108,10 +120,23 @@
         const v = clamp((far - d) / (far - near), 0, 1.25);
         return { p: { left: null, right: v }, bar: v, ok: v >= 1, back: v < TR.Store.s.restLevel };
       }
+      if (this.mode === 'switch') {
+        // One button: holding it (Space, Enter, the big on-screen button or a USB switch that types
+        // a key) fills the bar over about a second; keep holding through the level's hold time.
+        // Letting go brings the hand "home". For children who can't use a mouse or the camera.
+        const now = performance.now(), dt = Math.min(0.1, (now - (this.swT || now)) / 1000);
+        this.swT = now;
+        this.swV = clamp((this.swV || 0) + (TR.Switch.down ? dt / 1.0 : -dt / 0.5), 0, 1);
+        const ok = TR.Switch.down && this.swV >= 1;
+        const bar = ok ? 1 : Math.min(this.swV, 0.97);
+        if (this.state === 'rest' || this.state === 'holding') this.peakReach = Math.max(this.peakReach, this.swV);
+        this.m = null;
+        return { p: { left: null, right: bar }, bar, ok, back: !TR.Switch.down && this.swV < 0.15 };
+      }
       if (this.mode === 'sensor') {
         // Distance sensor only. The chest opens when the hand has moved the child's own distance
         // (TR.sensorTargetMm, from Settings) toward the sensor from where it rested.
-        const d = TR.sensorMm(), target = TR.sensorTargetMm();
+        const d = TR.sensorTouchMm(), target = TR.sensorTargetMm();
         if (d != null) this.minMm = this.minMm == null ? d : Math.min(this.minMm, d);
         // Where the reach started: the farthest reading while resting. Beyond trustMm the sensor
         // can't measure, so a start out there counts as trustMm.
@@ -491,10 +516,25 @@
 
   /* ---------------- loop ---------------- */
   let lastT = performance.now();
+  /* One-button play: keyboard (Space / Enter, as most USB accessibility switches type) or the big button. */
+  TR.Switch = { down: false };
+  const swBtn = $('#switchBtn');
+  const setDown = v => { TR.Switch.down = v; swBtn.classList.toggle('down', v); };
+  const isKey = e => e.code === 'Space' || e.code === 'Enter' || e.code === 'NumpadEnter';
+  window.addEventListener('keydown', e => {
+    if (Game.mode !== 'switch' || !isKey(e) || TR.UI.blocking()) return;
+    e.preventDefault(); setDown(true);
+  });
+  window.addEventListener('keyup', e => { if (Game.mode === 'switch' && isKey(e)) { e.preventDefault(); setDown(false); } });
+  swBtn.addEventListener('pointerdown', e => { e.preventDefault(); swBtn.setPointerCapture(e.pointerId); setDown(true); });
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => swBtn.addEventListener(ev, () => setDown(false)));
+  window.addEventListener('blur', () => setDown(false));
+
   /* Sensor mode: a cue card under the chest says what to do right now. */
   const cue = $('#touchCue'), cueTitle = $('#tcTitle'), cueSub = $('#tcSub');
   let cueKey = '';
   function renderCue() {
+    swBtn.hidden = Game.mode !== 'switch' || Game.state === 'idle';
     const show = Game.mode === 'sensor' && Game.state !== 'idle' && !TR.UI.blocking();
     cue.hidden = !show;
     if (!show) return;

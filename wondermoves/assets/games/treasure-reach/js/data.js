@@ -52,6 +52,8 @@ TR.SENSE = {
   openMm: 50,            // …and the chest opens at this reading or closer
   trustMm: 150,          // sensor readings farther than this are ignored (the chip only sees hands up close)
   freshMs: 400,          // a reading older than this means "sensor sees nothing"
+  touchMm: 60,           // last reading this close, then silence = finger on the sensor (see TR.sensorTouchMm)
+  touchHoldMs: 4000,     // …for at most this long (longer than the Hard level's 1.5 s hold)
   levelTol: 0.25,        // both wrists within this share of the start→max-forward travel = "level"
   switchAt: 0.7,         // camera movement alone fills the bar (and moves the circles) only up to here
   restBelow: 0.3,        // hands are "back at the start" below this share of the travel
@@ -80,6 +82,7 @@ TR.LINES = {
   back: ['Now rest your hands. A new chest is coming! 🔁', 'Bring your hands back to rest 🙌'],
   lost: ['I can\'t see your hands! Put them back on the table in front of me 👋'],
   mouse: ['Move the blue circle up to the chest! 🖱️'],
+  switch: ['Press and hold the big button to open the chest! 🔘', 'Hold the button until the star fills! ⭐'],
   sensor: ['Reach out and touch the sensor to open the chest! 🖐️', 'Ready? Slide your hand all the way to the sensor! 💰', 'Touch the sensor with your fingers! ✨'],
 };
 
