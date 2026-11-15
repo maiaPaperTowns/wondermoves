@@ -3,7 +3,8 @@
    - WM.Buddy.say(text, ms)   speech bubble from the bottom-left corner
                               (ms = 0 keeps it up until the next say/hide)
    - WM.Tutorial.open(steps)  spotlight walkthrough. Each step is
-                              { text, target: '#selector' | null, round, pad }
+                              { text, target: '#selector' | null, round, pad, onShow }
+                              (onShow: optional, runs when the step appears, e.g. a demo)
    Needs wm-pip.css. Builds its own DOM.
    ========================================================================== */
 window.WM = window.WM || {};
@@ -122,6 +123,7 @@ window.WM = window.WM || {};
       const m = el.querySelector('.wm-tut-mascot');
       m.classList.remove('hop'); void m.offsetWidth; m.classList.add('hop');
       this.place(st);
+      if (typeof st.onShow === 'function') { try { st.onShow(); } catch (e) { console.warn(e); } }
       clearInterval(this.typing);
       const txt = el.querySelector('.wm-tut-text');
       const chars = [...st.text];

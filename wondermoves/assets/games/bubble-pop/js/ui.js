@@ -35,7 +35,11 @@ window.BP = window.BP || {};
         <span class="diff-blurb">${d.blurb}</span>
         <span class="diff-best">Best: ${BP.Store.data.best[d.id] || 0}</span>
       </button>`).join('');
-    $('#startGo').textContent = midRound ? `🫧 Start a new round (${BP.Store.s.seconds} s)` : `🫧 Start! (${BP.Store.s.seconds} s)`;
+    const len = BP.Store.s.seconds ? ` (${BP.Store.s.seconds} s)` : '';
+    $('#startBlurb').textContent = BP.Store.s.seconds
+      ? 'Pop as many bubbles as you can before your air runs out!'
+      : 'Pop as many bubbles as you like. Tap “I\'m done” when you want to stop!';
+    $('#startGo').textContent = midRound ? `🫧 Start a new round${len}` : `🫧 Start!${len}`;
     openLayer('#startModal');
   };
   UI.closeStart = () => closeLayer('#startModal');
@@ -158,6 +162,7 @@ window.BP = window.BP || {};
       Menu.render();
     });
     seg('#secToggle', 'sec', 'seconds', Number);
+    $('#doneBtn').addEventListener('click', () => { if (BP.Game.state === 'playing') BP.Game.end(); });
     seg('#sizeToggle', 'size', 'bubbleSize', String);
     $('#moveOnly').addEventListener('change', e => { BP.Store.s.popWhileMoving = e.target.checked; BP.Store.save(); });
 

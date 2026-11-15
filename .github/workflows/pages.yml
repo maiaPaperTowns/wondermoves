@@ -1,0 +1,34 @@
+# Publishes the WonderMoves web app (wondermoves/assets) to GitHub Pages on every push to main.
+# The public site runs the games with the webcam or mouse. The sensors, the play log and the parent
+# page's data need the Arduino UNO Q, so they only work on the board (http://localhost:7070 over USB).
+name: Deploy web app to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths: ["wondermoves/assets/**", ".github/workflows/pages.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: wondermoves/assets
+      - id: deployment
+        uses: actions/deploy-pages@v4
