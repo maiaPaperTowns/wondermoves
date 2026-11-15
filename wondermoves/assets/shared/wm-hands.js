@@ -20,6 +20,9 @@ window.WM = window.WM || {};
 WM.Hands = (function () {
   const VERSION = '0.10.14';
   const CDN = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${VERSION}`;
+  // Bundled model first (works when the internet is slow or blocked, e.g. at the hackathon), CDN as fallback.
+  // Local copy contributed by Joy (originally fossil-brush/models/hand_landmarker.task).
+  const LOCAL_MODEL = (document.currentScript && new URL('models/hand_landmarker.task', document.currentScript.src).href) || null;
   const MODEL = 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task';
   // MediaPipe's left/right labels match the player's own hands for a normal
   // (unmirrored) webcam feed, confirmed on a real camera. Set to true only if a
@@ -42,15 +45,19 @@ WM.Hands = (function () {
     onStatus && onStatus('Loading the hand tracker…');
     const vision = await import(`${CDN}/vision_bundle.mjs`);
     const files = await vision.FilesetResolver.forVisionTasks(`${CDN}/wasm`);
-    const make = delegate => vision.HandLandmarker.createFromOptions(files, {
-      baseOptions: { modelAssetPath: MODEL, delegate },
+    const make = (delegate, model = LOCAL_MODEL || MODEL) => vision.HandLandmarker.createFromOptions(files, {
+      baseOptions: { modelAssetPath: model, delegate },
       runningMode: 'VIDEO',
       numHands: 2,
       minHandDetectionConfidence: 0.5,
       minHandPresenceConfidence: 0.5,
       minTrackingConfidence: 0.5,
     });
-    try { landmarker = await make('GPU'); } catch (e) { landmarker = await make('CPU'); }
+    try { landmarker = await make('GPU'); }
+    catch (e) {
+      try { landmarker = await make('CPU'); }
+      catch (e2) { landmarker = await make('CPU', MODEL); }  // local model missing: use the CDN copy
+    }
   }
 
   async function start(videoEl, { onStatus } = {}) {
@@ -59,10 +66,19 @@ WM.Hands = (function () {
     }
     onStatus && onStatus('Asking to use the camera…');
     if (!stream) {
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
-        audio: false,
-      });
+      const size = { width: { ideal: 640 }, height: { ideal: 480 } };
+      stream = await navigator.mediaDevices.getUserMedia({ video: { ...size, facingMode: 'user' }, audio: false });
+      // Prefer the kit's Logitech Brio when it is plugged in (labels are readable only after permission).
+      // From Joy's Fossil Brush camera work.
+      try {
+        const cams = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput');
+        const brio = cams.find(d => /logitech|brio/i.test(d.label));
+        const current = stream.getVideoTracks()[0].getSettings().deviceId;
+        if (brio && brio.deviceId !== current) {
+          stream.getTracks().forEach(t => t.stop());
+          stream = await navigator.mediaDevices.getUserMedia({ video: { ...size, deviceId: { exact: brio.deviceId } }, audio: false });
+        }
+      } catch (e) { /* keep the default camera */ }
     }
     video = videoEl;
     video.srcObject = stream;
