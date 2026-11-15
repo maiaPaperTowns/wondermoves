@@ -129,13 +129,13 @@ window.TR = window.TR || {};
     const mouse = TR.Store.data.inputMode === 'mouse';
     return [
       { text: `Hi, I'm ${WM.PIP.name}! Let's open some treasure chests together! 💰`, target: null },
-      { text: mouse ? 'This chest is locked tight! Move the blue circle up to it to open it. 🖱️' : 'This chest is locked tight! Reach toward the camera to open it. 🙌', target: '#chest', round: true, pad: 4 },
+      { text: mouse ? 'This chest is locked tight! Move the blue circle up to it to open it. 🖱️' : 'This chest is locked tight! Keep your hands on the table and slide them toward the camera to open it. 🙌', target: '#chest', round: true, pad: 4 },
       { text: mouse ? 'The blue circle is your hand. Bring it all the way to the chest! 🔵' : 'Your hands are the glowing circles: red for your left hand, blue for your right. They float to the chest as you reach! 🔴🔵', target: null },
       { text: 'This bar fills up as you reach. Fill it to the star and hold it for a moment! ⭐', target: '#reachMeter' },
       { text: 'Tap here to pick Easy, Medium or Hard. Harder means a bigger reach and a longer hold! 🐢🦀🦈', target: '#levelChip', pad: 8 },
       { text: 'Then bring your hands back to rest, and a new chest appears. 🔁', target: '#setDots', pad: 12 },
       { text: 'Every treasure goes into your Collection. Harder levels hide rarer treasures! 📖', target: '#collectionBtn' },
-      { text: 'This is my camera window. Tap the eye to hide it or show it. 📷', target: '#wmCam' },
+      ...(mouse ? [] : [{ text: 'This is my camera window. Tap the eye to hide it or show it. 📷', target: '#wmCam' }]),
       { text: 'Grown-ups can redo the reach setup and change settings in the Menu. ⚙️', target: '#menuBtn' },
       { text: 'Need help? Tap ? and I\'ll come right back. Let\'s find treasure! 🎉', target: '#helpBtn' },
     ];

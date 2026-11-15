@@ -24,7 +24,11 @@ window.TR = window.TR || {};
   const OUT_AT = 0.06, BACK_AT = 0.03, MIN_PEAK = 0.08;
   const K_SIZE = 0.6; // weight of palm-size change vs. position change
   /** Where the hand outlines sit in the camera picture (fractions). Tweak for your camera mount. */
-  const GUIDE = { y: 0.7, dx: 0.17, size: 0.17, upsideDown: true };
+  // Resting hands go at the TOP of the picture, so the rest of it is room to reach toward the
+  // camera. Moving the laptop back gives even more room.
+  const GUIDE = { y: 0.27, dx: 0.17, size: 0.17, upsideDown: true };
+  /** Resting hands lower than this leave too little room to reach before leaving the picture. */
+  const TOO_LOW_Y = 0.45;
 
   TR.rest = { left: null, right: null };
 
@@ -78,9 +82,9 @@ window.TR = window.TR || {};
       this.render();
       const say = {
         start: `Hi, I'm ${WM.PIP.name}! I need to see your hands to play. Ask a grown-up to turn on the camera! 📷`,
-        hands: 'Put your hands flat on the table, fingers pointing at the screen, inside the outlines! 🖐️🖐️',
+        hands: 'Put your hands flat on the table, fingers pointing at the screen, inside the outlines at the top! 🖐️🖐️',
         rest: 'Now keep your hands still and comfy… 😌',
-        reach: `Slide your hands toward the camera as far as feels comfy, then come back. Let's do it ${REPS} times! 🙌`,
+        reach: `Keep your hands on the table and slide them toward the camera as far as feels comfy, then come back. Let's do it ${REPS} times! 🙌`,
         done: 'All set! Your reach goal is ready! 🎯',
       }[step];
       if (say) WM.Buddy.say(say, 0);
@@ -140,7 +144,9 @@ window.TR = window.TR || {};
         const inside = present.filter(s => inGuide(s, L[s]));
         this.t = present.length ? this.t + dt : Math.max(0, this.t - dt * 0.5);
         this.setBar(this.t / HANDS_S);
-        this.setLive(inside.length === 2 ? 'Both hands in place! 🙌'
+        const low = present.some(s => L[s].y > TOO_LOW_Y);
+        this.setLive(low ? 'Move the laptop back a little (or sit back) so your hands are at the top of the picture 📐'
+          : inside.length === 2 ? 'Both hands in place! 🙌'
           : present.length === 2 ? 'I see both hands! Slide them into the outlines if you can.'
           : present.length ? 'I see one hand… show me the other one too!' : 'Looking for hands… 👀');
         if (this.t >= HANDS_S) this.go('rest');
@@ -184,7 +190,7 @@ window.TR = window.TR || {};
           }
         }
         this.setBar(g / this.best);
-        this.setLive(this.out ? 'Reaching… now come back! 🔁' : 'Reach toward the camera! 🙌');
+        this.setLive(this.out ? 'Reaching… now slide back! 🔁' : 'Keep your hands on the table and slide them toward the camera 🙌');
         if (!this.saidSlow && now - this.stepStart > 25000 && this.reps.length < REPS) {
           this.saidSlow = true;
           WM.Buddy.say('Any comfy reach is great, even a small one! Reach toward me, then come back. 💛', 0);
@@ -221,7 +227,7 @@ window.TR = window.TR || {};
       if (this.step === 'start') {
         el.innerHTML = `
           <h2>Let's set up the camera!</h2>
-          <p>Sit in front of the computer with your hands resting on the table, so the camera can see them.</p>
+          <p>Sit in front of the computer with your hands resting on the table. Move the laptop back a little and tilt the screen so your hands show at the top of the picture, with plenty of table in front of them to reach across.</p>
           <div class="wm-calib-actions">
             <button class="wm-btn primary" id="calStart" data-cal="start">📷 Turn on camera</button>
             ${mouseLink}
@@ -231,7 +237,7 @@ window.TR = window.TR || {};
       } else if (this.step === 'done') {
         el.innerHTML = `${stepper}<h2>🎯 All set!</h2><p>Your reach goal is ready. Let's find some treasure!</p>`;
       } else {
-        const title = { hands: 'Hands flat on the table 🖐️🖐️', rest: 'Keep your hands still 😌', reach: 'Reach toward the camera, then come back 🙌' }[this.step];
+        const title = { hands: 'Hands flat on the table, at the top 🖐️🖐️', rest: 'Keep your hands still 😌', reach: 'Slide your hands toward the camera 🙌' }[this.step];
         el.innerHTML = `
           ${stepper}
           <h2>${title}</h2>

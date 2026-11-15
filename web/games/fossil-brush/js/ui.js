@@ -407,7 +407,7 @@ window.FB = window.FB || {};
       Menu.close();
       if (b.dataset.input === 'camera') FB.Cam.open(); else FB.Cam.off();
     });
-    $('#camRecal').addEventListener('click', () => { Menu.close(); FB.Cam.open(true); });
+    $('#camRecal').addEventListener('click', () => { Menu.close(); FB.Cam.open(); });
     $('#brushRuleToggle').addEventListener('click', e => {
       const b = e.target.closest('[data-rule]');
       if (!b) return;

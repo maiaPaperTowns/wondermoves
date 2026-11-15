@@ -1,9 +1,10 @@
 /* ==========================================================================
    Fossil Brush: camera play (prototype).
-   The camera looks DOWN at the table. One pointer finger is the brush.
-     1. point — show one hand with the pointer finger out, inside the outline
-     2. area  — draw a big circle on the table with the fingertip; that area
-                is mapped onto the sand pile
+   The camera points straight at the child. One index finger, held up in the
+   air, is the brush.
+     1. point — hold up one hand with the index finger pointing up, inside the outline
+     2. area  — draw a big circle in the air with the fingertip; that area is
+                mapped onto the sand pile
    During play the fingertip moves the brush. When the brush touches the sand
    depends on the grown-up setting `brushRule`:
      'auto'  (default) — no gesture needed. Free Play: the brush is down
@@ -11,7 +12,11 @@
              fingertip reaches the glowing dot, and lifts between shapes.
      'point' — only the index finger out = touching; open hand / fist = lifted.
    A real touch sensor can later replace these rules in FB.Cam.finger().
-   The camera starts by itself; with a saved drawing area, setup is skipped.
+
+   Setup works the same way as Treasure Reach and Bubble Pop:
+     start (tap "Turn on camera") → point → circle ("Use my last area" if saved)
+     → done → the panel docks bottom-left. If the camera fails, the panel stays
+     open with the reason and a "use touch / mouse instead" option.
    ========================================================================== */
 window.FB = window.FB || {};
 
@@ -42,35 +47,24 @@ window.FB = window.FB || {};
       WM.CamPanel.mount({ storageKey: 'fossilBrush.camHidden' });
     },
 
-    /** force = redo the setup even if a drawing area is saved. */
-    open(force) {
+    open() {
       this.mount();
-      WM.CamPanel.show(true);
       FB.Store.data.input = 'camera'; FB.Store.save();
-      this.force = !!force || !FB.Store.data.camArea;
       this.active = true;
       WM.CamPanel.calibrating();
-      if (WM.Hands.running) { if (this.force) this.go('point'); else this.toPlay(); return; }
-      this.go('start');
-      this.startCamera(true); // try right away; the button stays as a retry
+      this.go(WM.Hands.running ? 'point' : 'start');
     },
 
-    /** Straight into play with the saved drawing area. */
-    toPlay() {
-      this.active = false;
-      WM.CamPanel.dock();
-      WM.CamPanel.cameraOn(true);
-      FB.Buddy.say(FB.Store.data.brushRule === 'point' ? 'Point with one finger to brush! ☝️' : 'Your finger is the brush! 🖌️');
-      FB.Game.cameraDone();
-    },
-
-    /** No camera: quietly carry on with touch / mouse (setting kept for next time). */
-    fallback() {
-      this.active = false;
-      WM.Hands.stop();
-      if (WM.CamPanel.el) { WM.CamPanel.dock(); WM.CamPanel.show(false); }
-      FB.Buddy.say('I can\'t find a camera, so brush with your finger on the screen! 🖐️');
-      FB.Game.cameraDone();
+    /** Setup finished: dock the panel and carry on playing. */
+    done() {
+      this.go('done');
+      FB.Sound.chime();
+      setTimeout(() => {
+        this.active = false;
+        WM.CamPanel.dock();
+        WM.CamPanel.cameraOn(true);
+        FB.Game.cameraDone();
+      }, 1600);
     },
 
     /** Back to touch / mouse. */
@@ -79,7 +73,6 @@ window.FB = window.FB || {};
       WM.Hands.stop();
       FB.Store.data.input = 'touch'; FB.Store.save();
       if (WM.CamPanel.el) { WM.CamPanel.dock(); WM.CamPanel.show(false); }
-      FB.Buddy.say('Okay! Brush with your finger on the screen, or the mouse. 🖌️');
       FB.Game.cameraDone();
     },
 
@@ -90,35 +83,35 @@ window.FB = window.FB || {};
       if (step === 'area') { this.pts = { x: [], y: [] }; this.path = []; }
       this.render();
       const say = {
-        start: `Let's use the camera! Point it down at the table so it can see your hand. 📷`,
-        point: FB.Store.data.brushRule === 'point' ? 'Put one hand on the table and point with one finger, like this! ☝️' : 'Put one hand on the table so I can see your finger! ☝️',
-        area: 'Now draw a big circle on the table with your finger! ⭕',
+        start: `Let's use the camera! Sit facing the computer so I can see you. 📷`,
+        point: 'Hold up one hand and point your finger up in the air, like this! ☝️',
+        area: 'Now draw a big circle in the air with your finger! ⭕',
         done: 'All set! Your finger is the brush now! 🖌️',
       }[step];
       if (say) FB.Buddy.say(say, 0);
     },
 
-    async startCamera(auto) {
+    async startCamera() {
       const status = $('#calStatus'), btn = $('#calStart');
       if (btn) btn.disabled = true;
       FB.Sound.ensure();
       try {
         await WM.Hands.start(WM.CamPanel.video, { onStatus: m => { if (status) status.textContent = m; } });
         WM.CamPanel.cameraOn(true);
-        if (this.force) this.go('point'); else this.toPlay();
+        this.go('point');
       } catch (e) {
         console.warn('[Fossil Brush] camera start failed:', e);
-        if (auto) { this.fallback(); return; }
         if (btn) btn.disabled = false;
         const denied = e && (e.name === 'NotAllowedError' || e.name === 'SecurityError');
         const fileFrame = location.protocol === 'file:' && window.parent !== window;
         if (status) {
           status.textContent = denied && fileFrame
             ? 'The camera only works when WonderMoves runs from a local server (see web/README.md), or open this game on its own.'
-            : denied ? 'The camera was blocked. Allow camera access in the browser, or keep using touch.'
-            : 'No camera or hand tracker available. You can keep using touch or the mouse.';
+            : denied ? 'The camera was blocked. Allow camera access in the browser, or use touch / mouse instead.'
+            : 'No camera or hand tracker available. You can use touch or the mouse instead.';
           status.classList.add('error');
         }
+        FB.Buddy.say('Uh oh, I can\'t see the camera. We can brush with touch or the mouse instead! 🖐️', 0);
       }
     },
 
@@ -134,13 +127,7 @@ window.FB = window.FB || {};
       const [y0, y1] = grow(pct(ys, 0.04), pct(ys, 0.96));
       FB.Store.data.camArea = { x0, x1, y0, y1, at: Date.now() };
       FB.Store.save();
-      this.go('done');
-      FB.Sound.chime();
-      setTimeout(() => {
-        this.active = false;
-        WM.CamPanel.dock();
-        FB.Game.cameraDone();
-      }, 1500);
+      this.done();
     },
 
     update(dt) {
@@ -150,7 +137,7 @@ window.FB = window.FB || {};
         const ok = !!(h && (h.pointing || FB.Store.data.brushRule !== 'point'));
         this.t = ok ? this.t + dt : Math.max(0, this.t - dt * 0.6);
         this.setBar(this.t / POINT_S);
-        this.setLive(ok ? 'I see your finger! Hold it… ☝️' : h ? 'I see your hand! Now point with just one finger ☝️' : 'Looking for your hand… 👀');
+        this.setLive(ok ? 'I see your finger! Hold it up… ☝️' : h ? 'I see your hand! Now point one finger up ☝️' : 'Hold up your hand so I can see it 👀');
         if (this.t >= POINT_S) { FB.Sound.chime(); this.go('area'); }
       } else if (this.step === 'area') {
         if (h) {
@@ -239,7 +226,7 @@ window.FB = window.FB || {};
       if (this.step === 'start') {
         el.innerHTML = `
           <h2>Let's set up the camera!</h2>
-          <p>Point the camera down at the table, so it can see your hand on the table.</p>
+          <p>Point the camera straight at you, and sit so it can see your hand when you hold it up.</p>
           <div class="wm-calib-actions">
             <button class="pill-btn primary" id="calStart" data-cam="start">📷 Turn on camera</button>
             ${touchLink}
@@ -249,7 +236,7 @@ window.FB = window.FB || {};
       } else if (this.step === 'done') {
         el.innerHTML = `${stepper}<h2>🖌️ All set!</h2><p>${FB.Store.data.brushRule === 'point' ? 'Point to brush the sand. Open your hand to lift the brush.' : 'Move your finger to brush the sand!'}</p>`;
       } else {
-        const title = { point: 'Point with one finger ☝️', area: 'Draw a big circle on the table ⭕' }[this.step];
+        const title = { point: 'Finger up in the air ☝️', area: 'Draw a big circle in the air ⭕' }[this.step];
         el.innerHTML = `
           ${stepper}
           <h2>${title}</h2>
@@ -270,8 +257,7 @@ window.FB = window.FB || {};
     if (act === 'start') Cam.startCamera();
     else if (act === 'touch') Cam.off();
     else if (act === 'saved') {
-      Cam.go('done');
-      setTimeout(() => Cam.toPlay(), 1200);
+      Cam.done();
     }
   });
 })();

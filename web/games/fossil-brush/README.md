@@ -19,8 +19,8 @@ The game works offline. Only the Fredoka font, the confetti effect and the hand-
 
 The game follows the child's index fingertip through the webcam, so they can play without touching the screen. It runs entirely in the browser with MediaPipe Hand Landmarker (`shared/wm-hands.js`), and video frames never leave the page.
 
-- **Camera is the default.** The camera starts by itself. The first time, a short setup runs: show a finger, then draw a circle on the table, which maps the drawing area. After that the game goes straight to play. **Menu → Redo camera setup** runs it again.
-- **No camera?** If the camera is denied or unavailable, the game quietly carries on with touch and mouse. Touch and mouse always work alongside the camera.
+- **Camera is the default.** Setup works the same way as Treasure Reach and Bubble Pop. The camera window opens large in the middle of the screen, and the child taps **📷 Turn on camera**. Then they hold one index finger up in the air, and draw a big circle in the air, which maps the drawing area onto the sand pile. **↩ Use my last area** skips the circle. When setup is done, the window shrinks to the bottom-left. **Menu → Redo camera setup** runs it again.
+- **No camera?** If the camera is blocked or missing, the window says why and offers **Use touch / mouse instead**. In touch mode the camera window is hidden, and touch and mouse always work alongside the camera.
 - **Which camera:** if a Logitech/Brio camera is plugged in, it is used. Otherwise the default camera is used.
 - **Model:** the model ships in `web/shared/models/hand_landmarker.task`, and all camera games use it. If that file can't be read, Google's online copy is used. The WebAssembly runtime loads from jsDelivr (`@mediapipe/tasks-vision@0.10.14`).
 - **Serving:** serve over `http://localhost`, since browsers block the camera on `file://`. A tablet that opens the game through your LAN IP needs HTTPS.
@@ -55,15 +55,6 @@ Accessibility choices, aimed at children with cerebral palsy and other motor dif
 - Each stroke is logged on the device with its shape, tier, time, accuracy and off-path fraction. Grown-ups can download the log as JSON from **Menu → For grown-ups**.
 
 Shapes and tiers live at the top of `js/trace.js`. A shape is a list of points in a -1..1 box, so adding new ones is easy.
-
-### 📷 Camera play (prototype)
-
-**Menu → Camera** switches from touch and mouse to the webcam. The camera looks down at the table, and setup has two steps:
-
-1. **Point:** the child points with one finger inside the outline.
-2. **Circle:** the child draws a big circle on the table. That area is mapped onto the sand pile.
-
-During play the fingertip moves the brush. Pointing (only the index finger out) means the brush is touching the sand; an open hand or a fist lifts it. This rule lives in `FB.Cam.finger()` in `js/camera.js`, ready to be replaced by a real touch sensor.
 
 ### 🖌️ Free Play
 

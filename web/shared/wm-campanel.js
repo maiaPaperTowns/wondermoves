@@ -62,6 +62,7 @@ WM.CamPanel = {
   get hidden() { try { return localStorage.getItem(this.storageKey) === '1'; } catch (_) { return false; } },
 
   calibrating() {
+    this.show(true);
     document.body.classList.add('wm-calibrating');
     this.el.classList.add('calibrating');
     this.el.classList.remove('docked', 'collapsed');
