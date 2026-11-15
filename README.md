@@ -58,7 +58,7 @@ distances, diagnoses anything or pushes the child to keep going.
 |---|---|---|---|---|
 | Treasure Reach | Reach forward from rest, then back | Goal-directed training (moderate) | Modulino Distance | ✅ tested on the board |
 | Fossil Brush | One back-and-forth stroke; counted on completion, not speed | Action observation (emerging) | Modulino Movement | Stroke counter tested with simulated gyro; game on the board |
-| Bubble Lift | Lift the hand straight up; pairs = both hands together | Bimanual training (strong) | Brio camera, on-device pose | Tested on the board with simulated hands; real-camera tracking measured |
+| Bubble Pop (Andrew's game, lift mode) | Lift the hand straight up; pairs = both hands together | Bimanual training (strong) | Brio camera (browser or on-device pose) | Lift mode tested on the board with simulated hands; the earlier Bubble Lift page passed a real-hands test |
 
 Every game follows the same rules: one movement, completion not speed, no timers, and the child's approved range is never exceeded.
 Evidence and sources: [docs/evidence-brief.html](docs/evidence-brief.html).
@@ -67,9 +67,9 @@ Evidence and sources: [docs/evidence-brief.html](docs/evidence-brief.html).
 so each person can own one station.
 
 **UI:** Andrew's game shell (`wondermoves/assets/index.html`, `shell.js`, `shared/`, `games/`) is the main screen on the
-board: tabs for Fossil Brush, Treasure Reach, Bubble Lift and Grown-ups. `shared/wm-board.js` connects any game to the
+board: tabs for Fossil Brush, Treasure Reach, Bubble Pop and Grown-ups. `shared/wm-board.js` connects any game to the
 board (sensors, calibration, caregiver limits, session log); opened standalone, the games fall back to camera or mouse.
-His timed Bubble Pop prototype stays in `games/bubble-pop/` but is not a tab (it breaks the no-timer, one-movement rules).
+His Bubble Pop is the bubble tab in its **lift mode** (default): no timer, bubbles wait above each resting hand, pairs need both hands. His original timed mode is still there with `lift: false` in `games/bubble-pop/js/data.js`. The older standalone Bubble Lift page (`assets/bubbles/`) is kept as a fallback.
 
 See [docs/PLAN.md](docs/PLAN.md) for the build plan and task split, and [docs/HARDWARE.md](docs/HARDWARE.md) for building the physical game stations.
 

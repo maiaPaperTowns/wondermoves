@@ -20,12 +20,21 @@ BP.KINDS = [
 
 BP.DEFAULTS = {
   difficulty: 'easy',
-  seconds: 60,          // session length
+  lift: true,           // WonderMoves rules: one straight lift per bubble, no timer, no missed bubbles
+                        // (bubbles wait above each resting hand; blue pairs need both hands). false = timed original.
+  seconds: 60,          // session length (timed original only)
   bubbleSize: 'medium', // small | medium | big (accessibility)
   popWhileMoving: false,// only pop while the hand is moving (see BP.canPop)
 };
 
 BP.LINES = {
+  liftStart: ['Rest your hands, then lift the one under the bubble! 🫧', 'Bubbles are coming! Lift your hand straight up to pop them 🫧'],
+  liftLeft: ['Lift your left hand to the bubble! 🫧'],
+  liftRight: ['Lift your right hand to the bubble! 🫧'],
+  liftPair: ['Both hands up together! 🫧🫧'],
+  liftHold: ['Hold it there! Now lift the other hand too ✋'],
+  liftRest: ['Rest your hands on the table so I can find them 🙌'],
+  liftBreak: ['So many pops! Want a little break? 🐢'],
   start: ['Pop as many bubbles as you can! 🫧', 'Here come the bubbles! 🫧'],
   pop: ['Pop! 🫧', 'Nice one!', 'Great reach! 🙌', 'Bubble-tastic!', 'Wow! ✨'],
   ten: ['10 seconds left! Keep popping! ⏱️'],

@@ -1,7 +1,13 @@
 /* ==========================================================================
    Bubble Pop: main loop.
-   Session: countdown → bubbles rise for N seconds → results.
-   A bubble pops when a hand circle touches it AND BP.canPop(side) says yes.
+   Two modes (BP.Store.s.lift):
+   - Lift (default, WonderMoves evidence rules): no timer, no countdown, no missed bubbles.
+     A bubble waits directly above a resting hand; lifting that hand straight up pops it.
+     Order: left, right, then a pair that needs both hands up together (bimanual training).
+     The next bubble only counts after the hand comes back to rest. Lift height comes from the
+     caregiver setting on the board (Grown-ups → Bubble Lift height), never raised by the game.
+   - Timed original: countdown → bubbles rise for N seconds → results.
+   A bubble pops when a hand circle touches it AND BP.canPop(side) says yes (timed mode).
    ========================================================================== */
 (function () {
   const $ = s => document.querySelector(s);
@@ -73,6 +79,15 @@
       this.spawnT = 0.4;
       this.stats = { popped: 0, spawned: 0, missed: 0, left: 0, right: 0 };
       this.said = {};
+      if (BP.Store.s.lift) {
+        this.state = 'playing';
+        this.timeLeft = Infinity;
+        Lift.reset();
+        WM.Board.send('start', { game: 'bubbles' });
+        renderHud();
+        WM.Buddy.say(pick(BP.LINES.liftStart), 3500);
+        return;
+      }
       this.state = 'countdown';
       this.countdown = 3.999;
       this.lastCount = 4;
@@ -150,7 +165,14 @@
         let target = null;
         if (!BP.Calib.active) {
           if (this.mode === 'mouse') { if (side === 'right' && this.mouse.active) target = { x: this.mouse.x, y: this.mouse.y }; }
-          else { const h = WM.Hands.latest[side]; if (h) target = this.mapHand(h); }
+          else {
+            let h = WM.Hands.latest[side];
+            // Board camera (UNO Q pose tracking or tools/mac_camera.py) when the browser camera isn't running.
+            if (!h && !WM.Hands.running && performance.now() - boardHands.at < 600) {
+              const b = boardHands[side]; if (b) h = { x: b[0], y: b[1] };
+            }
+            if (h) target = this.mapHand(h);
+          }
         }
         const cur = this.pos[side];
         if (target) {
@@ -197,7 +219,9 @@
       const moving = this.state === 'playing' || this.state === 'ended';
       if (!moving) return;
 
-      if (this.state === 'playing') {
+      if (this.state === 'playing' && BP.Store.s.lift) {
+        Lift.update(dt);
+      } else if (this.state === 'playing') {
         this.timeLeft -= dt;
         this.spawnT -= dt;
         if (this.spawnT <= 0) { this.spawn(); this.spawnT = this.diff.every * rand(0.75, 1.25); }
@@ -222,7 +246,7 @@
         if (b.leaving) b.fade = (b.fade || 1) - dt * 1.5;
         if (b.popped || (b.fade != null && b.fade <= 0)) { this.bubbles.splice(k, 1); continue; }
         if (b.y + b.r < area.y0 - 4) { this.bubbles.splice(k, 1); if (!b.leaving) this.stats.missed++; continue; }
-        if (this.state !== 'playing') continue;
+        if (this.state !== 'playing' || BP.Store.s.lift) continue;   // lift mode pops in Lift.update
         for (const side of ['left', 'right']) {
           const p = this.pos[side];
           if (!p || this.alpha[side] < 0.5) continue;
@@ -232,9 +256,91 @@
     },
   };
 
+  /* ---------------- Lift mode (WonderMoves rules) ---------------- */
+  const boardHands = { left: null, right: null, at: 0 };
+  WM.Board.on('hands', d => { boardHands.left = d.hands.left; boardHands.right = d.hands.right; boardHands.at = performance.now(); });
+
+  const Lift = BP.Lift = {
+    rest: { left: [], right: [] }, ready: { left: true, right: true },
+    order: ['left', 'right', 'pair'], step: 0, target: null, nextAt: 0, waitingSince: 0, lastSay: 0, pops: 0,
+    reset() { this.rest = { left: [], right: [] }; this.ready = { left: true, right: true }; this.step = 0; this.target = null; this.nextAt = performance.now() + 1500; this.waitingSince = 0; this.pops = 0; },
+    sides() { return Game.mode === 'mouse' ? ['right'] : ['left', 'right']; },
+    /** Lift height in screen px: the caregiver's setting (fraction of camera height), through the hand mapping. */
+    liftPx() {
+      const p = WM.Board.profile || {};
+      const r = BP.Store.data.range || { y0: 0.12, y1: 0.88 };
+      const frac = p.lift_height || 0.16;
+      return Game.mode === 'mouse' ? (area.y1 - area.y0) * 0.25 : frac * (area.y1 - area.y0) / Math.max(0.2, r.y1 - r.y0);
+    },
+    restOf(side) {
+      const a = this.rest[side]; if (a.length < 10) return null;
+      const med = k => a.map(p => p[k]).sort((x, y) => x - y)[a.length >> 1];
+      return { x: med('x'), y: med('y') };
+    },
+    bubbleAt(side) { const r = this.restOf(side); return r && { x: r.x, y: Math.max(area.y0 + 60, r.y - this.liftPx()) }; },
+    up(side) { const p = Game.pos[side], b = this.bubbleAt(side); return !!(p && b && Game.alpha[side] > 0.5 && p.y <= b.y + 24); },
+    atRest(side) { const p = Game.pos[side], r = this.restOf(side); return !!(p && r && p.y >= r.y - this.liftPx() * 0.35); },
+    say(lines, ms) { this.lastSay = performance.now(); WM.Buddy.say(pick(lines), ms || 2500); },
+
+    update(dt) {
+      const now = performance.now();
+      for (const side of this.sides()) {        // learn each hand's resting spot while it is low
+        const p = Game.pos[side];
+        if (p && Game.alpha[side] > 0.5) {
+          const r = this.restOf(side);
+          if (!r || p.y >= r.y - this.liftPx() * 0.35) { this.rest[side].push({ x: p.x, y: p.y }); if (this.rest[side].length > 60) this.rest[side].shift(); }
+          if (!this.ready[side] && this.atRest(side)) this.ready[side] = true;
+        }
+      }
+      if (!this.target) {
+        if (now < this.nextAt) return;
+        const sides = this.sides();
+        let want = this.order[this.step % this.order.length];
+        if (!sides.includes(want) && want !== 'pair') { this.step++; return; }
+        if (want === 'pair' && sides.length < 2) { this.step++; return; }
+        const need = want === 'pair' ? ['left', 'right'] : [want];
+        if (!need.every(s => this.restOf(s) && this.ready[s])) {
+          if (!this.waitingSince) this.waitingSince = now;
+          if (now - this.waitingSince > 6000 && now - this.lastSay > 7000) this.say(BP.LINES.liftRest, 3000);
+          return;
+        }
+        this.waitingSince = 0;
+        const kind = BP.KINDS.find(k => k.id === (want === 'pair' ? 'star' : 'plain')) || BP.KINDS[0];
+        const rad = clamp(Math.min(W, H) * 0.075, 34, 72) * (SIZE[BP.Store.s.bubbleSize] || 1);
+        this.target = { kind: want === 'pair' ? 'pair' : 'single', sides: need, bubbles: need.map(s => {
+          const at = this.bubbleAt(s);
+          const b = { x: at.x, y: at.y, r: rad, vy: 0, phase: Math.random() * 6.28, hue: want === 'pair' ? 200 : rand(170, 330),
+            kind, emoji: kind.emoji ? pick(kind.emoji) : null, age: 0, side: s };
+          Game.bubbles.push(b); Game.stats.spawned++;
+          return b;
+        }) };
+        this.say(want === 'pair' ? BP.LINES.liftPair : want === 'left' ? BP.LINES.liftLeft : BP.LINES.liftRight, 2200);
+        return;
+      }
+      // keep each bubble above its hand's (slowly drifting) resting spot
+      this.target.bubbles.forEach(b => { const at = this.bubbleAt(b.side); if (at) { b.x += (at.x - b.x) * Math.min(1, dt * 2); b.y += (at.y - b.y) * Math.min(1, dt * 2); } });
+      const t = this.target;
+      if (t.sides.every(s => this.up(s) && this.ready[s])) {
+        t.bubbles.forEach(b => Game.pop(b, Game.mode === 'mouse' ? null : b.side));
+        t.sides.forEach(s => { this.ready[s] = false; });
+        WM.Board.send('bubble_pop', { kind: t.kind });
+        this.pops += t.sides.length;
+        if (this.pops && this.pops % 12 < t.sides.length) setTimeout(() => this.say(BP.LINES.liftBreak, 3500), 1500);
+        this.target = null; this.step++; this.nextAt = now + 1200;
+      } else if (t.kind === 'pair' && t.sides.some(s => this.up(s)) && now - this.lastSay > 5000) {
+        this.say(BP.LINES.liftHold, 2500);
+      }
+    },
+  };
+
   /* ---------------- HUD ---------------- */
   const tankFill = $('#tankFill'), tankVal = $('#tankVal'), tank = $('#tank'), scoreVal = $('#scoreVal');
   function renderHud() {
+    if (BP.Store.s.lift) {                     // no timer: the tank stays full
+      tankFill.style.height = '100%'; tankVal.textContent = '🫧'; tank.classList.remove('low');
+      if (scoreVal.textContent !== String(Game.score)) scoreVal.textContent = Game.score;
+      return;
+    }
     const total = BP.Store.s.seconds;
     const t = Game.state === 'playing' ? Game.timeLeft : Game.state === 'ended' ? 0 : total;
     tankFill.style.height = (t / total) * 100 + '%';
