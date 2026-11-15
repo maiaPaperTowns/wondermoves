@@ -24,24 +24,33 @@ UNO Q [QWIIC] ──► Modulino Thermo ──► Modulino Distance ──► Mo
 - **Demo mode:** board on the dock with the camera. The portal opens in the board's own browser on the HDMI screen at http://localhost:7000. Everything runs on the Qualcomm chip.
 - UWNet blocks device-to-device traffic. To reach the board from the Mac in demo mode, put both on the same phone hotspot.
 
-## 2. Treasure Reach: "dig box" (Distance sensor)
+## 2. Treasure Reach: "dig tunnel" (Distance sensor)
+
+The Distance sensor sees a narrow cone, about **18°**: only **~6 cm wide at 20 cm**. A hand resting freely on the
+table drifts out of it, and a sensor sitting on the table sees the table instead. In testing, that caused almost every
+failed run. The tunnel keeps the hand in the beam without the child having to aim.
 
 ```
- child's side                                              far side
- ┌────────────┐                                    ┌──────────────────┐
- │ hand rest  │  ◄──────── 25–35 cm ────────►     │ Distance sensor  │
- │ (towel)    │      reach path (tape arrow)       │ upright, chip    │
- └────────────┘                                    │ facing the hand  │
-                                                   │ "cave wall" box  │
-                                                   └──────────────────┘
+ SIDE VIEW                                              TOP VIEW
+                     beam (18°)                         ┌───────────── wall (8 cm high) ─────┐
+ hand ▄▄  ·  ·  ·  ·  ·  ·  ·  ·  ◄ chip                │ [hand rest] ──reach──►   ◄ sensor  │
+ ═towel═                          ▐ sensor on box       └───────────── wall ─────────────────┘
+ ─────── table ──────────────────────────────            walls 8 cm apart, tunnel ~30 cm long
+   chip and hand both ~5 cm above the table; rest 15–20 cm from the chip
 ```
 
-1. **Hand rest:** fold a towel, or use a foam block, so the forearm is supported at the start position. Mark it with tape. This is where calibration records the resting distance.
-2. **Sensor wall:** cut a cardboard "cave wall", about 15 × 10 cm, and tape the Distance sensor upright so its small black chip faces the hand.
-   - Mount it at hand height, roughly 4–6 cm above the table.
-   - The beam is narrow, about 18°, so aim it straight at the back or palm of the hand. A sleeve or fingers sticking out can give odd readings.
-3. **Path:** add a tape arrow from the rest towards the wall and decorate it as a dig tunnel. Don't mark targets. The game sets them from calibration and the caregiver's limit.
-4. **Check:** with the hand resting, the portal's meter should be empty. Moving the hand a few cm forward should fill it.
+**Build (about 15 minutes):**
+1. **Sensor wall.** Tape the Distance sensor upright to the side of a small box or a stack of books so the **chip is
+   about 5 cm above the table**, facing straight along the tunnel. Make sure nothing (tape, cardboard lip, cable)
+   sits in front of the chip: anything within ~4 cm reads as a fake target.
+2. **Hand rest at the same height.** A folded towel on a book, so the resting hand's centre is also ~5 cm up,
+   **15–20 cm** from the chip. Mark the spot with tape.
+3. **Tunnel walls.** Two cardboard strips, ~30 cm long and 8 cm high, taped down **8 cm apart** from the rest to the
+   sensor. The hand slides forward between them, so it stays in line.
+4. **Check before calibrating.** Grown-ups tab → "Distance:" must show a **steady number** (e.g. "170 mm") with the hand
+   at rest, and drop by ~50 mm when the hand moves 5 cm closer. "Nothing in range" means the hand is out of the beam:
+   adjust the sensor's height or tilt, not the child.
+5. **Decorate:** the far wall is the "cave", the tunnel is the "dig path". Keep the floor of the tunnel matte (no foil).
 
 ## 3. Fossil Brush: "explorer brush" (Movement sensor)
 
