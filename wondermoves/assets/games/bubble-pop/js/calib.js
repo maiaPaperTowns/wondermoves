@@ -25,7 +25,16 @@ window.BP = window.BP || {};
       this.active = true;
       WM.CamPanel.calibrating();
       if (WM.Hands.running) this.go('frame');
-      else this.go('start');
+      else {
+        this.go('start');
+        // Turn the camera on by itself when Chrome already allows it (no click needed).
+        // WM.Hands picks the kit's Logitech Brio when it is plugged in.
+        try {
+          navigator.permissions && navigator.permissions.query({ name: 'camera' }).then(p => {
+            if (p.state === 'granted' && this.step === 'start' && !WM.Hands.running) this.startCamera();
+          }).catch(() => {});
+        } catch (e) { /* older browser: keep the button */ }
+      }
     },
 
     go(step) {

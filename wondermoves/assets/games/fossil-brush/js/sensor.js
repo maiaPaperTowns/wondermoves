@@ -36,11 +36,35 @@
     if (v && started) WM.Board.send('start', { game: 'brush' });   // back on this tab: brush game again
     else if (v) startOnBoard();
   });
-  window.WM_brush = { stroke: queueStroke, count: () => strokes };  // test hook
+  window.WM_brush = { stroke: queueStroke, count: () => strokes, get started() { return started; }, get demo() { return demoFrames; } };  // test hook
+
+  /* Action observation (the evidence behind this game): before each new dig, Pip shows the
+     stroke once (the brush cursor sweeps back and forth without touching the sand), then it is
+     the child's turn. Copy Pip's shape tracing is multi-directional, so on the board we use this
+     single back-and-forth movement instead. */
+  let demoFrames = 0, demoPhase = 0, lastDig = null;
+  function maybeDemo() {
+    const G = FB.Game;
+    if (!started || !G.canDig() || G.startAt === lastDig) return;   // once per new dig
+    lastDig = G.startAt;
+    demoFrames = 90; demoPhase = 0;
+    if (FB.Buddy) FB.Buddy.say('Watch me first: brush back and forth like this! Then it\'s your turn 🖌️', 3200);
+  }
 
   function tick() {
     requestAnimationFrame(tick);
     const G = FB.Game, site = FB.site;
+    maybeDemo();
+    if (demoFrames > 0 && site) {                      // Pip's demonstration: cursor only, no digging
+      demoFrames--; demoPhase += 0.09;
+      const f = site.fossilScreen(), reach = Math.max(f.r * 1.4, site.layout.S * 0.12);
+      if (cursor) {
+        cursor.dataset.sensor = '1'; cursor.classList.add('show'); cursor.classList.remove('brushing');
+        cursor.style.transform = `translate(${f.x + Math.sin(demoPhase) * reach - 6}px, ${f.y - reach * 0.4 - 58}px)`;
+      }
+      if (demoFrames === 0 && FB.Buddy) FB.Buddy.say('Your turn! Big strokes, back and forth 🖌️', 2500);
+      return;
+    }
     if (!framesLeft && pending && site && G.canDig()) { pending--; framesLeft = SWEEP_FRAMES; }
     if (!framesLeft || !site || !G.canDig()) {
       prev = null;
