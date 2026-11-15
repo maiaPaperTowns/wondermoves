@@ -13,7 +13,16 @@ cd fossil-brush
 python3 -m http.server 8000   # then visit http://localhost:8000
 ```
 
-The game works offline. Only the Fredoka font and the confetti effect load from a CDN, and the game still runs without them.
+The game works offline. Only the Fredoka font, the confetti effect and the hand-tracking runtime load from a CDN, and the game still runs without them.
+
+## Hand tracking (webcam)
+
+The game can follow your index fingertip through the webcam, so a child can play without touching the screen. It runs entirely in the browser with [MediaPipe Hand Landmarker](https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker/web_js). You don't need a separate server, and video frames never leave the page.
+
+- The model lives in `models/hand_landmarker.task`. The WebAssembly runtime loads from jsDelivr (`@mediapipe/tasks-vision@0.10.14`).
+- Serve the folder over `http://localhost` (see above). Browsers block the camera and the model download on `file://`. Browsers also only allow the camera on a secure origin, so a tablet that opens the game through your LAN IP needs HTTPS.
+- If a Logitech/Brio camera is plugged in, the game uses it. Otherwise it uses the default camera.
+- If the camera is denied or unavailable, the preview hides and touch and mouse keep working.
 
 ## Modes
 
@@ -90,5 +99,6 @@ js/audio.js       sound effects
 js/digsite.js     sand heightmap, brushing, rendering, particles
 js/trace.js       Copy Pip: shapes, tiers, path following, practice log
 js/ui.js          depth meter, menu, challenge picker, collection, found card, tutorial
-js/main.js        game loop, input, dig → reveal → collect flow
+js/main.js        game loop, input, webcam hand tracking, dig → reveal → collect flow
+models/           MediaPipe hand landmarker model
 ```

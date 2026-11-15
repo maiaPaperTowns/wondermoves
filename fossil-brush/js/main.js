@@ -271,65 +271,92 @@
   canvas.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse' && !down) cursor.classList.remove('show'); });
 
 
-  /* ---------------- webcam hand tracking ---------------- */
+  /* ---------------- webcam hand tracking (in the browser) ---------------- */
+  // MediaPipe Hand Landmarker runs on-device (WebAssembly / WebGL). Frames never leave the page.
+  const VISION_CDN = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
+  const HAND_MODEL = 'models/hand_landmarker.task';
 
-  const cameraSocket = new WebSocket("ws://localhost:8765");
-
-  const webcamVideo = document.getElementById("webcamVideo");
-
-  const trackingOverlay = document.getElementById("trackingOverlay");
-  const trackingCtx = trackingOverlay.getContext("2d");
+  const webcamVideo = $('#webcamVideo');
+  const cameraPreview = $('#cameraPreview');
+  const trackingOverlay = $('#trackingOverlay');
+  const trackingCtx = trackingOverlay.getContext('2d');
 
   function drawTrackingDot(data) {
-    const width = trackingOverlay.clientWidth;
-    const height = trackingOverlay.clientHeight;
-
-    trackingOverlay.width = width;
-    trackingOverlay.height = height;
-
-    trackingCtx.clearRect(0, 0, width, height);
-
+    const w = trackingOverlay.clientWidth, h = trackingOverlay.clientHeight;
+    if (trackingOverlay.width !== w || trackingOverlay.height !== h) {
+      trackingOverlay.width = w; trackingOverlay.height = h;
+    }
+    trackingCtx.clearRect(0, 0, w, h);
     if (!data.detected) return;
 
-    const x = data.x * width;
-    const y = data.y * height;
+    // the preview uses object-fit: cover, so map through the same crop
+    const vw = webcamVideo.videoWidth || w, vh = webcamVideo.videoHeight || h;
+    const s = Math.max(w / vw, h / vh);
+    const x = data.x * vw * s - (vw * s - w) / 2;
+    const y = data.y * vh * s - (vh * s - h) / 2;
 
     trackingCtx.beginPath();
     trackingCtx.arc(x, y, 10, 0, Math.PI * 2);
-    trackingCtx.fillStyle = "#00FF66";
+    trackingCtx.fillStyle = '#00FF66';
     trackingCtx.fill();
-
     trackingCtx.lineWidth = 3;
-    trackingCtx.strokeStyle = "white";
+    trackingCtx.strokeStyle = 'white';
     trackingCtx.stroke();
   }
 
-  async function startWebcamPreview() {
-    try {
-      const devices = await navigator.mediaDevices.enumerateDevices();
-
-      const logitech = devices.find(device =>
-        device.kind === "videoinput" &&
-        /logitech|brio/i.test(device.label)
-      );
-
-      if (!logitech) {
-        console.error("Logitech webcam not found:", devices);
-        return;
-      }
-
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { deviceId: { exact: logitech.deviceId } },
-        audio: false
+  async function openCamera() {
+    const size = { width: { ideal: 640 }, height: { ideal: 480 } };
+    let stream = await navigator.mediaDevices.getUserMedia({ video: size, audio: false });
+    // Device labels are only readable after permission, so look for a Logitech/Brio now.
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const preferred = devices.find(d => d.kind === 'videoinput' && /logitech|brio/i.test(d.label));
+    const current = stream.getVideoTracks()[0].getSettings().deviceId;
+    if (preferred && preferred.deviceId !== current) {
+      stream.getTracks().forEach(t => t.stop());
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { ...size, deviceId: { exact: preferred.deviceId } }, audio: false,
       });
-
-      webcamVideo.srcObject = stream;
-    } catch (error) {
-      console.error("Webcam preview error:", error);
     }
+    webcamVideo.srcObject = stream;
+    await webcamVideo.play();
   }
 
-  startWebcamPreview();
+  async function loadLandmarker() {
+    const { FilesetResolver, HandLandmarker } = await import(`${VISION_CDN}/vision_bundle.mjs`);
+    const fileset = await FilesetResolver.forVisionTasks(`${VISION_CDN}/wasm`);
+    const opts = delegate => ({
+      baseOptions: { modelAssetPath: HAND_MODEL, delegate },
+      runningMode: 'VIDEO',
+      numHands: 1,
+    });
+    try { return await HandLandmarker.createFromOptions(fileset, opts('GPU')); }
+    catch (_) { return HandLandmarker.createFromOptions(fileset, opts('CPU')); }
+  }
+
+  let landmarker = null, lastVideoTime = -1;
+  function trackLoop() {
+    if (webcamVideo.readyState >= 2 && webcamVideo.currentTime !== lastVideoTime) {
+      lastVideoTime = webcamVideo.currentTime;
+      const res = landmarker.detectForVideo(webcamVideo, performance.now());
+      const tip = res.landmarks && res.landmarks[0] && res.landmarks[0][8]; // index fingertip
+      // mirror x so moving your hand right moves the brush right
+      onHand(tip ? { detected: true, x: 1 - tip.x, y: tip.y } : { detected: false });
+    }
+    requestAnimationFrame(trackLoop);
+  }
+
+  async function startHandTracking() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { cameraPreview.hidden = true; return; }
+    try {
+      [landmarker] = await Promise.all([loadLandmarker(), openCamera()]);
+      requestAnimationFrame(trackLoop);
+    } catch (err) {
+      console.warn('Hand tracking unavailable; touch and mouse still work.', err);
+      const stream = webcamVideo.srcObject;
+      if (stream) stream.getTracks().forEach(t => t.stop());
+      cameraPreview.hidden = true;
+    }
+  }
 
   let cameraDown = false;
 
@@ -344,9 +371,7 @@
     }));
   }
 
-  cameraSocket.addEventListener("message", event => {
-    const data = JSON.parse(event.data);
-
+  function onHand(data) {
     drawTrackingDot(data);
 
     if (!data.detected || !Game.canDig()) {
@@ -402,14 +427,10 @@
     } else {
       cameraPointer("pointermove", x, y);
     }
-  });
+  }
 
-  cameraSocket.addEventListener("close", () => {
-    if (cameraDown) {
-      cameraPointer("pointerup", 0, 0);
-      cameraDown = false;
-    }
-  });
+  startHandTracking();
+
 
   /* ---------------- hand hint (Free Play) ---------------- */
   function showHand() {
