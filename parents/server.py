@@ -64,15 +64,21 @@ class BoardLog:
             f = DATA / "demo_board_log.jsonl"
             self.status = "simulated board"
             return f.read_text().splitlines() if f.exists() else []
+        # Arduino App Lab ships its own adb (~/Library/Arduino15/packages/arduino/tools/adb/<version>/adb).
+        app_lab = sorted(Path.home().glob("Library/Arduino15/packages/arduino/tools/adb/*/adb"))
         adb = shutil.which("adb") or next((str(p) for p in (Path.home() / ".local/bin/adb",
-                                                            Path.home() / "Library/Android/sdk/platform-tools/adb")
+                                                            Path.home() / "Library/Android/sdk/platform-tools/adb",
+                                                            *reversed(app_lab))
                                            if p.exists()), None)
         if not adb:
             self.status = "adb not found (install Android platform-tools, or use --demo)"
             return None
         if not self.board_path:
+            # Most recently written log: the board can also hold old copies (e.g. a wondermoves-live
+            # test app), and "first found" picked one of those.
             r = subprocess.run([adb, "shell", "find /home/arduino -path '*wondermoves*' -name sessions.jsonl "
-                                              "2>/dev/null | head -1"], capture_output=True, text=True, timeout=10)
+                                              "-printf '%T@ %p\\n' 2>/dev/null | sort -n | tail -1 | cut -d' ' -f2-"],
+                               capture_output=True, text=True, timeout=10)
             self.board_path = r.stdout.strip() or None
             if not self.board_path:
                 self.status = "board connected, no game log yet" if r.returncode == 0 else "board not connected"
@@ -132,6 +138,9 @@ def sessionize(events: list[dict], now: float) -> list[dict]:
             if cur:
                 cur["closed"] = True
             game = e.get("game", "reach")
+            # The shell UI's Treasure Reach (Andrew's game on the Distance sensor) logs as
+            # "reach_ui"; it is the same game and logs the same reach_completed events.
+            game = {"reach_ui": "reach"}.get(game, game)
             g = GAMES.get(game, {"name": game, "icon": "🎮", "move": "movements", "count": set()})
             cur = {"session_id": f"{child}|{game}|{int(e['t'])}", "child": child, "simulated": bool(e.get("simulated")),
                    "game": game, "game_name": g["name"], "icon": g["icon"], "movement_word": g["move"],
