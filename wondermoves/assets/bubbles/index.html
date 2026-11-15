@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Bubble Lift</title>
+<title>Bubble Lift · WonderMoves</title>
 <script src="../libs/socket.io.min.js"></script>
 <style>
   :root { --sky1:#bfe8ff; --sky2:#e9f7ff; --ink:#1d3557; --ok:#3aa35a; }
@@ -37,7 +37,7 @@
   <button id="viewBtn" title="Shows the camera behind the bubbles. The video stays in this browser and is never sent or saved.">📷 Show camera</button>
   <a class="btn" id="backLink" href="../index.html">⬅ WonderMoves</a>
 </div>
-<div id="subtitle" aria-live="polite">Hi! I'm Digger. Rest your hands on the table, then press Start.</div>
+<div id="subtitle" aria-live="polite">Hi! I'm Pip. Rest your hands on the table, then press Start.</div>
 
 <script>
 /* Bubble Lift: one movement, both hands.
@@ -68,7 +68,7 @@ let step = 0, target = null, nextAt = 0, particles = [], lastLine = 0, waitingSi
 function resize() { W = canvas.width = innerWidth * devicePixelRatio; H = canvas.height = innerHeight * devicePixelRatio; }
 addEventListener('resize', resize); resize();
 
-/* ---------- Digger: voice + subtitles ---------- */
+/* ---------- Pip: voice + subtitles ---------- */
 function say(text) {
   $('subtitle').textContent = text; lastLine = performance.now();
   if ('speechSynthesis' in window) {
