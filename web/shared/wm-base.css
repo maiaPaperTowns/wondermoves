@@ -1,0 +1,74 @@
+/* ==========================================================================
+   WonderMoves shared base: design tokens + kid-friendly building blocks.
+   New games can link this file (../../shared/wm-base.css) to match the look.
+   ========================================================================== */
+:root {
+  --ink: #4A2C17;
+  --ink-soft: #85634A;
+  --paper: #FFFBF2;
+  --cream: #FFF3DD;
+  --line: #EED6AE;
+  --line-d: #D5B07A;
+  --orange: #FF8A3D;
+  --orange-d: #D9621A;
+  --teal: #22B4A3;
+  --teal-d: #157F73;
+  --shadow: 0 14px 34px rgba(60, 32, 12, .25);
+  --font: 'Fredoka', ui-rounded, 'Arial Rounded MT Bold', 'Trebuchet MS', system-ui, sans-serif;
+  --emoji: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: var(--font);
+  color: var(--ink);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+button { font-family: inherit; color: inherit; cursor: pointer; border: none; background: none; padding: 0; }
+button:focus-visible { outline: 4px solid #fff; outline-offset: 3px; box-shadow: 0 0 0 7px var(--teal); }
+
+.wm-emoji { font-family: var(--emoji); line-height: 1; }
+
+/* chunky pill button */
+.wm-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 54px; padding: 0 24px;
+  font-size: 19px; font-weight: 700;
+  background: #fff; color: var(--ink);
+  border: 3px solid var(--line); border-radius: 999px;
+  box-shadow: 0 5px 0 var(--line-d);
+  transition: transform .1s, box-shadow .1s;
+}
+.wm-btn:hover { transform: translateY(-1px); }
+.wm-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--line-d); }
+.wm-btn.primary { background: var(--orange); color: #fff; border-color: var(--orange-d); box-shadow: 0 5px 0 var(--orange-d); }
+.wm-btn.primary:active { box-shadow: 0 2px 0 var(--orange-d); }
+
+/* paper card */
+.wm-card {
+  background: var(--paper);
+  border: 4px solid var(--line);
+  border-radius: 32px;
+  box-shadow: 0 8px 0 var(--line-d), var(--shadow);
+}
+
+/* mascot with speech bubble */
+.wm-pip { display: flex; align-items: flex-end; gap: 6px; }
+.wm-pip img { width: 110px; height: 110px; object-fit: contain; flex: none; filter: drop-shadow(0 6px 0 rgba(0, 0, 0, .15)); animation: wm-bob 2.4s ease-in-out infinite; }
+.wm-bubble {
+  position: relative; margin-bottom: 40px;
+  padding: 14px 18px;
+  background: #fff; border: 3px solid var(--ink); border-radius: 22px 22px 22px 6px;
+  font-size: 18px; font-weight: 600; line-height: 1.35;
+  box-shadow: 0 5px 0 rgba(74, 44, 23, .25);
+}
+
+@keyframes wm-bob { 50% { transform: translateY(-6px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}

@@ -4,12 +4,12 @@ A kid-friendly digging game for the browser. Brush away a pile of sand to uncove
 
 ## Run it
 
-You don't need to build or install anything. Open `index.html` in a browser.
+You don't need to build or install anything. Open `index.html` in a browser. It also runs inside the WonderMoves shell (`web/index.html`), as the Fossil Brush tab.
 
 You can also serve the folder, which is better for tablets on your local network:
 
 ```bash
-cd fossil-brush
+cd web/games/fossil-brush
 python3 -m http.server 8000   # then visit http://localhost:8000
 ```
 

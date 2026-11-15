@@ -307,6 +307,16 @@
     requestAnimationFrame(frame);
   }
 
+  /* ---------------- embedded in the WonderMoves shell ---------------- */
+  // The shell posts {source:'wondermoves', type:'visibility'} when tabs switch.
+  // Go quiet while hidden; restore the player's own sound setting when shown.
+  window.addEventListener('message', e => {
+    const m = e.data;
+    if (!m || m.source !== 'wondermoves' || m.type !== 'visibility') return;
+    FB.Sound.setMuted(m.visible ? !!FB.Store.data.muted : true);
+    if (!m.visible) FB.Sound.brush(0);
+  });
+
   /* ---------------- boot ---------------- */
   FB.UI.init();
   layout();
