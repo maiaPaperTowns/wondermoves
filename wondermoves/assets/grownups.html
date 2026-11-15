@@ -7,6 +7,7 @@
 <title>Settings · WonderMoves</title>
 <!-- Prefer a local copy (board may be offline); falls back to CDN. -->
 <script src="libs/socket.io.min.js"></script>
+<script src="shared/wm-lock.js"></script>
 <script>window.io || document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"><\/script>')</script>
 <link rel="icon" href="shared/assets/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -233,35 +234,36 @@ td:last-child { word-break: break-all; color: var(--muted); }
   </section>
 
   <h2>How each game works (and why)</h2>
-  <p class="small" style="margin-top:-6px">Every game uses <b>one</b> movement, counts a movement when it is completed (never how fast), and stays within the range you approve.
+  <p class="small" style="margin-top:-6px">Every game counts a movement when it is completed (never how fast), has no timer, and stays within the range you approve.
     Evidence levels describe the therapy approach each game is built on, not WonderMoves itself.</p>
   <div class="games">
     <section class="card game" style="--c:var(--reach)">
       <h3><span class="emoji">💰</span> Treasure Reach</h3>
       <div><b>One movement:</b> reach forward from the hand rest, then come back.</div>
-      <ol><li>Rest the forearm on the towel, hand facing the Distance sensor.</li>
-        <li>Reach toward the sensor until the meter fills, and hold for a moment.</li>
-        <li>Come back to rest. Each reach clears a layer; 4 reveal the treasure.</li></ol>
+      <ol><li>Rest the forearm on the table, hand about 15 cm in front of the Distance sensor.</li>
+        <li>Slide the hand toward the sensor until the bar reaches the star, and hold for a moment.</li>
+        <li>Come back to rest and a new chest appears. The distance is never more than the approved maximum above.</li></ol>
       <div><b>Approach:</b> goal-directed training. <span class="lvl moderate">Evidence: moderate</span></div>
       <small>Hand function +3.8 AHA, goal achievement +2.3 COPM vs control (Burgess et al. 2025, network meta-analysis of 48 RCTs). Rated effective in Novak et al. 2020.</small>
     </section>
     <section class="card game" style="--c:var(--brush)">
       <h3><span class="emoji">🦴</span> Fossil Brush</h3>
-      <div><b>One movement:</b> one back-and-forth brushing stroke.</div>
-      <ol><li>Sit facing the camera with the brushing hand in view.</li>
-        <li>Watch Pip's stroke first, then copy it: swing one way, then back.</li>
-        <li>Each completed stroke clears the same amount of sand, slow or fast.</li></ol>
+      <div><b>Movement:</b> tracing a shape in the air with a pointing finger.</div>
+      <ol><li>Sit facing the camera and hold up one hand, pointing a finger.</li>
+        <li>Watch Pip draw the shape first, then trace it to brush the sand away.</li>
+        <li>Each shape traced uncovers more of the fossil, slow or fast.</li></ol>
       <div><b>Approach:</b> action observation (watch, then do). <span class="lvl emerging">Evidence: emerging</span></div>
+      <small>The shapes use several directions, so this game only partly follows the one-movement rule.</small>
       <small>Hand function +4.9 AHA in unilateral CP (Burgess et al. 2025) but no self-care effect, and a 2023 meta-analysis found a smaller, uncertain effect. UP-CAT trial (Sgandurra et al. 2013) improved daily arm use.</small>
     </section>
     <section class="card game" style="--c:var(--bubbles)">
       <h3><span class="emoji">🫧</span> Bubble Pop</h3>
-      <div><b>One movement:</b> lift the hand up from rest.</div>
-      <ol><li>Rest both hands on the table, in view of the camera.</li>
-        <li>Lift a hand to pop a bubble, then rest.</li>
-        <li>Pairs: lift both hands together (take as long as you need).</li></ol>
-      <div><b>Approach:</b> bimanual training (both hands). <span class="lvl strong">Evidence: strong</span></div>
-      <small>The most consistently effective approach: hand function +4.6 AHA, goals +3.3 COPM, self-care SMD 0.39 (Burgess et al. 2025). Rated effective in Novak et al. 2020.</small>
+      <div><b>Movement:</b> moving a hand onto bubbles as they float up.</div>
+      <ol><li>Sit facing the camera with your hands in view.</li>
+        <li>Move a hand onto a bubble to pop it. There is no timer: tap "I'm done" to finish.</li>
+        <li>Bigger bubbles and the Easy level make it gentler (Menu).</li></ol>
+      <div><b>Approach:</b> goal-directed reaching to targets. <span class="lvl moderate">Evidence: moderate</span></div>
+      <small>Bubbles appear in different places, so this game only partly follows the one-movement rule. A both-hands lift mode (bimanual training, strong evidence) is written but switched off.</small>
     </section>
   </div>
   <p class="small">Levels: <b>strong</b> = effective for hand function, goals and self-care; <b>moderate</b> = effective for hand function and goals;
@@ -276,7 +278,9 @@ td:last-child { word-break: break-all; color: var(--muted); }
 
 <script>
 const socket = io(`http://${window.location.host}`);
-const send = (ev, data = {}) => socket.emit(ev, data);
+// Settings messages carry the parent PIN token (see shared/wm-lock.js); the board ignores them without it.
+const PROTECTED = ['set_limits', 'set_child', 'forget_child', 'calibrate'];
+const send = (ev, data = {}) => socket.emit(ev, PROTECTED.includes(ev) && window.WM && WM.Lock ? { ...data, token: WM.Lock.token } : data);
 const $ = (id) => document.getElementById(id);
 const TREASURES = ['🪙','💎','🦴','🕳️','🧰'];
 let layers = 4, profile = {};
@@ -387,10 +391,10 @@ socket.on('sensors', (s) => {
   const dist = !s.distance ? mark(false)
     : s.distance_hz > 0 ? `✅ ${s.last_distance_mm} mm (${s.distance_hz}/s)`
     : '✅ connected, nothing in range (point it at the hand)';
-  $('sensors').innerHTML = `Distance: ${dist}<br>Movement: ${s.movement ? `✅ (${s.imu_hz}/s)` : mark(false)}<br>Thermo: ${mark(s.thermo)}`;
+  $('sensors').innerHTML = `Distance: ${dist}<br>Movement: ${s.movement ? `✅ (${s.imu_hz}/s)` : mark(false)}`;
 });
 socket.on('i2c_scan', (d) => {
-  $('sensors').innerHTML += `<br><small>I2C bus answers: ${d.found || 'nothing'} (Thermo 0x44, Distance 0x29, Movement 0x6a/0x6b)</small>`;
+  $('sensors').innerHTML += `<br><small>I2C bus answers: ${d.found || 'nothing'} (Distance 0x29, Movement 0x6a/0x6b)</small>`;
 });
 socket.on('camera_status', (d) => {
   const on = !!(d && d.on);
@@ -427,7 +431,15 @@ function fillChild(c){
   document.querySelectorAll('.cNeed').forEach(el => el.checked = (c.needs || []).includes(el.value));
   $('cAvoid').value = c.avoid || ''; $('cPron').value = c.pronouns || ''; $('cVoice').checked = !!c.voice_ok;
 }
-socket.on('profile', d => d && fillChild(d.child));
+// The child's details come only with the PIN (the socket 'profile' message has the public part).
+async function loadChild(){
+  try {
+    const st = await (await fetch('/api/state', { cache: 'no-store', headers: WM.Lock.headers() })).json();
+    if (st.locked) return WM.Lock.relock();
+    fillChild(st.profile && st.profile.child);
+  } catch (e) { /* no board */ }
+}
+socket.on('locked', () => WM.Lock.relock());
 socket.on('child_updated', c => { fillChild(c); $('childSaved').classList.add('on'); clearTimeout(window._childT); window._childT = setTimeout(() => $('childSaved').classList.remove('on'), 2500); });
 socket.on('connect', () => send('get_state'));
 // Inside the WonderMoves shell this page is the Grown-ups tab: open the caregiver view, hide the old child buttons.
@@ -441,6 +453,11 @@ if (fromParents) {
   document.title = 'Settings · WonderMoves';
   $('linkProgress').hidden = $('linkGames').hidden = false;
 }
+// The grown-ups view needs the parent PIN.
+let unlocked = false;
+const unlock = () => WM.Lock.ensure(() => { unlocked = true; loadChild(); }, './');
+if (window.parent !== window || fromParents) unlock();
+$('tabParent').addEventListener('click', () => { if (!unlocked) unlock(); });
 </script>
 </body>
 </html>

@@ -206,6 +206,7 @@ h2 .sub { font-size: 14px; color: var(--muted); font-weight: 500; }
   </p>
 </main>
 
+<script src="../shared/wm-lock.js"></script>
 <script>
 const GAMES = {
   reach:   { name: 'Treasure Reach', icon: '💰', word: 'reaches', color: 'var(--reach)' },
@@ -456,8 +457,9 @@ $('#child').addEventListener('change', e => {
 
 async function poll() {
   try {
-    const r = await fetch('/api/state', { cache: 'no-store' });
+    const r = await fetch('/api/state', { cache: 'no-store', headers: WM.Lock.headers() });
     state = await r.json();
+    if (state.locked) { WM.Lock.relock(); return; }   // token expired or the board restarted
     // The board's clock can be wrong (it boots in Sep 2025). Shift all times onto this device's clock.
     const off = Date.now() / 1000 - state.now;
     if (Math.abs(off) > 120) {
@@ -470,7 +472,7 @@ async function poll() {
   }
   setTimeout(poll, 2000);
 }
-poll();
+WM.Lock.ensure(poll, '../');
 </script>
 </body>
 </html>

@@ -109,22 +109,25 @@
         return { p: { left: null, right: v }, bar: v, ok: v >= 1, back: v < TR.Store.s.restLevel };
       }
       if (this.mode === 'sensor') {
-        // Distance sensor only: the bar fills from trustMm (150 mm) to openMm (50 mm).
-        const d = TR.sensorMm(), goal = S.openMm;
+        // Distance sensor only. The chest opens when the hand has moved the child's own distance
+        // (TR.sensorTargetMm, from Settings) toward the sensor from where it rested.
+        const d = TR.sensorMm(), target = TR.sensorTargetMm();
         if (d != null) this.minMm = this.minMm == null ? d : Math.min(this.minMm, d);
         // Where the reach started: the farthest reading while resting. Beyond trustMm the sensor
-        // can't measure, so a start out there counts as trustMm (reach lengths are capped at ~10 cm).
+        // can't measure, so a start out there counts as trustMm.
         if (this.state === 'rest') this.startMm = Math.max(this.startMm || 0, d == null ? S.trustMm : d);
-        const v = d == null ? 0 : clamp((S.trustMm - d) / (S.trustMm - goal), 0, 1);
-        // A single noisy reading mid-hold doesn't reset the hold: "near" lasts 150 ms after the last near reading.
+        const start = this.startMm || S.trustMm;
+        const moved = d == null ? 0 : Math.max(0, start - d);
+        const v = clamp(moved / target, 0, 1);
+        // A single noisy reading mid-hold doesn't reset the hold: "there" lasts 150 ms after the last good reading.
         const now = performance.now();
-        if (d != null && d <= goal) this.nearAt = now;
+        if (d != null && moved >= target) this.nearAt = now;
         const ok = now - (this.nearAt || 0) <= 150;
-        this.m = { d, goal };
+        this.m = { d, goal: start - target, target };
         const bar = ok ? 1 : Math.min(v, 0.97);
         if (this.state === 'rest' || this.state === 'holding') this.peakReach = Math.max(this.peakReach, v);
-        // back at rest: the hand has moved away from the sensor (or it sees nothing)
-        return { p: { left: null, right: bar }, bar, ok, back: !ok && (d == null || d > goal + 20) };
+        // back at rest: the hand has come most of the way back (or the sensor sees nothing)
+        return { p: { left: null, right: bar }, bar, ok, back: !ok && (d == null || moved < target * 0.35) };
       }
       const L = WM.Hands.latest;
       const cam = { left: TR.camProgress('left', L.left), right: TR.camProgress('right', L.right) };
@@ -221,6 +224,7 @@
         // Log the rep on the board (caregiver session log / parent website).
         WM.Board.send('reach_rep', { sensor_mm: this.minMm == null ? null : Math.round(this.minMm), goal_mm: Math.round(TR.sensorGoalMm()),
           start_mm: this.mode === 'sensor' && this.startMm != null ? Math.round(this.startMm) : null,
+          target_mm: this.mode === 'sensor' ? Math.round(TR.sensorTargetMm()) : null,
           rep_ms: this.repStart ? Math.round(performance.now() - this.repStart) : null,
           level: TR.level().id, hold_ms: TR.level().holdMs });
       }

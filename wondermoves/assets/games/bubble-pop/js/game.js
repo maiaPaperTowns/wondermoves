@@ -75,7 +75,7 @@
     begin() {
       this.bubbles = []; this.texts = [];
       this.score = 0;
-      this.timeLeft = BP.Store.s.seconds;
+      this.timeLeft = BP.Store.s.seconds || Infinity;   // 0 = no timer
       this.spawnT = 0.4;
       this.stats = { popped: 0, spawned: 0, missed: 0, left: 0, right: 0 };
       this.said = {};
@@ -203,6 +203,7 @@
       if (BP.UI.blocking()) return; // session clock pauses under menus, tutorial, hidden tab
 
       if (this.state === 'countdown') {
+        renderHud();
         this.countdown -= dt;
         const n = Math.ceil(this.countdown);
         if (n !== this.lastCount) {
@@ -349,6 +350,11 @@
       return;
     }
     const total = BP.Store.s.seconds;
+    const untimed = !total;
+    // No timer: no air tank; the child taps "I'm done" (or the grown-up uses the Menu) to finish.
+    tank.style.display = untimed ? 'none' : '';            // (CSS display beats the hidden attribute here)
+    $('#doneBtn').style.display = untimed && Game.state === 'playing' ? '' : 'none';
+    if (untimed) { if (scoreVal.textContent !== String(Game.score)) scoreVal.textContent = Game.score; return; }
     const t = Game.state === 'playing' ? Game.timeLeft : Game.state === 'ended' ? 0 : total;
     tankFill.style.height = (t / total) * 100 + '%';
     tankVal.textContent = Math.ceil(t) + 's';
