@@ -279,7 +279,7 @@ const socket = io(`http://${window.location.host}`);
 const send = (ev, data = {}) => socket.emit(ev, data);
 const $ = (id) => document.getElementById(id);
 const TREASURES = ['🪙','💎','🦴','🕳️','🧰'];
-let layers = 4, profile = {}, voiceOn = true;
+let layers = 4, profile = {};
 
 function show(id){
   ['child','parent'].forEach(x => $(x).classList.toggle('hidden', x !== id));
@@ -311,13 +311,9 @@ const LINES = {
   calibration_done: () => "All set up. Thanks!",
 };
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
+// Subtitles only: the browser's built-in voice was removed (Pip's voice will come from the voice agent).
 function say(text){
   $('subtitle').textContent = text;
-  if (voiceOn && 'speechSynthesis' in window) {
-    speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text); u.rate = 0.95; u.pitch = 1.2;
-    speechSynthesis.speak(u);
-  }
 }
 function log(ev, d){
   const tr = document.createElement('tr');
