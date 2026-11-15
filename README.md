@@ -25,14 +25,14 @@ movement activities: reaching, controlled positioning and repeated movement sequ
 
 ### Why the camera matters (Qualcomm edge-AI story)
 The QRB2210 can run a small hand/pose model on the Brio feed locally. Nothing leaves the board.
-- **Two-Hand Treasure is no longer a stretch.** The camera checks that both hands are in frame and that one is holding still while the other moves. This solves the "one distance sensor can't verify both hands" problem.
+- **Bubble Lift:** the camera tracks both hands. A bubble sits directly above each resting hand; lifting that hand pops it, and blue pairs need both hands up together (bimanual training).
 - **Fossil Brush mirror:** Digger demonstrates a stroke and the camera shows the child's own movement beside it (action observation).
 - **Sensor fusion:** the camera confirms what the ToF/IMU detect, which cuts false triggers. The game emits `gesture_uncertain` instead of guessing.
 - **Privacy:** process frames in memory only. Never save or stream video, and show a visible "camera on" indicator in the child portal.
 
 ### Using 3 kits
 - **Board A (main):** Treasure Reach + Fossil Brush, the web portal and Digger.
-- **Board B:** Two-Hand Treasure station (camera + second Movement sensor on the stabilising hand).
+- **Board B:** Bubble Lift station (camera).
 - **Board C:** spare / dev board, so teammates can develop in parallel and a dead board doesn't kill the demo.
 
 ## Architecture
@@ -54,17 +54,48 @@ distances, diagnoses anything or pushes the child to keep going.
 
 ## Games
 
-| Game | Approach | Sensor | Status |
-|---|---|---|---|
-| Treasure Reach | Goal-directed practice | Distance | **MVP** |
-| Fossil Brush | Action observation + execution | IMU | MVP |
-| Two-Hand Treasure | Bimanual training | Camera (both hands) + IMU | MVP if the vision model runs, otherwise stretch |
+| Game | One movement | Approach (evidence level) | Sensor | Status |
+|---|---|---|---|---|
+| Treasure Reach | Reach forward from rest, then back | Goal-directed training (moderate) | Modulino Distance | ✅ tested on the board |
+| Fossil Brush | One back-and-forth stroke; counted on completion, not speed | Action observation (emerging) | Modulino Movement | Stroke counter tested with simulated gyro; game on the board |
+| Bubble Pop (Andrew's game, lift mode) | Lift the hand straight up; pairs = both hands together | Bimanual training (strong) | Brio camera (browser or on-device pose) | Lift mode tested on the board with simulated hands; the earlier Bubble Lift page passed a real-hands test |
 
-See [docs/PLAN.md](docs/PLAN.md) for the build plan and task split.
+Every game follows the same rules: one movement, completion not speed, no timers, and the child's approved range is never exceeded.
+Evidence and sources: [docs/evidence-brief.html](docs/evidence-brief.html).
+
+**Thermo** isn't tied to one game: it watches room comfort and suggests breaks. With 3 kits, each game can run on its own board,
+so each person can own one station.
+
+**UI:** Andrew's game shell (`wondermoves/assets/index.html`, `shell.js`, `shared/`, `games/`) is the main screen on the
+board: tabs for Fossil Brush, Treasure Reach, Bubble Pop and Grown-ups. `shared/wm-board.js` connects any game to the
+board (sensors, calibration, caregiver limits, session log); opened standalone, the games fall back to camera or mouse.
+His Bubble Pop is the bubble tab in its **lift mode** (default): no timer, bubbles wait above each resting hand, pairs need both hands. His original timed mode is still there with `lift: false` in `games/bubble-pop/js/data.js`. The older standalone Bubble Lift page (`assets/bubbles/`) is kept as a fallback.
+
+See [docs/PLAN.md](docs/PLAN.md) for the build plan and task split, and [docs/HARDWARE.md](docs/HARDWARE.md) for building the physical game stations.
+
+## Board quirks we hit (UNO Q at MadHacks)
+
+- **Wrong clock:** the board boots thinking it's 9 Sep 2025, and UWNet blocks NTP. HTTPS downloads (sketch libraries, pip) then fail with "certificate not valid yet". Fix: join a phone hotspot so NTP works, or set the clock by hand with `adb shell -t "sudo date -u -s '<UTC time>'"`.
+- **Sketch build fixes:** see [board/README.md](board/README.md) for TMPDIR, pre-staged library zips and the `Arduino_Modulino` rename.
+- **Port 7000 clash:** port 7000 on the Mac is taken by AirPlay Receiver. Forward to 7070: `adb forward tcp:7070 tcp:7000`, then open http://127.0.0.1:7070.
+- **Camera device:** `/dev/video0` and `/dev/video1` are the Qualcomm video codec, not cameras. `vision.py` finds the Brio by name. App Lab only passes in cameras that are plugged in when the app starts, so plug the Brio in first, then (re)start the app.
+- **Python packages:** the board's Python is 3.13 with OpenCV 4.12 and numpy. MediaPipe isn't installed, so vision uses the OpenCV motion fallback.
 
 ## Team
 
 Maia Le (@maiaPaperTowns) · Joy Hong (@schae4999) · Andrew Kim (@Minulion) · @ArneshXCode
+
+## Bubble Lift with the camera on a laptop (dev setup)
+
+While the Brio is plugged into the Mac instead of the board, the Mac does the hand tracking (MediaPipe) and the board runs the game:
+
+```bash
+uv venv -p 3.12 --managed-python .venv && uv pip install -p .venv/bin/python opencv-python numpy "mediapipe==0.10.21" "python-socketio[client]"
+adb forward tcp:7070 tcp:7000
+.venv/bin/python tools/mac_camera.py      # camera 0 = Brio on our Mac (check with --preview; try --camera 1 if you see the built-in camera)
+```
+
+macOS must allow camera access for the app that runs it (System Settings → Privacy & Security → Camera).
 
 ## Camera / vision quick test (laptop, before the board)
 
@@ -72,10 +103,10 @@ Maia Le (@maiaPaperTowns) · Joy Hong (@schae4999) · Andrew Kim (@Minulion) · 
 cd wondermoves/python
 python3 test_vision.py                       # detector logic, no camera needed
 pip install mediapipe opencv-python numpy    # then, with a webcam:
-python3 vision.py --preview --assist left    # green = helper hand, orange = mover; q quits
+python3 vision.py --preview                  # green = left hand, orange = right; q quits
 ```
 
-On the board, `main.py` turns the camera on only during Two-Hand Treasure, and the portal shows a 🔴 badge while it's on.
+On the board, `main.py` turns the camera on only during Bubble Lift, and the portal shows a 🔴 badge while it's on.
 If MediaPipe won't install on the UNO Q, `vision.py` falls back to OpenCV motion detection on its own. Check the `backend`
 and `fps` values in the `hands` messages to see which one is running.
 

@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#1C6FA8">
+  <title>Bubble Pop</title>
+  <link rel="icon" href="../../shared/assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../shared/wm-base.css">
+  <link rel="stylesheet" href="../../shared/wm-ui.css">
+  <link rel="stylesheet" href="../../shared/wm-pip.css">
+  <link rel="stylesheet" href="../../shared/wm-campanel.css">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ===== Under the sea ===== -->
+  <div class="sea" aria-hidden="true">
+    <div class="rays"><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="ambient" id="ambient"></div>
+    <div class="fish f1 wm-emoji">🐠</div>
+    <div class="fish f2 wm-emoji">🐟</div>
+    <div class="fish f3 wm-emoji">🐡</div>
+    <div class="turtle wm-emoji">🐢</div>
+    <svg class="floor" viewBox="0 0 1440 300" preserveAspectRatio="none">
+      <path class="sand-back" d="M0 120 C 240 80 420 140 720 110 C 1000 82 1200 130 1440 100 L1440 300 L0 300Z"/>
+      <path class="sand" d="M0 170 C 260 140 520 190 760 165 C 1020 140 1240 180 1440 160 L1440 300 L0 300Z"/>
+    </svg>
+    <div class="weeds">
+      <span class="weed w1"></span><span class="weed w2"></span><span class="weed w3"></span>
+      <span class="weed w4"></span><span class="weed w5"></span>
+    </div>
+    <div class="floor-decor">
+      <span class="wm-emoji" style="left:18%">🪸</span>
+      <span class="wm-emoji" style="left:44%;font-size:5vmin">🐚</span>
+      <span class="wm-emoji" style="left:58%">🪸</span>
+      <span class="wm-emoji" style="left:70%;font-size:5vmin">⭐</span>
+      <span class="wm-emoji" style="left:30%;font-size:5vmin">🦀</span>
+    </div>
+  </div>
+
+  <canvas id="fx" aria-hidden="true"></canvas>
+  <div class="countdown" id="countdown" aria-live="assertive"></div>
+
+  <!-- ===== Top bar ===== -->
+  <header class="wm-topbar">
+    <button id="menuBtn" class="chunky-btn menu-btn" aria-label="Open menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      <span class="btn-label">Menu</span>
+    </button>
+    <div class="wm-title-pill">
+      <span class="wm-emoji">🫧</span>
+      <span class="tp-name">Bubble Pop</span>
+      <button class="wm-level-chip" id="levelChip" aria-label="Change level"></button>
+      <span class="tp-sep"></span>
+      <span class="score" id="scorePill"><span class="wm-emoji">⭐</span><b id="scoreVal">0</b></span>
+    </div>
+    <div class="wm-top-right">
+      <button id="helpBtn" class="chunky-btn round help-btn" aria-label="How to play">?</button>
+      <button id="soundBtn" class="chunky-btn round" aria-label="Toggle sound">🔊</button>
+    </div>
+  </header>
+
+  <!-- ===== Air tank = time left (right) ===== -->
+  <aside class="wm-side tank" id="tank" aria-label="Time left">
+    <div class="wm-side-head"><span class="wm-emoji">⏱️</span> Air</div>
+    <div class="tank-body">
+      <div class="tank-tube">
+        <div class="tank-fill" id="tankFill"><i></i><i></i><i></i><i></i></div>
+      </div>
+    </div>
+    <div class="tank-val" id="tankVal">60s</div>
+  </aside>
+
+  <!-- ===== Menu ===== -->
+  <div class="wm-drawer-backdrop" id="drawerBackdrop"></div>
+  <nav class="wm-drawer" id="drawer" aria-label="Menu">
+    <div class="wm-drawer-head">
+      <h2>🫧 Bubble Pop</h2>
+      <button class="wm-close" id="drawerClose" aria-label="Close menu">✕</button>
+    </div>
+    <button class="wm-btn primary" id="newGameBtn">🫧 New game</button>
+    <div class="wm-seg two" id="inputToggle" role="group" aria-label="Play with">
+      <button data-input="camera">📷 Camera</button>
+      <button data-input="mouse">🖱️ Mouse</button>
+    </div>
+    <button class="wm-btn" id="recalBtn">🎯 Redo camera setup</button>
+    <button class="wm-btn" id="drawerHelp">🎓 How to play</button>
+
+    <details class="wm-grownups" open>
+      <summary>👪 For grown-ups</summary>
+      <p class="wm-gu-note" id="rangeInfo"></p>
+      <div class="wm-gu-row">
+        <span class="wm-gu-label">Game length</span>
+        <div class="wm-seg three" id="secToggle">
+          <button data-sec="30">30 s</button><button data-sec="60">60 s</button><button data-sec="90">90 s</button>
+        </div>
+      </div>
+      <div class="wm-gu-row">
+        <span class="wm-gu-label">Bubble size</span>
+        <div class="wm-seg three" id="sizeToggle">
+          <button data-size="small">Small</button><button data-size="medium">Medium</button><button data-size="big">Big</button>
+        </div>
+      </div>
+      <div class="wm-gu-row">
+        <label class="wm-gu-check"><input type="checkbox" id="moveOnly"> Only pop while the hand is moving</label>
+        <span class="wm-gu-note">Bubbles won't pop by drifting into a still hand. Uses the camera for now; motion sensors will plug in here later.</span>
+      </div>
+      <div class="wm-gu-row">
+        <span class="wm-gu-label">Practice log</span>
+        <span class="wm-gu-note" id="logInfo"></span>
+        <button class="wm-btn small" id="exportLog">⬇️ Download log (JSON)</button>
+      </div>
+      <button class="wm-link" id="resetBtn">Reset setup, scores &amp; log</button>
+    </details>
+  </nav>
+
+  <!-- ===== Start card ===== -->
+  <div class="wm-modal" id="startModal" role="dialog" aria-label="Start a game">
+    <div class="wm-card start-card">
+      <div class="start-head">
+        <img src="../../shared/assets/mascot.svg" alt="" class="start-pip">
+        <div>
+          <h2>Ready to pop?</h2>
+          <p>Pop as many bubbles as you can before your air runs out!</p>
+        </div>
+      </div>
+      <div class="diff-grid" id="diffGrid"></div>
+      <button class="wm-btn primary big-go" id="startGo">🫧 Start!</button>
+      <button class="wm-link start-resume" id="startResume" hidden>↩ Keep playing this round</button>
+    </div>
+  </div>
+
+  <!-- ===== Results card ===== -->
+  <div class="wm-modal" id="endModal" role="dialog" aria-label="Results">
+    <div class="wm-card end-card">
+      <div class="end-art wm-emoji">🫧</div>
+      <div class="new-best" id="resBest">NEW BEST!</div>
+      <p class="end-diff" id="resDiff"></p>
+      <div class="end-score"><span class="wm-emoji">⭐</span><b id="resScore">0</b></div>
+      <p class="end-line"><b id="resPopped">0</b> bubbles popped · <b id="resMissed">0</b> floated away</p>
+      <div class="end-hands" id="resHands">
+        <div class="hand-row"><span class="dot left"></span>Left hand <b id="resLeft">0</b></div>
+        <div class="hand-bars"><i class="left" id="resLeftBar"></i><i class="right" id="resRightBar"></i></div>
+        <div class="hand-row right"><b id="resRight">0</b> Right hand<span class="dot right"></span></div>
+      </div>
+      <div class="end-actions">
+        <button class="wm-btn" id="resChange">🐠 Change level</button>
+        <button class="wm-btn primary" id="resAgain">Play again! 🫧</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <script src="../../shared/wm-bridge.js"></script>
+  <script src="../../shared/wm-board.js"></script>
+  <script src="../../shared/wm-sound.js"></script>
+  <script src="../../shared/wm-pip.js"></script>
+  <script src="../../shared/wm-hands.js"></script>
+  <script src="../../shared/wm-pose.js"></script>
+  <script src="../../shared/wm-campanel.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/calib.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>

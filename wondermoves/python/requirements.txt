@@ -1,5 +1,0 @@
-# Vision (Brio 105). If mediapipe fails to install or import on the board,
-# vision.py falls back to OpenCV motion detection automatically.
-opencv-python-headless
-numpy
-mediapipe

@@ -1,0 +1,220 @@
+<title>WonderMoves Evidence Brief</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Layout: one reading column; each game is a "dig layer" card with a verdict stripe; evidence tables scroll inside their own box. */
+:root {
+  --bg: #f6f5f1; --surface: #ffffff; --fg: #23201b; --muted: #635c52; --line: #ddd7cc;
+  --soil: #8a5a2b; --soil-soft: #f1e6d9; --teal: #1f6f66; --teal-soft: #dcefeb;
+  --ok: #2f7a3a; --ok-soft: #e1f1e3; --warn: #9a5b00; --warn-soft: #fbecd2; --bad: #a33a2e; --bad-soft: #f8e0dc;
+  --display: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+  --body: "Inter", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #181613; --surface: #221f1b; --fg: #ece7df; --muted: #b1a899; --line: #3a352e;
+  --soil: #d29a62; --soil-soft: #3a2c1e; --teal: #6cc4b7; --teal-soft: #193631;
+  --ok: #7fcf8a; --ok-soft: #1d3321; --warn: #f0b45a; --warn-soft: #3a2b12; --bad: #ef8c7f; --bad-soft: #3d1f1b; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #181613; --surface: #221f1b; --fg: #ece7df; --muted: #b1a899; --line: #3a352e;
+  --soil: #d29a62; --soil-soft: #3a2c1e; --teal: #6cc4b7; --teal-soft: #193631;
+  --ok: #7fcf8a; --ok-soft: #1d3321; --warn: #f0b45a; --warn-soft: #3a2b12; --bad: #ef8c7f; --bad-soft: #3d1f1b; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font: 16px/1.65 var(--body); margin: 0; }
+.wrap { max-width: 860px; margin: 0 auto; padding-block: 40px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 40px; }
+h1, h2, h3 { font-family: var(--display); line-height: 1.2; text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(30px, 5vw, 42px); font-weight: 600; }
+h2 { font-size: 24px; font-weight: 600; }
+h3 { font-size: 19px; font-weight: 600; }
+p { margin: 0; max-width: 68ch; }
+.eyebrow { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--soil); font-weight: 600; }
+.lede { font-size: 18px; color: var(--muted); }
+section { display: grid; gap: 16px; }
+.rule { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px; display: grid; gap: 10px; }
+.rule ul, .card ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.card .head { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline; justify-content: space-between; padding: 18px 20px 0; }
+.card .body { padding: 12px 20px 20px; display: grid; gap: 12px; min-width: 0; }
+.verdict { border-top: 4px solid var(--line); }
+.verdict.ok { border-top-color: var(--ok); } .verdict.warn { border-top-color: var(--warn); } .verdict.bad { border-top-color: var(--bad); }
+.pill { font-size: 13px; font-weight: 600; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+.pill.ok { background: var(--ok-soft); color: var(--ok); } .pill.warn { background: var(--warn-soft); color: var(--warn); } .pill.bad { background: var(--bad-soft); color: var(--bad); }
+.kv { display: grid; grid-template-columns: 150px 1fr; gap: 6px 16px; }
+.kv dt { color: var(--muted); font-size: 14px; } .kv dd { margin: 0; min-width: 0; }
+@media (max-width: 560px) { .kv { grid-template-columns: 1fr; } .kv dd { margin-bottom: 8px; } }
+.fix { background: var(--soil-soft); border-radius: 8px; padding: 12px 14px; }
+.fix strong { color: var(--soil); }
+.tablebox { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 14px; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 600; color: var(--muted); font-size: 12px; letter-spacing: .04em; text-transform: uppercase; }
+tr:last-child td { border-bottom: 0; }
+.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.note { font-size: 14px; color: var(--muted); }
+.callout { background: var(--teal-soft); border-radius: 10px; padding: 16px 18px; display: grid; gap: 8px; }
+.callout strong { color: var(--teal); }
+ol.src { margin: 0; padding-left: 22px; display: grid; gap: 8px; font-size: 14px; }
+a { color: var(--teal); }
+a:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.grid2 > div { min-width: 0; }
+</style>
+
+<main class="wrap">
+  <header style="display:grid;gap:12px">
+    <div class="eyebrow">MadHacks 2026 · Qualcomm track · for mentors and judges</div>
+    <h1>WonderMoves evidence brief</h1>
+    <p class="lede">Why each game uses one movement, which therapy research backs that movement, how WonderMoves differs from products already on the market, and how we would price it.</p>
+    <p class="note">WonderMoves is not a medical device and does not replace occupational or physical therapy. The studies below support the therapy approaches each game is built on. They do not yet prove that our games work; that needs our own pilot (see the last section).</p>
+  </header>
+
+  <section>
+    <h2>The design rule: one movement per game</h2>
+    <div class="rule">
+      <p>Each game is built around one repeated movement. Progress comes from the game world (deeper dig, new treasure), never from new directions, faster speed or precise timing.</p>
+      <ul>
+        <li><strong>Limit available actions.</strong> Hernandez et al. (CHI 2013) designed six games with children with CP and recommend that, apart from moving the avatar, "at most one other action should be available".</li>
+        <li><strong>No precise timing.</strong> The same paper lists "Do not require precise timing" and low penalties for errors as core guidelines for players with CP.</li>
+        <li><strong>The child's own range.</strong> Each child is calibrated first. Targets never rise above the range a caregiver or therapist approves, so finishing a level never pushes the child further.</li>
+        <li><strong>Completion, not speed.</strong> A movement counts when it is completed and the child returns to rest. Nothing times out.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <h2>Game by game</h2>
+    <p>Evidence levels rate the therapy approach each game is built on: <strong>strong</strong> = effective for hand function, goal achievement and self-care; <strong>moderate</strong> = effective for hand function and goals; <strong>emerging</strong> = effective for hand function only, with mixed results across reviews. The effect sizes below come from a 2025 network meta-analysis of 48 randomised trials with 1,629 children with CP (Burgess et al., <em>Dev Med Child Neurol</em>). Hand function is the Assisting Hand Assessment (AHA, units); goal achievement is the COPM performance score (points). All values are mean differences against control.</p>
+
+    <article class="card verdict ok">
+      <div class="head"><h3>Treasure Reach</h3><span class="pill ok">Meets the rule · evidence: moderate</span></div>
+      <div class="body">
+        <dl class="kv">
+          <dt>The movement</dt><dd>One forward reach from a supported rest, toward a Distance sensor 25–35 cm away, then back to rest.</dd>
+          <dt>Sensor</dt><dd>Modulino Distance (time-of-flight), facing the hand.</dd>
+          <dt>Therapy approach</dt><dd>Goal-directed training: repeated practice of a real, meaningful movement toward a goal.</dd>
+          <dt>Evidence</dt><dd>Goal-directed training improved hand function (AHA <span class="num">+3.8</span>) and goal achievement (COPM <span class="num">+2.3</span>) in the 2025 meta-analysis. Novak et al. (2020) list goal-directed training among effective interventions for CP.</dd>
+          <dt>How it scales</dt><dd>4 reaches clear a level; 5 levels unlock a coin, gemstone, fossil, cave and chest. The reach target stays at the approved and calibrated range: in testing, level 2 is listed at 70 mm but stays at 40 mm for a child whose comfortable reach is 40 mm.</dd>
+          <dt>Tested</dt><dd>On the UNO Q with the real sensor: calibration, then 3 of 3 reaches detected (41, 38, 37 mm against a 33 mm target).</dd>
+        </dl>
+      </div>
+    </article>
+
+    <article class="card verdict ok">
+      <div class="head"><h3>Fossil Brush</h3><span class="pill ok">Meets the rule · evidence: emerging</span></div>
+      <div class="body">
+        <dl class="kv">
+          <dt>The movement</dt><dd>One back-and-forth brushing stroke, with the Movement sensor in a chunky brush handle or a soft wrist cuff.</dd>
+          <dt>Sensor</dt><dd>Modulino Movement (6-axis IMU).</dd>
+          <dt>Therapy approach</dt><dd>Action observation: before each dig, Pip demonstrates the back-and-forth stroke (the brush sweeps without digging), then the child copies it. On the board the game uses this single movement; the multi-directional shape tracing (Copy Pip) is only for touch play.</dd>
+          <dt>Evidence</dt><dd>Action observation improved hand function in unilateral CP (AHA <span class="num">+4.9</span>, 2025 meta-analysis), but not self-care. A 2023 network meta-analysis found a smaller, uncertain effect, so this is our least certain game. In the UP-CAT trial (Sgandurra et al., 2013), 24 children with unilateral CP who watched, then practised, goal-directed actions improved their daily use of the affected arm.</dd>
+        </dl>
+        <div class="fix"><strong>Done:</strong> the board now counts completed strokes from the swing angle (at least 8° one way, then turning back). A slow stroke and a fast stroke of the same size count the same, and each stroke clears one fixed sweep of sand. Tested with simulated gyro data: slow and fast brushing gave the same count, and a resting hand gave none.</div>
+      </div>
+    </article>
+
+    <article class="card verdict ok">
+      <div class="head"><h3>Bubble Pop, lift mode</h3><span class="pill ok">Meets the rule · evidence: strong</span></div>
+      <div class="body">
+        <dl class="kv">
+          <dt>Why it changed</dt><dd>Bubble Pop's timed version (60 s, countdown, bubbles rising from anywhere and escaping) asked the child to aim in many directions against a clock, the demands the CP research says to avoid. Its default is now lift mode, keeping Andrew's under-the-sea design.</dd>
+          <dt>The movement</dt><dd>One lift: from rest, raise the hand straight up. Each bubble appears directly above that hand's resting spot, always in the same place. The order is left, right, then a pair that needs both hands up together, held as long as needed.</dd>
+          <dt>Sensor</dt><dd>Brio webcam with on-device pose tracking. Only hand positions leave the vision code; no video is stored or sent.</dd>
+          <dt>Therapy approach</dt><dd>Bimanual training: practising using both hands together.</dd>
+          <dt>Evidence</dt><dd>Bimanual training was the most consistently effective approach in the 2025 meta-analysis: hand function (AHA <span class="num">+4.6</span>), goal achievement (COPM <span class="num">+3.3</span>) and self-care (SMD <span class="num">0.39</span>). Novak et al. (2020) also rate bimanual training as effective.</dd>
+          <dt>Tested</dt><dd>With real hands and the Brio: 23 pops in about 2 minutes (16 single lifts and 7 two-hand pairs), with no timer. With simulated hands: a half lift does not pop, a full lift does, holding up does not pop twice, and a pair needs both hands.</dd>
+        </dl>
+      </div>
+    </article>
+  </section>
+
+  <section>
+    <h2>Why a game helps: dose at home</h2>
+    <div class="grid2">
+      <div class="rule">
+        <h3>Practice dose matters</h3>
+        <p>In the meta-analysis's subgroup of trials that gave more than 25 hours of practice, goal-directed training, bimanual training and modified CIMT improved goal achievement by 2.6, 2.4 and 1.9 COPM points. The authors also describe occupational therapy home programmes as a possible "dose boost".</p>
+      </div>
+      <div class="rule">
+        <h3>Home practice is hard to keep up</h3>
+        <p>A 2024 systematic review links parent involvement in home programmes to better outcomes. But adherence is often low: one study reports poor adherence in 34–79% of parents, and a Malaysian survey found only 45% of caregivers followed the programme. Low self-efficacy and perceived barriers are common reasons.</p>
+      </div>
+    </div>
+    <div class="callout">
+      <p><strong>Where WonderMoves fits.</strong> The games turn the movement a therapist already prescribes into something a child wants to repeat at home, and show the caregiver how much practice happened.</p>
+      <p class="note">Interactive and virtual-reality games added to usual therapy improved upper-limb activity in a 2023 meta-analysis (SMD 0.65, 22 studies, 746 participants), but the certainty was low to very low. That is the honest status of the whole category, and why we plan a pilot.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>How WonderMoves differs from what exists</h2>
+    <div class="tablebox">
+      <table>
+        <thead><tr><th>Product</th><th>What it is</th><th>Price we found</th><th>Gap WonderMoves fills</th></tr></thead>
+        <tbody>
+          <tr><td>Neofect Smart Kids</td><td>Sensor-based therapy toys and games for children</td><td class="num">£3,910 home · £8,350 clinic (UK retailer, ex VAT)</td><td>Expensive; a fixed set of controllers</td></tr>
+          <tr><td>MusicGlove</td><td>Sensor glove with rhythm game, aimed at adult stroke rehab</td><td class="num">~$399–$520 home</td><td>Fine-finger, timing-based play; not designed for children with CP</td></tr>
+          <tr><td>ArmeoSpring Pediatric</td><td>Arm exoskeleton with games, ages 4–12, used in hospitals</td><td>Quote only</td><td>Clinic-only; not available at home</td></tr>
+          <tr><td>Commercial motion games (console, VR)</td><td>Mainstream games played with body movement</td><td>Consumer prices</td><td>Many simultaneous actions and timing; no therapist limits</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="grid2">
+      <div class="rule"><h3>One movement, by design</h3><p>Every game follows the CP game-design rules above, instead of adapting a mainstream game.</p></div>
+      <div class="rule"><h3>Therapist-set limits</h3><p>Calibration plus an approved maximum. The game never raises difficulty on its own.</p></div>
+      <div class="rule"><h3>Private, on-device AI</h3><p>Pose tracking runs on the Qualcomm QRB2210 (about 8 frames a second measured). No video leaves the device.</p></div>
+      <div class="rule"><h3>Off-the-shelf parts</h3><p>An Arduino UNO Q, three small sensor boards and a webcam, instead of custom robotics.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Business case and pricing</h2>
+    <div class="tablebox">
+      <table>
+        <thead><tr><th>Item</th><th>Figure</th><th>Source / status</th></tr></thead>
+        <tbody>
+          <tr><td>Children with CP in the US</td><td class="num">about 1 in 345</td><td>CDC (ADDM Network, 2010 estimates)</td></tr>
+          <tr><td>Pediatric OT session, cash price</td><td class="num">$100–$250</td><td>Consumer cost guides; insured families typically pay $20–$75 copay</td></tr>
+          <tr><td>Arduino UNO Q (4 GB)</td><td class="num">$79–$95</td><td>Arduino US store (listings differ)</td></tr>
+          <tr><td>Modulino sensor boards</td><td class="num">≈ €12–13 each</td><td>Arduino EU store</td></tr>
+          <tr><td>1080p webcam</td><td>To confirm</td><td>Not priced yet</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout">
+      <p><strong>Proposed model (to test with families and OTs, not validated).</strong></p>
+      <ul style="margin:0;padding-left:20px;display:grid;gap:6px">
+        <li><strong>Home kit</strong> sold near hardware cost, roughly an order of magnitude below Neofect Smart Kids.</li>
+        <li><strong>Family subscription</strong> for games, new levels and the caregiver dashboard, priced well below a single cash OT session per month.</li>
+        <li><strong>Clinic licence</strong> so an OT can set each child's limits and review home practice between visits.</li>
+      </ul>
+      <p class="note">These are hypotheses. The first test is whether OTs would prescribe it and whether families keep using it after the first month.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>What we still have to prove</h2>
+    <ul style="margin:0;padding-left:20px;display:grid;gap:6px">
+      <li><strong>Pilot with an OT:</strong> a small group of children with unilateral CP using one game at home for several weeks, measured with the AHA and COPM before and after.</li>
+      <li><strong>Engagement:</strong> minutes played per week, and how many children are still playing after four weeks.</li>
+      <li><strong>Safety and comfort:</strong> sensor placement, breaks, and no fatigue or pain reported.</li>
+      <li><strong>Ethics:</strong> research-ethics approval before any study with children.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Sources</h2>
+    <ol class="src">
+      <li>Burgess A, Chatfield MD, Hermith-Ramirez D, et al. Active upper-limb therapies for hand function, individual goal achievement, and self-care in children with cerebral palsy: a network meta-analysis. <em>Dev Med Child Neurol</em> 2025;67(12):1543–1553. <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC12618955/">PMC12618955</a></li>
+      <li>Novak I, Morgan C, Fahey M, et al. State of the evidence traffic lights 2019: systematic review of interventions for preventing and treating children with cerebral palsy. <em>Curr Neurol Neurosci Rep</em> 2020;20:3. <a href="https://research.monash.edu/en/publications/state-of-the-evidence-traffic-lights-2019-systematic-review-of-in/">Record</a></li>
+      <li>Hernandez HA, Ye Z, Graham TCN, Fehlings D, Switzer L. Designing action-based exergames for children with cerebral palsy. <em>CHI 2013</em>. <a href="https://research.cs.queensu.ca/home/hamilton/files/CHI13-Designing-action-based-exergames-for-children-with-cp.pdf">PDF</a></li>
+      <li>Sgandurra G, Ferrari A, Cossu G, et al. Randomized trial of observation and execution of upper extremity actions versus action alone in children with unilateral cerebral palsy (UP-CAT). <em>Neurorehabil Neural Repair</em> 2013. <a href="https://arpi.unipi.it/handle/11568/926377">Record</a></li>
+      <li>Burin-Chu S, et al. Effectiveness of virtual reality interventions of the upper limb in children and young adults with cerebral palsy: a systematic review with meta-analysis. <em>Clin Rehabil</em> 2023. <a href="https://www.citedrive.com/en/discovery/effectiveness-of-virtual-reality-interventions-of-the-upper-limb-in-children-and-young-adults-with-cerebral-palsy-a-systematic-review-with-meta-analy/">Record</a></li>
+      <li>The psychosocial determinants of adherence to home-based rehabilitation strategies in parents of children with cerebral palsy: a systematic review. 2024. <a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC11168686/">PMC11168686</a></li>
+      <li>CDC. Data and statistics for cerebral palsy. <a href="https://archive.cdc.gov/www_cdc_gov/ncbddd/cp/data.html">archive.cdc.gov</a></li>
+      <li>Neofect Smart Kids prices: <a href="https://www.shop.baffin.co.uk/neurorehabilitation/35-rapael-smart-kids.html">Baffin (home)</a>, <a href="https://www.shop.baffin.co.uk/neurorehabilitation/34-rapael-smart-kids.html">Baffin (clinic)</a>. MusicGlove: <a href="https://www.flintrehab.com/product/musicglove-hand-therapy/">Flint Rehab</a>. ArmeoSpring Pediatric: <a href="https://www.nm.org/conditions-and-care-areas/treatments/armeo-spring-pediatric">Northwestern Medicine</a>.</li>
+      <li>Arduino UNO Q 4GB: <a href="https://store-usa.arduino.cc/products/uno-q-4gb">Arduino store</a>. Modulino: <a href="https://store-usa.arduino.cc/collections/modulino">Arduino store</a>. OT session costs: <a href="https://thervo.com/costs/occupational-therapy-cost">Thervo</a>, <a href="https://www.mdsave.com/t/wellness/occupational-therapy">MDsave</a>.</li>
+    </ol>
+  </section>
+</main>

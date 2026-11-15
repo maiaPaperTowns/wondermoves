@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bubble Lift</title>
+<script src="../libs/socket.io.min.js"></script>
+<style>
+  :root { --sky1:#bfe8ff; --sky2:#e9f7ff; --ink:#1d3557; --ok:#3aa35a; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; height:100%; overflow:hidden; font-family: system-ui, sans-serif; color:var(--ink);
+    background: linear-gradient(var(--sky1), var(--sky2)); }
+  canvas { position:fixed; inset:0; width:100vw; height:100vh; display:block; }
+  /* Optional live view: mirrored like the hand dots, stretched to the same box so dots line up. */
+  #view { position:fixed; inset:0; width:100vw; height:100vh; object-fit:fill; transform:scaleX(-1); opacity:0.55; display:none; }
+  #view.on { display:block; }
+  .bar { position:fixed; left:12px; right:12px; top:12px; display:flex; gap:10px; align-items:center; z-index:2; flex-wrap:wrap; }
+  .bar h1 { margin:0 auto 0 0; font-size:1.3rem; background:#fffc; padding:8px 14px; border-radius:14px; }
+  button, a.btn { font-size:1.2rem; padding:14px 22px; border-radius:16px; border:0; cursor:pointer; background:#fff;
+    color:var(--ink); text-decoration:none; box-shadow:0 2px 6px #0002; }
+  button.go { background:var(--ok); color:#fff; }
+  #score, #cam { background:#fffc; padding:8px 14px; border-radius:14px; font-weight:600; }
+  #cam.on { background:#ffe1e1; color:#a01818; }
+  #subtitle { position:fixed; left:50%; bottom:16px; transform:translateX(-50%); max-width:min(720px, calc(100vw - 32px));
+    font-size:1.4rem; background:#fffe; border-radius:16px; padding:12px 18px; z-index:2; text-align:center; }
+</style>
+</head>
+<body>
+<video id="view" autoplay muted playsinline aria-label="Camera view"></video>
+<canvas id="c" aria-label="Bubbles above your hands"></canvas>
+<div class="bar">
+  <h1>🫧 Bubble Lift</h1>
+  <span id="score">Pops: 0</span>
+  <span id="cam" aria-live="polite">📷 Camera off</span>
+  <button class="go" id="startBtn">▶ Start</button>
+  <button id="breakBtn">⏸ Break</button>
+  <button id="viewBtn" title="Shows the camera behind the bubbles. The video stays in this browser and is never sent or saved.">📷 Show camera</button>
+  <a class="btn" id="backLink" href="../index.html">⬅ WonderMoves</a>
+</div>
+<div id="subtitle" aria-live="polite">Hi! I'm Digger. Rest your hands on the table, then press Start.</div>
+
+<script>
+/* Bubble Lift: one movement, both hands.
+   Design rules (see docs/evidence-brief.html):
+   - ONE movement: lift the hand straight up from where it rests. Each bubble sits directly above
+     that hand's resting spot, always in the same place, so there is no aiming in different directions.
+   - Completion, not speed: a bubble pops when the hand reaches its height. The next one counts only
+     after the hand comes back down to rest. Nothing is timed.
+   - Bimanual training: the order is left, right, then a pair. A pair pops when both hands are up at
+     the same time (they can be held up as long as needed).
+   - The lift height is set by the caregiver (Grown-ups tab) and never increases on its own.
+   The camera sends hand positions only (normalised, mirrored); no video reaches this page. */
+const $ = (id) => document.getElementById(id);
+if (window.parent !== window) $('backLink').hidden = true;   // inside the WonderMoves shell: tabs do the navigation
+const canvas = $('c'), g = canvas.getContext('2d');
+const socket = window.io ? io(`http://${location.host}`) : null;
+const send = (ev, d = {}) => socket && socket.emit(ev, d);
+
+let W = 0, H = 0, playing = false, pops = 0, lift = 0.16;
+let hands = { left: null, right: null }, shown = { left: null, right: null }, lastHandsAt = 0;
+const SIDES = ['left', 'right'];
+const rest = { left: [], right: [] };          // recent resting positions per hand
+const up = { left: false, right: false };      // hand currently at bubble height
+const ready = { left: true, right: true };     // hand has come back to rest since its last pop
+const ORDER = ['left', 'right', 'pair'];
+let step = 0, target = null, nextAt = 0, particles = [], lastLine = 0, waitingSince = 0;
+
+function resize() { W = canvas.width = innerWidth * devicePixelRatio; H = canvas.height = innerHeight * devicePixelRatio; }
+addEventListener('resize', resize); resize();
+
+/* ---------- Digger: voice + subtitles ---------- */
+function say(text) {
+  $('subtitle').textContent = text; lastLine = performance.now();
+  if ('speechSynthesis' in window) {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text); u.rate = 0.95; u.pitch = 1.2; speechSynthesis.speak(u);
+  }
+}
+const pick = (a) => a[(Math.random() * a.length) | 0];
+let actx = null;
+function popSound(pitch = 1) {
+  try {
+    actx = actx || new AudioContext();
+    const o = actx.createOscillator(), v = actx.createGain(), t = actx.currentTime;
+    o.type = 'sine'; o.frequency.setValueAtTime(700 * pitch, t); o.frequency.exponentialRampToValueAtTime(180 * pitch, t + 0.12);
+    v.gain.setValueAtTime(0.25, t); v.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+    o.connect(v).connect(actx.destination); o.start(t); o.stop(t + 0.16);
+  } catch (_) {}
+}
+
+/* ---------- where each hand rests ---------- */
+const median = (a) => { const s = [...a].sort((x, y) => x - y); return s[s.length >> 1]; };
+function restOf(k) {
+  const r = rest[k];
+  return r.length >= 10 ? { x: median(r.map(p => p[0])), y: median(r.map(p => p[1])) } : null;
+}
+function bubbleFor(k) {
+  const r = restOf(k); if (!r) return null;
+  return { x: r.x, y: Math.max(0.1, r.y - lift), r: 0.06 };
+}
+
+/* ---------- hands from the camera ---------- */
+function onHands(d) {
+  hands = d.hands || { left: null, right: null };
+  lastHandsAt = performance.now();
+  if (!$('cam').classList.contains('on')) { $('cam').classList.add('on'); $('cam').textContent = '🔴 Camera on'; }
+  for (const k of SIDES) {
+    const h = hands[k]; if (!h) continue;
+    const r = restOf(k);
+    // Learn the resting spot only while the hand is low (not lifting toward a bubble).
+    if (!r || h[1] > r.y - lift * 0.35) { rest[k].push(h.slice()); if (rest[k].length > 60) rest[k].shift(); }
+  }
+}
+if (socket) {
+  socket.on('connect', () => send('get_state'));
+  socket.on('hands', onHands);
+  socket.on('profile', (p) => { if (p && p.lift_height) lift = p.lift_height; });
+  socket.on('camera_status', (d) => {
+    const on = !!(d && d.on);
+    $('cam').classList.toggle('on', on);
+    $('cam').textContent = d && d.ok === false ? '📷 Camera not found' : on ? '🔴 Camera on' : '📷 Camera off';
+  });
+}
+window.WM_bubbles = { onHands };  // test hook: feed hand positions without a camera
+
+/* ---------- game logic ---------- */
+function reached(k) {
+  const h = shown[k], b = bubbleFor(k);
+  return !!(h && b && h[1] <= b.y + 0.03);        // height reached; sideways position is forgiving
+}
+function backAtRest(k) {
+  const h = shown[k], r = restOf(k);
+  return !!(h && r && h[1] >= r.y - lift * 0.35);
+}
+function burst(b, c) {
+  for (let i = 0; i < 16; i++) {
+    const a = Math.random() * Math.PI * 2, s = 0.004 + Math.random() * 0.006;
+    particles.push({ x: b.x, y: b.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 1, c });
+  }
+}
+function nextTarget(now) {
+  const want = ORDER[step % ORDER.length];
+  const need = want === 'pair' ? SIDES : [want];
+  if (!need.every(k => restOf(k) && ready[k])) {
+    if (!waitingSince) waitingSince = now;
+    if (now - waitingSince > 6000 && now - lastLine > 6000)
+      say(need.length === 2 ? 'Rest both hands on the table so I can find them.' : `Rest your ${want} hand on the table.`);
+    return;
+  }
+  waitingSince = 0;
+  target = { kind: want === 'pair' ? 'pair' : 'single', sides: need };
+  say(target.kind === 'pair' ? 'Both hands up together!' : `Lift your ${want} hand to the bubble!`);
+}
+
+function update(now) {
+  const stale = now - lastHandsAt > 600;
+  for (const k of SIDES) {
+    const h = stale ? null : hands[k];
+    if (!h) { shown[k] = null; up[k] = false; continue; }
+    shown[k] = shown[k] ? [shown[k][0] + (h[0] - shown[k][0]) * 0.4, shown[k][1] + (h[1] - shown[k][1]) * 0.4] : h.slice();
+    up[k] = reached(k);
+    if (!ready[k] && backAtRest(k)) ready[k] = true;
+  }
+  if (!playing) return;
+  if (!target) { if (now >= nextAt) nextTarget(now); return; }
+
+  if (target.sides.every(k => up[k] && ready[k])) {   // every required hand lifted from rest: pop
+    for (const k of target.sides) { burst(bubbleFor(k), target.kind === 'pair' ? '#7ec8ff' : '#ff7eb6'); ready[k] = false; }
+    popSound(target.kind === 'pair' ? 0.8 : 1.1); if (target.kind === 'pair') popSound(1.25);
+    pops += target.sides.length;
+    send('bubble_pop', { kind: target.kind });
+    say(target.kind === 'pair' ? pick(['Both hands! Double pop!', 'Teamwork hands!']) : pick(['Pop! Now rest your hand.', 'Great lift!', 'You got it!']));
+    target = null; step++; nextAt = now + 1200;
+    $('score').textContent = `Pops: ${pops}`;
+    if (pops && pops % 12 === 0) setTimeout(() => say(`${pops} pops! Want a little break?`), 1500);
+  } else if (target.kind === 'pair' && target.sides.some(k => up[k]) && now - lastLine > 5000) {
+    say('Hold it there! Now lift the other hand too.');
+  }
+}
+
+function draw() {
+  g.clearRect(0, 0, W, H);
+  const S = Math.min(W, H);
+  for (const k of SIDES) {                              // resting spots and the straight lift path
+    const r = restOf(k), b = bubbleFor(k); if (!r) continue;
+    g.strokeStyle = '#1d355755'; g.lineWidth = 3; g.setLineDash([8, 10]);
+    g.beginPath(); g.moveTo(r.x * W, r.y * H); g.lineTo(b.x * W, b.y * H); g.stroke(); g.setLineDash([]);
+    g.fillStyle = '#ffffff99'; g.beginPath(); g.ellipse(r.x * W, r.y * H, 0.05 * S, 0.025 * S, 0, 0, Math.PI * 2); g.fill();
+  }
+  if (target) {
+    for (const k of target.sides) {
+      const b = bubbleFor(k); if (!b) continue;
+      const c = target.kind === 'pair' ? '#7ec8ff' : '#ff7eb6';
+      const x = b.x * W, y = b.y * H, r = b.r * S * (up[k] ? 1.1 : 1);
+      const grd = g.createRadialGradient(x - r * 0.35, y - r * 0.35, r * 0.1, x, y, r);
+      grd.addColorStop(0, '#ffffffee'); grd.addColorStop(0.35, c + 'aa'); grd.addColorStop(1, c + '55');
+      g.fillStyle = grd; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = '#ffffffcc'; g.lineWidth = 3; g.stroke();
+    }
+    if (target.kind === 'pair') {
+      const L = bubbleFor('left'), R = bubbleFor('right');
+      if (L && R) { g.setLineDash([10, 10]); g.strokeStyle = '#1d355766'; g.lineWidth = 4;
+        g.beginPath(); g.moveTo(L.x * W, L.y * H); g.lineTo(R.x * W, R.y * H); g.stroke(); g.setLineDash([]); }
+    }
+  }
+  particles = particles.filter(p => (p.life -= 0.03) > 0);
+  for (const p of particles) {
+    p.x += p.vx; p.y += p.vy;
+    g.globalAlpha = p.life; g.fillStyle = p.c; g.beginPath(); g.arc(p.x * W, p.y * H, 6 * devicePixelRatio, 0, Math.PI * 2); g.fill();
+  }
+  g.globalAlpha = 1;
+  for (const k of SIDES) {
+    const h = shown[k]; if (!h) continue;
+    g.fillStyle = k === 'left' ? '#3aa35acc' : '#f08a24cc';
+    g.beginPath(); g.arc(h[0] * W, h[1] * H, 0.035 * S, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#fff'; g.font = `${0.03 * S}px system-ui`; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(k === 'left' ? 'L' : 'R', h[0] * W, h[1] * H);
+  }
+}
+function frame(now) { update(now); draw(); requestAnimationFrame(frame); }
+requestAnimationFrame(frame);
+
+$('startBtn').onclick = () => {
+  playing = true; target = null; nextAt = 0; send('start', { game: 'bubbles' });
+  say('Rest your hands on the table. When a bubble appears, lift that hand straight up to pop it!');
+};
+$('breakBtn').onclick = () => { playing = false; target = null; send('pause'); say('Break time! The bubbles will wait for you.'); };
+addEventListener('pagehide', () => { if (playing) send('pause'); });  // only if this page started the game
+
+// Optional live camera view (off by default). getUserMedia keeps the video inside this
+// browser window: nothing is uploaded, recorded or sent to the board.
+let viewStream = null;
+$('viewBtn').onclick = async () => {
+  const v = $('view');
+  if (viewStream) {
+    viewStream.getTracks().forEach(t => t.stop()); viewStream = null;
+    v.classList.remove('on'); $('viewBtn').textContent = '📷 Show camera'; return;
+  }
+  try {
+    let stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    const cams = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput');
+    const brio = cams.find(d => /brio|logi/i.test(d.label));
+    if (brio && stream.getVideoTracks()[0].getSettings().deviceId !== brio.deviceId) {
+      stream.getTracks().forEach(t => t.stop());
+      stream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: brio.deviceId }, width: 1280, height: 720 } });
+    }
+    viewStream = stream; v.srcObject = stream; v.classList.add('on');
+    $('viewBtn').textContent = '🙈 Hide camera';
+  } catch (e) {
+    say('I could not open the camera view here. Check the browser camera permission.');
+  }
+};
+</script>
+</body>
+</html>

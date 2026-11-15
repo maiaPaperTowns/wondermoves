@@ -4,3 +4,7 @@ wondermoves/data/
 __pycache__/
 *.pyc
 .env
+.venv/
+
+# Parent website: local play data, Databricks results, simulated logs
+parents/data/
