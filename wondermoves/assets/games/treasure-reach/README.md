@@ -22,7 +22,7 @@ Two conditions must hold together:
 **(a) Far enough.**
 - **On the UNO Q:** the progress comes in two parts.
   - **Camera:** moving the wrists toward max forward fills the bar, and moves the circles, only up to 70% (`switchAt`). A gap always stays between the circles and the chest; camera movement alone can't close it.
-  - **Sensor:** once the Distance sensor reads **100 mm** (`handoffMm`), it takes over. Going from 100 mm to **50 mm** (`openMm`) fills the last 30% and brings the circles to the chest. The chest opens at 50 mm or closer, held for the level's hold time (Easy 0.3 s, Medium 0.8 s, Hard 1.5 s).
+  - **Sensor:** once the Distance sensor reads **200 mm** (`handoffMm`), it takes over. Going from 200 mm to **100 mm** (`openMm`) fills the last 30% and brings the circles to the chest. The chest opens at 100 mm or closer, held for the level's hold time (Easy 0.3 s, Medium 0.8 s, Hard 1.5 s).
 - **Camera only (no board):** both wrists must be 60% (Easy), 80% (Medium) or 100% (Hard) of the way from the start spot to max forward.
 
 **(b) Both hands pushing.** The tops of both hands must stay in the camera picture, at about the same point between the start spot and max forward. The default tolerance is a quarter of the way. This matters because the sensor only measures the closest object, so one hand alone could otherwise open the chest.
@@ -31,7 +31,7 @@ If the hands are uneven, Pip says "Push with both hands together!". If a hand le
 
 **The red and blue circles** don't show where the hands are on camera. They sit on the horizon beside the chest and slide toward it as the reach progresses:
 - **Camera first:** the wrists moving toward max forward fill the first 70%, and no more.
-- **Sensor after that:** from 100 mm to 50 mm, the sensor fills the rest.
+- **Sensor after that:** from 200 mm to 100 mm, the sensor fills the rest.
 
 The bar on the right only reaches the top when the chest can really open.
 
