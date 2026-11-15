@@ -165,13 +165,15 @@ window.TR = window.TR || {};
           : mouse ? 'First, put the mouse near the bottom of the screen. 🖱️'
           : 'First, rest both hands on the table in front of the camera. 🙌',
         target: null, onShow: () => Demo.stop() },
-      { text: sensor ? 'Now watch! Slide your hand slowly toward the sensor. Slow is great! 🐢'
+      { text: sensor ? 'Now watch! Slide your hand slowly all the way to the sensor and touch it. Slow is great! 🐢'
           : mouse ? 'Now move the blue circle up to the chest. 🔵'
           : 'Now push both hands toward the laptop, nice and slow. 🐢',
         target: '#chest', round: true, pad: 4, onShow: show(() => Demo.reach()) },
-      { text: 'This bar fills as you reach. Get to the star ⭐ and hold still for a moment. Then the chest opens!',
+      { text: sensor ? 'This bar fills as you get closer. Touch the sensor and hold still until the star ⭐ fills. Then the chest opens!'
+          : 'This bar fills as you reach. Get to the star ⭐ and hold still for a moment. Then the chest opens!',
         target: '#reachMeter', onShow: show(() => Demo.reach()) },
-      { text: 'Then rest your hand again, and a new chest appears. Each treasure goes in your Collection! 📖',
+      { text: sensor ? 'Then slide your hand back home to rest, and a new chest appears. Each treasure goes in your Collection! 📖'
+          : 'Then rest your hand again, and a new chest appears. Each treasure goes in your Collection! 📖',
         target: '#collectionBtn', onShow: () => Demo.stop() },
       { text: 'Want to see this again? Tap ? any time. Ready? Let\'s find treasure! 🎉',
         target: '#helpBtn', onShow: () => Demo.stop() },

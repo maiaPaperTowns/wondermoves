@@ -76,6 +76,23 @@
     </div>
   </main>
 
+  <!-- Sensor mode: what to do right now ("touch the sensor"), under the chest -->
+  <div class="touch-cue" id="touchCue" hidden aria-live="polite">
+    <div class="tc-art" aria-hidden="true">
+      <svg viewBox="0 0 120 64" class="tc-svg">
+        <rect x="70" y="16" width="44" height="32" rx="7" fill="#2E6B4F" stroke="#1D4734" stroke-width="3"/>
+        <rect x="84" y="25" width="16" height="14" rx="3" fill="#1A1A1A"/>
+        <circle cx="92" cy="32" r="3.4" fill="#5BC8FF"/>
+        <circle class="tc-ping" cx="92" cy="32" r="10" fill="none" stroke="#FFD34D" stroke-width="3"/>
+      </svg>
+      <span class="tc-hand wm-emoji">👉</span>
+    </div>
+    <div class="tc-text">
+      <b id="tcTitle">Touch the sensor!</b>
+      <span id="tcSub">Slide your hand all the way to the little sensor.</span>
+    </div>
+  </div>
+
   <!-- hands + coins -->
   <canvas id="fx" aria-hidden="true"></canvas>
 

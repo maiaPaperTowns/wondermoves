@@ -80,7 +80,7 @@ TR.LINES = {
   back: ['Now rest your hands. A new chest is coming! 🔁', 'Bring your hands back to rest 🙌'],
   lost: ['I can\'t see your hands! Put them back on the table in front of me 👋'],
   mouse: ['Move the blue circle up to the chest! 🖱️'],
-  sensor: ['Reach toward the sensor to open the chest! 🖐️', 'Ready? Reach out to the sensor! 💰', 'Slide your hand to the sensor! ✨'],
+  sensor: ['Reach out and touch the sensor to open the chest! 🖐️', 'Ready? Slide your hand all the way to the sensor! 💰', 'Touch the sensor with your fingers! ✨'],
 };
 
 TR.Store = {

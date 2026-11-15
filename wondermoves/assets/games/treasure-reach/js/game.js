@@ -491,6 +491,38 @@
 
   /* ---------------- loop ---------------- */
   let lastT = performance.now();
+  /* Sensor mode: a cue card under the chest says what to do right now. */
+  const cue = $('#touchCue'), cueTitle = $('#tcTitle'), cueSub = $('#tcSub');
+  let cueKey = '';
+  function renderCue() {
+    const show = Game.mode === 'sensor' && Game.state !== 'idle' && !TR.UI.blocking();
+    cue.hidden = !show;
+    if (!show) return;
+    const v = Game.shown;
+    const k = Game.state === 'open' ? 'done'
+      : Game.state === 'return' ? 'back'
+      : Game.state === 'holding' ? 'hold'
+      : !Game.armed ? 'rest'
+      : v > 0.7 ? 'near'
+      : v > 0.2 ? 'closer' : 'start';
+    if (k === cueKey) return;
+    cueKey = k;
+    const text = {
+      start:  ['Touch the sensor!', 'Slide your hand all the way to the little sensor.'],
+      closer: ['Keep going!', 'Your hand is getting closer to the sensor.'],
+      near:   ['Almost! Touch it!', 'Put your fingers right on the sensor.'],
+      hold:   ['Hold it there… ✋', 'Keep touching the sensor until the star fills.'],
+      done:   ['You did it! 🎉', 'Look what you found!'],
+      back:   ['Hand back home', 'Slide your hand back to rest for a new chest.'],
+      rest:   ['Hand back home', 'Rest your hand on the table first, then reach again.'],
+    }[k];
+    cueTitle.textContent = text[0];
+    cueSub.textContent = text[1];
+    cue.classList.toggle('near', k === 'near');
+    cue.classList.toggle('hold', k === 'hold');
+    cue.classList.toggle('done', k === 'done');
+  }
+
   function frame(t) {
     const dt = Math.min(0.05, (t - lastT) / 1000);
     lastT = t;
@@ -499,6 +531,7 @@
       if (TR.Calib.active) TR.Calib.update(dt);
       Game.update(dt);
       renderMeter();
+      renderCue();
       drawFx(dt);
       drawCamOverlay();
     } catch (e) {
