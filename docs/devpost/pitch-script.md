@@ -1,6 +1,6 @@
 # WonderMoves: 3-minute pitch
 
-About 420 words, at a calm speaking pace. **[Slide]** is what's on screen; the indented text is what you say. Numbers in brackets are the sources at the end. Keep the honest lines (marked ✔): judges trust a team that names its limits.
+About 430 words, spoken calmly, like you're explaining it to a friend. **[Slide]** is what's on screen; the indented text is what you say. Numbers stay in the opening; after that, keep it simple. The sources and the exact figures are at the end, ready for questions.
 
 ---
 
@@ -8,51 +8,60 @@ About 420 words, at a calm speaking pace. **[Slide]** is what's on screen; the i
 
 **[Slide]** A child's hand slowly reaching for a cup. Title: *WonderMoves*.
 
-> Imagine trying to open a lunchbox, zip a coat, or hold a cup, when one of your hands won't do what you ask. For thousands of kids with cerebral palsy, that's every day.
+> Think about the last time you zipped a coat, opened a lunchbox, or picked up a cup. You didn't even think about it. Now imagine one of your hands just won't do what you ask. For a lot of kids, that's every single day.
 
-## 2. What CP is, in numbers (0:15–0:40)
+## 2. What cerebral palsy is (0:15–0:40)
 
-**[Slide]** Three numbers: **1 in 345** · **17 million** · **one hand**.
+**[Slide]** **1 in 345 children** · **17 million people worldwide** · one hand that doesn't follow.
 
-> Cerebral palsy is the most common motor disability in childhood. It's caused by an injury to the developing brain, and it affects movement for life. About 1 in 345 children in the US has CP [1], and around 17 million people worldwide live with it [2]. Many children have *unilateral* CP: one side of the body, often one hand, works much less well than the other.
+> Those kids have cerebral palsy. It's the most common movement disability in childhood. It comes from an injury to the brain while it's still developing, and it stays for life. About 1 in 345 children in the US has it, and around 17 million people live with it worldwide. Many of these kids have one side of the body that's much weaker, so one hand ends up doing almost everything.
 
 ## 3. What actually helps (0:40–1:00)
 
-**[Slide]** "Practice is the medicine" with the bar: **> 25 hours** of practice.
+**[Slide]** "Practice is the medicine."
 
-> The brain can rewire through practice: the same meaningful movement, hundreds of times. A 2025 meta-analysis of 48 trials with 1,629 children found the biggest gains with more than 25 hours of practice [3]. That dose has to happen at home.
+> The good news is that a child's brain can rewire. And what rewires it is practice: the same useful movement, again and again, for many hours. That's what the research keeps showing. The catch is that clinic visits can't give anywhere near that much practice. Most of it has to happen at home.
 
-## 4. The problem with home practice and today's options (1:00–1:25)
+## 4. Why that's hard today (1:00–1:25)
 
-**[Slide]** Left: "45% of caregivers keep it up". Right: a 3-row table: Neofect £3,910 · clinic exoskeletons · console games.
+**[Slide]** Three simple pictures: an expensive kit, a hospital machine, a regular video game.
 
-> But only 45% of caregivers keep up home programmes [4]. Today's tools are expensive (nearly £4,000 for a children's sensor kit [5]), clinic-only like exoskeletons, or ordinary motion games built on timers and speed, exactly what CP game-design research says to avoid [6].
+> And at home, it's hard. Repetitive exercises are boring, kids push back, and many families can't keep it up. The tools that exist are either very expensive, stuck in a clinic, or regular motion games built around timers and speed, which is the opposite of what these kids need.
 
-## 5. Our games, and the science behind each (1:25–2:20)
+## 5. Our games (1:25–2:20)
 
-**[Slide]** Three game cards, each with: the movement → the daily-life skill → the evidence.
+**[Slide]** Three game cards: the movement → the everyday skill.
 
-> WonderMoves is three games, each built around one movement a therapist already prescribes.
+> So we built WonderMoves: games that turn the exact movement a therapist prescribes into something a kid actually wants to do.
 >
-> **Treasure Reach:** reach forward and hold to open a chest: the movement for reaching a cup or a door handle. It's *goal-directed training*, which improved hand function by 3.8 points and goal achievement by 2.3 [3]. The distance sensor asks only for the child's own approved distance.
+> In **Treasure Reach**, you reach forward and hold, and a treasure chest pops open. That's the same movement as reaching for a cup or a door handle. It's based on goal-directed training, one of the approaches with solid evidence behind it.
 >
-> **Fossil Brush:** Pip shows a movement, the child copies it to brush away sand. That's *action observation*, watch then do: +4.9 hand function in unilateral CP [3], and more daily use of the affected arm in the UP-CAT trial [7]. ✔ It's our least certain game.
+> In **Fossil Brush**, our mascot Pip shows a movement first, then the child copies it to brush sand off a fossil. Watching and then doing is a proven way for kids with one weaker side to learn to use that hand more.
 >
-> **Bubble Pop:** move a hand onto floating bubbles, no timer. It trains reaching to targets, and its both-hands mode uses *bimanual training*, the strongest approach in the meta-analysis: +4.6 hand function, +3.3 goals, and better self-care [3].
+> In **Bubble Pop**, you move your hand onto floating bubbles. There's no timer: the child decides when they're done. And we built a both-hands mode, because practising with both hands together has the strongest evidence of all.
 
-## 6. How we're different (2:20–2:45)
+## 6. What makes us different (2:20–2:45)
 
-**[Slide]** Four icons: one movement · therapist limits · private AI · $130.
+**[Slide]** Four icons: one movement · therapist limits · private AI · affordable.
 
-> What sets us apart: **one movement per game**, no timers, completion over speed [6]. **Therapist-set limits** the game never raises. **Private AI**: hand tracking runs on the Qualcomm chip, so no video leaves the house. And **about $130** in off-the-shelf parts, with a parent page showing daily practice.
+> A few things make us different. Every game uses one simple movement, with no timers and no rush. A therapist or parent sets the limits, and the game never pushes past them. The AI that tracks the hand runs right on the Qualcomm chip, so no video ever leaves the house. And it's built from affordable, off-the-shelf parts, with a simple page that shows parents how much their kid practised.
 
-## 7. Proof and ask (2:45–3:00)
+## 7. Where we are and the ask (2:45–3:00)
 
-**[Slide]** "Working today" + the board photo. Ask: "OT partners for a home pilot."
+**[Slide]** "Working today" + the board photo. "Looking for OT partners."
 
-> It works with real hands today: 23 bubble lifts in two minutes, seven with both hands. ✔ It's not a medical device, and evidence for CP games is still low-certainty [8], so next is a home pilot with an occupational therapist, measuring hand function before and after. We're looking for OT partners. Thank you!
+> It already works with real hands today. We're honest that it's not a medical device yet, so our next step is a home pilot with an occupational therapist to measure real progress. If you know an OT who'd want to try it, we'd love to talk. Thank you!
 
 ---
+
+## Exact numbers, if a judge asks
+
+- Dose: a 2025 meta-analysis of 48 trials with 1,629 children found the biggest gains with more than 25 hours of practice [3].
+- Home practice: in one survey only 45% of caregivers kept up the programme [4].
+- Price: a children's sensor kit (Neofect Smart Kids) costs about £3,910 for home use [5]. WonderMoves parts cost about $130.
+- Treasure Reach (goal-directed training): hand function +3.8 AHA, goals +2.3 COPM [3].
+- Fossil Brush (action observation): hand function +4.9 AHA in unilateral CP [3]; UP-CAT trial [7]. Least certain of the three.
+- Bubble Pop both-hands mode (bimanual training): +4.6 AHA, +3.3 COPM, and the only approach that improved self-care [3]. Our test: 23 lifts in about 2 minutes, 7 with both hands (lift mode, currently switched off).
 
 ## Questions judges are likely to ask
 
