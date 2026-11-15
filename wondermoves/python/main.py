@@ -272,6 +272,10 @@ def on_sensor_status(has_d, has_m, has_t, distance_hz, imu_hz, last_mm):
 
 # ---------------- Browser -> board messages ----------------
 def on_start(_client, data):
+    if state["mode"] in ("calib_baseline", "calib_reach"):
+        # Never cancel a calibration half-way: the child's range would be saved wrong.
+        emit("calibration_busy")
+        return
     # phase "reached": a reach only counts after the hand has first been seen back at rest,
     # so a hand (or object) already near the sensor at Start is never counted as a reach.
     state.update(mode="playing", phase="reached", game=(data or {}).get("game", "reach"),

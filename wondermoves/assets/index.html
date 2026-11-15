@@ -199,7 +199,18 @@ function showFound(){
   $('found').textContent = (profile.found && profile.found.length)
     ? `Treasures found: ${profile.found.join(', ')}` : 'Treasures found: none yet';
 }
+// Treasure Reach: warn when the Distance sensor loses the hand (its beam is narrow).
+let lastDistanceAt = 0, warnedLost = 0;
+setInterval(() => {
+  const playingReach = $('child') && !$('child').classList.contains('hidden');
+  if (playingReach && lastDistanceAt && performance.now() - lastDistanceAt > 1500 && performance.now() - warnedLost > 8000) {
+    warnedLost = performance.now();
+    say("I can't see your hand. Keep it straight in front of the sensor.");
+  }
+}, 500);
+socket.on('calibration_busy', () => say('Let\'s finish setting up first: rest, then 3 small reaches.'));
 socket.on('distance', (d) => {
+  lastDistanceAt = performance.now();
   if (!profile.baseline_mm || !profile.target_mm) return;
   const pct = Math.max(0, Math.min(1, (profile.baseline_mm - d.mm) / profile.target_mm));
   document.querySelector('#meter div').style.width = `${pct * 100}%`;
