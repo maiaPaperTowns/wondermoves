@@ -71,8 +71,9 @@ button { font: inherit; border: 0; border-radius: 12px; padding: 8px 14px; backg
   <header>
     <h1>🦕 WonderMoves <small>for families</small></h1>
     <div class="controls">
-      <label for="child" class="note">Child</label>
-      <select id="child" aria-label="Choose a child"></select>
+      <span id="childName" class="pill" style="font-weight:700"></span>
+      <label for="child" class="note" id="childLabel" hidden>Child</label>
+      <select id="child" aria-label="Choose a child" hidden></select>
       <span class="pill" id="boardPill"><span class="dot"></span><span>Game board</span></span>
       <span class="pill" id="dbPill" title=""><span class="dot"></span><span>Databricks</span></span>
     </div>
@@ -129,6 +130,10 @@ function render() {
     sel.innerHTML = kids.map(k => `<option value="${esc(k)}">${esc(k)}</option>`).join('');
   }
   sel.value = chosen;
+  // One child (the normal case): just show their name. The picker only appears in testing with sample children.
+  const many = kids.length > 1;
+  sel.hidden = !many; $('#childLabel').hidden = !many; $('#childName').hidden = many;
+  $('#childName').textContent = `👧 ${firstName(chosen)}`;
 
   // status pills
   const b = state.board, bOk = /connected|simulated/.test(b) && !/not/.test(b);

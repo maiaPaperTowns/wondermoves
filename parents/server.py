@@ -1,7 +1,10 @@
 """WonderMoves parent website + Databricks link. Runs on the laptop next to the board.
 
-    python3 parents/server.py              # real board over USB (needs adb), parent page at http://localhost:8090
-    python3 parents/server.py --demo       # no board: reads the simulated log (parents/simulate_board.py)
+    python3 parents/server.py --child "Alex"     # real board over USB (needs adb), page at http://localhost:8090
+    python3 parents/server.py --demo             # no board: reads the simulated log (parents/simulate_board.py)
+
+Shows ONE child: whoever plays on the board. Nothing needs touching once it runs: sessions appear
+by themselves as the child plays, and Databricks notes follow when each session ends.
 
 What it does:
 1. Every 2 s it reads the board's game log (data/sessions.jsonl on the UNO Q, through adb).
@@ -258,7 +261,7 @@ class Databricks:
 class App:
     def __init__(self, args):
         self.board = BoardLog(args.demo, args.board_path, args.child)
-        self.history = load_history()
+        self.history = load_history() if args.samples else []
         self.databricks = Databricks(not args.no_databricks)
         self.lock = threading.Lock()
         self.sessions: list[dict] = []
@@ -283,7 +286,7 @@ class App:
         ins = self.databricks.insights
         with self.lock:
             sessions = [dict(s, insight=ins.get("sessions", {}).get(s["session_id"])) for s in self.sessions]
-        children = sorted({s["child"] for s in sessions}, key=lambda c: (c.endswith("(sample)"), c))
+        children = sorted({s["child"] for s in sessions} | {self.board.child}, key=lambda c: (c.endswith("(sample)"), c))
         return {"children": children, "sessions": sessions, "daily": ins.get("daily", []),
                 "board": self.board.status, "databricks": {"state": self.databricks.state, "detail": self.databricks.detail,
                                                           "updated": ins.get("generated_at")},
@@ -327,6 +330,7 @@ if __name__ == "__main__":
     p.add_argument("--board-path", help="path of sessions.jsonl on the board (found automatically)")
     p.add_argument("--child", default="Your child", help="name shown for the board's player")
     p.add_argument("--no-databricks", action="store_true", help="never contact Databricks")
+    p.add_argument("--samples", action="store_true", help="also show the simulated sample children (testing only)")
     p.add_argument("--port", type=int, default=8090)
     a = p.parse_args()
     app = App(a)

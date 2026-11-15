@@ -25,10 +25,13 @@ Then open **http://localhost:8090**.
 ## Try it without the board
 
 ```bash
-python3 parents/simulate_board.py history        # 2 sample children, 2 weeks (simulated, marked "(sample)")
 python3 parents/server.py --demo --child "Alex"
 python3 parents/simulate_board.py play brush     # in another terminal: watch the page update live
 ```
+
+The page shows **one child**: whoever plays on the board. It starts empty and fills in by itself as the
+child plays; nobody needs to touch the laptop. (Testing only: `simulate_board.py history` plus
+`server.py --samples` adds two simulated sample children.)
 
 ## What parents see
 
