@@ -13,7 +13,20 @@ cd web/games/fossil-brush
 python3 -m http.server 8000   # then visit http://localhost:8000
 ```
 
-The game works offline. Only the Fredoka font and the confetti effect load from a CDN, and the game still runs without them.
+The game works offline. Only the Fredoka font, the confetti effect and the hand-tracking runtime load from a CDN, and the game still runs without them.
+
+## Hand tracking (webcam)
+
+The game follows the child's index fingertip through the webcam, so they can play without touching the screen. It runs entirely in the browser with MediaPipe Hand Landmarker (`shared/wm-hands.js`), and video frames never leave the page.
+
+- **Camera is the default.** The camera starts by itself. The first time, a short setup runs: show a finger, then draw a circle on the table, which maps the drawing area. After that the game goes straight to play. **Menu → Redo camera setup** runs it again.
+- **No camera?** If the camera is denied or unavailable, the game quietly carries on with touch and mouse. Touch and mouse always work alongside the camera.
+- **Which camera:** if a Logitech/Brio camera is plugged in, it is used. Otherwise the default camera is used.
+- **Model:** the model ships in `web/shared/models/hand_landmarker.task`, and all camera games use it. If that file can't be read, Google's online copy is used. The WebAssembly runtime loads from jsDelivr (`@mediapipe/tasks-vision@0.10.14`).
+- **Serving:** serve over `http://localhost`, since browsers block the camera on `file://`. A tablet that opens the game through your LAN IP needs HTTPS.
+- **When the brush touches the sand** (Menu → For grown-ups):
+  - **A finger is seen** (default, no gesture needed): in Free Play the brush digs whenever a finger is seen. In Copy Pip the brush goes down when the fingertip reaches the glowing dot and lifts between shapes.
+  - **Pointing ☝️:** only the index finger out means touching; an open hand or a fist lifts the brush.
 
 ## Modes
 
@@ -98,7 +111,7 @@ js/store.js       save/load progress
 js/audio.js       sound effects
 js/digsite.js     sand heightmap, brushing, rendering, particles
 js/trace.js       Copy Pip: shapes, tiers, path following, practice log
-js/camera.js      camera play: table-view setup + pointer-finger brush
-js/ui.js          depth meter, menu, challenge picker, collection, found card, tutorial
-js/main.js        game loop, input, dig → reveal → collect flow
+js/camera.js      camera play: auto-start, table-view setup, fingertip brush rules
+js/ui.js          depth meter, menu, collection, found card, tutorial
+js/main.js        game loop, input (touch / mouse / camera finger), dig → reveal → collect flow
 ```

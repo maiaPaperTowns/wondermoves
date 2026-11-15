@@ -142,6 +142,7 @@ window.FB = window.FB || {};
       $$('#tolToggle [data-tol]').forEach(b => b.classList.toggle('active', b.dataset.tol === FB.Store.data.tolerance));
       $$('#inputToggle [data-input]').forEach(b => b.classList.toggle('active', b.dataset.input === (FB.Store.data.input || 'touch')));
       $('#camRecal').hidden = FB.Store.data.input !== 'camera';
+      $$('#brushRuleToggle [data-rule]').forEach(b => b.classList.toggle('active', b.dataset.rule === (FB.Store.data.brushRule || 'auto')));
       const log = FB.Store.data.traceLog;
       if (log.length) {
         const recent = log.slice(-20);
@@ -406,7 +407,14 @@ window.FB = window.FB || {};
       Menu.close();
       if (b.dataset.input === 'camera') FB.Cam.open(); else FB.Cam.off();
     });
-    $('#camRecal').addEventListener('click', () => { Menu.close(); FB.Cam.open(); });
+    $('#camRecal').addEventListener('click', () => { Menu.close(); FB.Cam.open(true); });
+    $('#brushRuleToggle').addEventListener('click', e => {
+      const b = e.target.closest('[data-rule]');
+      if (!b) return;
+      FB.Store.data.brushRule = b.dataset.rule; FB.Store.save();
+      FB.Cam.pen = false;
+      Menu.renderSettings();
+    });
     $('#exportLog').addEventListener('click', () => {
       const blob = new Blob([JSON.stringify(FB.Store.data.traceLog, null, 2)], { type: 'application/json' });
       const a = document.createElement('a');

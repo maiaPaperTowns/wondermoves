@@ -13,7 +13,8 @@ FB.Store = {
         found: {}, tutorialDone: false, level: 'beach', muted: false, digs: 0,
         mode: 'trace',          // 'trace' (Copy Pip) | 'free' (Free Play)
         tolerance: 'gentle',    // Copy Pip lane width: gentle | normal | precise
-        input: 'touch',         // 'touch' (touch + mouse) | 'camera' (pointer finger, prototype)
+        input: 'camera',        // 'camera' (fingertip via webcam; falls back to touch) | 'touch' (touch + mouse only)
+        brushRule: 'auto',      // camera: 'auto' (no gesture needed) | 'point' (pointing = brush down)
         camArea: null,          // calibrated drawing area on the table (camera coords)
         traceLog: [],           // per-stroke practice records
       },

@@ -4,10 +4,14 @@
      1. point — show one hand with the pointer finger out, inside the outline
      2. area  — draw a big circle on the table with the fingertip; that area
                 is mapped onto the sand pile
-   During play the fingertip moves the brush. Pointing (only the index finger
-   out) = brush touching the sand; open hand / fist = brush lifted.
-   A real touch sensor can later replace the "pointing = touching" rule in
-   FB.Cam.finger().
+   During play the fingertip moves the brush. When the brush touches the sand
+   depends on the grown-up setting `brushRule`:
+     'auto'  (default) — no gesture needed. Free Play: the brush is down
+             whenever a finger is seen. Copy Pip: it goes down when the
+             fingertip reaches the glowing dot, and lifts between shapes.
+     'point' — only the index finger out = touching; open hand / fist = lifted.
+   A real touch sensor can later replace these rules in FB.Cam.finger().
+   The camera starts by itself; with a saved drawing area, setup is skipped.
    ========================================================================== */
 window.FB = window.FB || {};
 
@@ -38,13 +42,35 @@ window.FB = window.FB || {};
       WM.CamPanel.mount({ storageKey: 'fossilBrush.camHidden' });
     },
 
-    open() {
+    /** force = redo the setup even if a drawing area is saved. */
+    open(force) {
       this.mount();
       WM.CamPanel.show(true);
       FB.Store.data.input = 'camera'; FB.Store.save();
+      this.force = !!force || !FB.Store.data.camArea;
       this.active = true;
       WM.CamPanel.calibrating();
-      this.go(WM.Hands.running ? 'point' : 'start');
+      if (WM.Hands.running) { if (this.force) this.go('point'); else this.toPlay(); return; }
+      this.go('start');
+      this.startCamera(true); // try right away; the button stays as a retry
+    },
+
+    /** Straight into play with the saved drawing area. */
+    toPlay() {
+      this.active = false;
+      WM.CamPanel.dock();
+      WM.CamPanel.cameraOn(true);
+      FB.Buddy.say(FB.Store.data.brushRule === 'point' ? 'Point with one finger to brush! ☝️' : 'Your finger is the brush! 🖌️');
+      FB.Game.cameraDone();
+    },
+
+    /** No camera: quietly carry on with touch / mouse (setting kept for next time). */
+    fallback() {
+      this.active = false;
+      WM.Hands.stop();
+      if (WM.CamPanel.el) { WM.CamPanel.dock(); WM.CamPanel.show(false); }
+      FB.Buddy.say('I can\'t find a camera, so brush with your finger on the screen! 🖐️');
+      FB.Game.cameraDone();
     },
 
     /** Back to touch / mouse. */
@@ -65,22 +91,24 @@ window.FB = window.FB || {};
       this.render();
       const say = {
         start: `Let's use the camera! Point it down at the table so it can see your hand. 📷`,
-        point: 'Put one hand on the table and point with one finger, like this! ☝️',
+        point: FB.Store.data.brushRule === 'point' ? 'Put one hand on the table and point with one finger, like this! ☝️' : 'Put one hand on the table so I can see your finger! ☝️',
         area: 'Now draw a big circle on the table with your finger! ⭕',
         done: 'All set! Your finger is the brush now! 🖌️',
       }[step];
       if (say) FB.Buddy.say(say, 0);
     },
 
-    async startCamera() {
+    async startCamera(auto) {
       const status = $('#calStatus'), btn = $('#calStart');
       if (btn) btn.disabled = true;
       FB.Sound.ensure();
       try {
         await WM.Hands.start(WM.CamPanel.video, { onStatus: m => { if (status) status.textContent = m; } });
         WM.CamPanel.cameraOn(true);
-        this.go('point');
+        if (this.force) this.go('point'); else this.toPlay();
       } catch (e) {
+        console.warn('[Fossil Brush] camera start failed:', e);
+        if (auto) { this.fallback(); return; }
         if (btn) btn.disabled = false;
         const denied = e && (e.name === 'NotAllowedError' || e.name === 'SecurityError');
         const fileFrame = location.protocol === 'file:' && window.parent !== window;
@@ -91,7 +119,6 @@ window.FB = window.FB || {};
             : 'No camera or hand tracker available. You can keep using touch or the mouse.';
           status.classList.add('error');
         }
-        console.warn('[Fossil Brush] camera start failed:', e);
       }
     },
 
@@ -120,10 +147,10 @@ window.FB = window.FB || {};
       if (!this.active) return;
       const h = activeHand();
       if (this.step === 'point') {
-        const ok = !!(h && h.pointing);
+        const ok = !!(h && (h.pointing || FB.Store.data.brushRule !== 'point'));
         this.t = ok ? this.t + dt : Math.max(0, this.t - dt * 0.6);
         this.setBar(this.t / POINT_S);
-        this.setLive(ok ? 'Great pointing! Hold it… ☝️' : h ? 'I see your hand! Now point with just one finger ☝️' : 'Looking for your hand… 👀');
+        this.setLive(ok ? 'I see your finger! Hold it… ☝️' : h ? 'I see your hand! Now point with just one finger ☝️' : 'Looking for your hand… 👀');
         if (this.t >= POINT_S) { FB.Sound.chime(); this.go('area'); }
       } else if (this.step === 'area') {
         if (h) {
@@ -143,19 +170,33 @@ window.FB = window.FB || {};
     finger() {
       const h = activeHand();
       if (!h) { this.penCount = 0; this.pen = false; return null; }
-      // a little hysteresis so a wobbly finger doesn't flicker the brush on/off
-      this.penCount = Math.max(-3, Math.min(3, this.penCount + (h.pointing ? 1 : -1)));
-      if (this.penCount >= 2) this.pen = true;
-      if (this.penCount <= -2) this.pen = false;
       const a = FB.Store.data.camArea || { x0: 0.2, x1: 0.8, y0: 0.2, y1: 0.8 };
       const u = (h.tip.x - a.x0) / (a.x1 - a.x0), v = (h.tip.y - a.y0) / (a.y1 - a.y0);
       const { cx, cy, S } = FB.site.layout;
       const k = S * 1.1;
-      return {
+      const pos = {
         x: Math.max(0, Math.min(window.innerWidth, cx + (u - 0.5) * k)),
         y: Math.max(0, Math.min(window.innerHeight, cy + (v - 0.5) * k)),
-        pen: this.pen,
       };
+      if (FB.Store.data.brushRule === 'point') {
+        // a little hysteresis so a wobbly finger doesn't flicker the brush on/off
+        this.penCount = Math.max(-3, Math.min(3, this.penCount + (h.pointing ? 1 : -1)));
+        if (this.penCount >= 2) this.pen = true;
+        if (this.penCount <= -2) this.pen = false;
+      } else {
+        this.pen = this.autoPen(pos);
+      }
+      return { ...pos, pen: this.pen };
+    },
+
+    /** 'auto' rule: no gesture needed (from the fossil-brush camera integration). */
+    autoPen(pos) {
+      if (FB.Game.mode === 'free') return true;            // Free Play: brush whenever a finger is seen
+      const T = FB.Trace;
+      if (!T.active || T.phase !== 'trace') return false;  // lift between shapes / during Pip's demo
+      if (this.pen) return true;                           // keep brushing once started
+      const dot = T.pts[Math.floor(T.p)];                  // start when the fingertip reaches the glowing dot
+      return !!dot && Math.hypot(pos.x - dot[0], pos.y - dot[1]) <= T.tol * 1.2;
     },
 
     /** Extra drawing on the camera view. */
@@ -206,7 +247,7 @@ window.FB = window.FB || {};
           <p class="wm-calib-status" id="calStatus"></p>
           <p class="wm-calib-privacy">🔒 The video stays on this device. It is never saved or sent anywhere.</p>`;
       } else if (this.step === 'done') {
-        el.innerHTML = `${stepper}<h2>🖌️ All set!</h2><p>Point to brush the sand. Open your hand to lift the brush.</p>`;
+        el.innerHTML = `${stepper}<h2>🖌️ All set!</h2><p>${FB.Store.data.brushRule === 'point' ? 'Point to brush the sand. Open your hand to lift the brush.' : 'Move your finger to brush the sand!'}</p>`;
       } else {
         const title = { point: 'Point with one finger ☝️', area: 'Draw a big circle on the table ⭕' }[this.step];
         el.innerHTML = `
@@ -230,7 +271,7 @@ window.FB = window.FB || {};
     else if (act === 'touch') Cam.off();
     else if (act === 'saved') {
       Cam.go('done');
-      setTimeout(() => { Cam.active = false; WM.CamPanel.dock(); FB.Game.cameraDone(); }, 1200);
+      setTimeout(() => Cam.toPlay(), 1200);
     }
   });
 })();
