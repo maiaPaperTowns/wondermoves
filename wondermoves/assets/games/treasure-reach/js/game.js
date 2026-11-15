@@ -56,12 +56,24 @@
       this.startPlay();
     },
 
-    /** First time: tutorial, then pick a level. Otherwise straight to the level picker. */
+    /** First time: a 3-step tutorial. Then straight to play at the saved level
+        (the level chip at the top still opens the level picker). */
     startPlay() {
       this.state = 'rest';
       this.resetRep();
-      if (!TR.Store.data.tutorialDone) setTimeout(() => TR.openTutorial(() => TR.UI.openLevels()), 500);
-      else TR.UI.openLevels();
+      if (!TR.Store.data.tutorialDone) setTimeout(() => TR.openTutorial(), 400);
+      else setTimeout(() => this.nudge(true), 400);
+    },
+
+    /** UNO Q with a Distance sensor: no camera setup. The sensor alone opens the chest. */
+    useSensor() {
+      WM.Hands.stop();
+      TR.Calib.active = false;
+      TR.Store.data.inputMode = 'sensor'; TR.Store.save();
+      WM.CamPanel.dock();
+      WM.CamPanel.show(false);
+      WM.Board.send('start', { game: 'reach_ui' });
+      this.startPlay();
     },
 
     useMouse() {
@@ -75,11 +87,12 @@
 
     nudge(force) {
       if (this.state !== 'rest' && !force) return;
-      WM.Buddy.say(pick(this.mode === 'mouse' ? TR.LINES.mouse : TR.LINES.rest), 3600);
+      WM.Buddy.say(pick(this.mode === 'mouse' ? TR.LINES.mouse : this.mode === 'sensor' ? TR.LINES.sensor : TR.LINES.rest), 3600);
     },
 
     resetRep() {
       this.hold = 0; this.peak = 0; this.peakReach = 0; this.peakSide = null; this.repStart = 0; this.minMm = null;
+      this.startMm = null;   // sensor mode: farthest reading while resting = where the reach started
       this.said = {};
     },
 
@@ -94,6 +107,24 @@
         const d = Math.hypot(this.mouse.x - chestC.x, this.mouse.y - chestC.y);
         const v = clamp((far - d) / (far - near), 0, 1.25);
         return { p: { left: null, right: v }, bar: v, ok: v >= 1, back: v < TR.Store.s.restLevel };
+      }
+      if (this.mode === 'sensor') {
+        // Distance sensor only: the bar fills from trustMm (150 mm) to openMm (50 mm).
+        const d = TR.sensorMm(), goal = S.openMm;
+        if (d != null) this.minMm = this.minMm == null ? d : Math.min(this.minMm, d);
+        // Where the reach started: the farthest reading while resting. Beyond trustMm the sensor
+        // can't measure, so a start out there counts as trustMm (reach lengths are capped at ~10 cm).
+        if (this.state === 'rest') this.startMm = Math.max(this.startMm || 0, d == null ? S.trustMm : d);
+        const v = d == null ? 0 : clamp((S.trustMm - d) / (S.trustMm - goal), 0, 1);
+        // A single noisy reading mid-hold doesn't reset the hold: "near" lasts 150 ms after the last near reading.
+        const now = performance.now();
+        if (d != null && d <= goal) this.nearAt = now;
+        const ok = now - (this.nearAt || 0) <= 150;
+        this.m = { d, goal };
+        const bar = ok ? 1 : Math.min(v, 0.97);
+        if (this.state === 'rest' || this.state === 'holding') this.peakReach = Math.max(this.peakReach, v);
+        // back at rest: the hand has moved away from the sensor (or it sees nothing)
+        return { p: { left: null, right: bar }, bar, ok, back: !ok && (d == null || d > goal + 20) };
       }
       const L = WM.Hands.latest;
       const cam = { left: TR.camProgress('left', L.left), right: TR.camProgress('right', L.right) };
@@ -186,9 +217,11 @@
     },
 
     openChest() {
-      if (this.mode === 'board') {
+      if (this.mode === 'board' || this.mode === 'sensor') {
         // Log the rep on the board (caregiver session log / parent website).
         WM.Board.send('reach_rep', { sensor_mm: this.minMm == null ? null : Math.round(this.minMm), goal_mm: Math.round(TR.sensorGoalMm()),
+          start_mm: this.mode === 'sensor' && this.startMm != null ? Math.round(this.startMm) : null,
+          rep_ms: this.repStart ? Math.round(performance.now() - this.repStart) : null,
           level: TR.level().id, hold_ms: TR.level().holdMs });
       }
       this.state = 'open';
@@ -234,7 +267,7 @@
         peak: +this.peak.toFixed(2),                 // bar at its fullest (1 = chest condition met)
         peakReach: +this.peakReach.toFixed(2),       // wrists' share of the way from start to max forward (camera)
         sensorMm: this.minMm == null ? null : Math.round(this.minMm),   // closest sensor reading (board)
-        goalMm: this.mode === 'board' ? Math.round(TR.sensorGoalMm()) : null,
+        goalMm: this.mode === 'board' || this.mode === 'sensor' ? Math.round(TR.sensorGoalMm()) : null,
         goalPct: TR.level().goalPct,
         holdMs: TR.level().holdMs,
         ms: Math.round(performance.now() - (this.repStart || performance.now())),
@@ -478,10 +511,12 @@
   Game.renderDots();
   /* UNO Q board: camera + Distance sensor (the sensor decides when the chest opens). The board's
      own in-tunnel calibration is not used: the camera setup above covers it. */
-  WM.bridge.onVisibility(v => { if (v && Game.mode === 'board' && Game.state !== 'idle') WM.Board.send('start', { game: 'reach_ui' }); });
+  WM.bridge.onVisibility(v => { if (v && (Game.mode === 'board' || Game.mode === 'sensor') && Game.state !== 'idle') WM.Board.send('start', { game: 'reach_ui' }); });
   WM.Board.ready(() => {
-    // Every launch starts with the camera setup (Mouse lasts until reload).
-    TR.Store.data.inputMode = TR.hasSensor() ? 'board' : 'camera';
+    // Distance sensor plugged in: play straight away, no camera setup.
+    if (TR.hasSensor()) { Game.useSensor(); return; }
+    // No sensor (e.g. the public website): camera setup, or Mouse from the setup card.
+    TR.Store.data.inputMode = 'camera';
     TR.Calib.open(false);
   });
   requestAnimationFrame(frame);

@@ -81,7 +81,7 @@ window.TR = window.TR || {};
         <span class="diff-emoji wm-emoji">${d.emoji}</span>
         <span class="diff-name">${d.name}</span>
         <span class="diff-blurb">${d.blurb}</span>
-        <span class="diff-meta">${TR.Store.data.inputMode === 'board' ? `Reach to ${TR.SENSE.openMm / 10} cm` : `Reach ${Math.min(TR.MAX_GOAL_PCT, d.goalPct)}%`} · hold ${(d.holdMs / 1000).toFixed(1)} s</span>
+        <span class="diff-meta">${['board', 'sensor'].includes(TR.Store.data.inputMode) ? `Reach to ${TR.SENSE.openMm / 10} cm` : `Reach ${Math.min(TR.MAX_GOAL_PCT, d.goalPct)}%`} · hold ${(d.holdMs / 1000).toFixed(1)} s</span>
         <span class="diff-loot">Best loot: ${TR.RARITIES[d.weights.reduce((m, w, i) => (w > 0 ? i : m), 0)].icon} ${TR.RARITIES[d.weights.reduce((m, w, i) => (w > 0 ? i : m), 0)].name}</span>
       </button>`).join('');
     openLayer('#levelModal');
@@ -94,8 +94,9 @@ window.TR = window.TR || {};
     close() { closeLayer('#drawer'); $('#drawerBackdrop').classList.remove('open'); },
     render() {
       const d = TR.Store.data, s = TR.Store.s;
-      const cam = d.inputMode !== 'mouse'; // 'board' = camera + Distance sensor
-      $$('#inputToggle [data-input]').forEach(b => b.classList.toggle('active', b.dataset.input === (cam ? 'camera' : 'mouse')));
+      const cam = d.inputMode === 'camera' || d.inputMode === 'board'; // 'board' = camera + Distance sensor
+      $('#inputToggle [data-input="sensor"]').hidden = !TR.hasSensor();
+      $$('#inputToggle [data-input]').forEach(b => b.classList.toggle('active', b.dataset.input === (d.inputMode === 'board' ? 'camera' : d.inputMode)));
       $('#recalBtn').hidden = !cam;
       $$('#setToggle [data-set]').forEach(b => b.classList.toggle('active', +b.dataset.set === s.setSize));
       const c = d.calib;
@@ -126,25 +127,61 @@ window.TR = window.TR || {};
   };
 
   /* ---------------- tutorial ---------------- */
+  /* Demo for the tutorial (sensor mode): fakes the sensor so the bar fills while Pip explains.
+     The game is paused during the tutorial, so no chest opens and nothing is logged. */
+  const Demo = TR.Demo = {
+    real: null, mm: null, timer: null,
+    start() { if (!this.real) { this.real = TR.sensorMm; TR.sensorMm = () => this.mm; } },
+    glide(from, to, ms) {
+      this.start(); clearInterval(this.timer);
+      const t0 = performance.now();
+      this.mm = from;
+      this.timer = setInterval(() => {
+        const k = Math.min(1, (performance.now() - t0) / ms);
+        this.mm = from + (to - from) * (0.5 - Math.cos(Math.PI * k) / 2);
+        if (k >= 1) clearInterval(this.timer);
+      }, 30);
+    },
+    reach() {   // rest → reach → hold → back, on a loop
+      this.glide(150, 40, 1600);
+      clearTimeout(this.loop);
+      this.loop = setTimeout(() => { this.glide(40, 150, 1200); this.loop = setTimeout(() => this.reach(), 1500); }, 2600);
+    },
+    stop() {
+      clearInterval(this.timer); clearTimeout(this.loop);
+      if (this.real) { TR.sensorMm = this.real; this.real = null; }
+      this.mm = null;
+    },
+  };
+
   TR.tutorialSteps = function () {
-    const mouse = TR.Store.data.inputMode === 'mouse';
+    const mode = TR.Store.data.inputMode;
+    const sensor = mode === 'sensor', mouse = mode === 'mouse';
+    const show = fn => (sensor ? fn : () => Demo.stop());
     return [
-      { text: `Hi, I'm ${WM.PIP.name}! Let's open some treasure chests together! 💰`, target: null },
-      { text: mouse ? 'This chest is locked tight! Move the blue circle up to it to open it. 🖱️' : 'This chest is locked tight! Keep both hands on the table and push them toward the laptop to open it. 🙌', target: '#chest', round: true, pad: 4 },
-      { text: mouse ? 'The blue circle is your hand. Bring it all the way to the chest! 🔵' : 'Your hands are the glowing circles: red for your left hand, blue for your right. They slide toward the chest as you reach. Push with both hands together! 🔴🔵', target: null },
-      { text: 'This bar fills up as you reach. Fill it to the star and hold it for a moment! ⭐', target: '#reachMeter' },
-      { text: 'Tap here to pick Easy, Medium or Hard. Harder means a bigger reach and a longer hold! 🐢🦀🦈', target: '#levelChip', pad: 8 },
-      { text: 'Then bring your hands back to rest, and a new chest appears. 🔁', target: '#setDots', pad: 12 },
-      { text: 'Every treasure goes into your Collection. Harder levels hide rarer treasures! 📖', target: '#collectionBtn' },
-      ...(mouse ? [] : [{ text: 'This is my camera window. Tap the eye to hide it or show it. 📷', target: '#wmCam' }]),
-      { text: 'Grown-ups can redo the reach setup and change settings in the Menu. ⚙️', target: '#menuBtn' },
-      { text: 'Need help? Tap ? and I\'ll come right back. Let\'s find treasure! 🎉', target: '#helpBtn' },
+      { text: `Hi, I'm ${WM.PIP.name}! Every reach opens a treasure chest. Let me show you how! 💰`,
+        target: '#chest', round: true, pad: 4, onShow: () => Demo.stop() },
+      { text: sensor ? 'First, rest your arm on the table. Put your hand about a ruler away from the little sensor. 🖐️'
+          : mouse ? 'First, put the mouse near the bottom of the screen. 🖱️'
+          : 'First, rest both hands on the table in front of the camera. 🙌',
+        target: null, onShow: () => Demo.stop() },
+      { text: sensor ? 'Now watch! Slide your hand slowly toward the sensor. Slow is great! 🐢'
+          : mouse ? 'Now move the blue circle up to the chest. 🔵'
+          : 'Now push both hands toward the laptop, nice and slow. 🐢',
+        target: '#chest', round: true, pad: 4, onShow: show(() => Demo.reach()) },
+      { text: 'This bar fills as you reach. Get to the star ⭐ and hold still for a moment. Then the chest opens!',
+        target: '#reachMeter', onShow: show(() => Demo.reach()) },
+      { text: 'Then rest your hand again, and a new chest appears. Each treasure goes in your Collection! 📖',
+        target: '#collectionBtn', onShow: () => Demo.stop() },
+      { text: 'Want to see this again? Tap ? any time. Ready? Let\'s find treasure! 🎉',
+        target: '#helpBtn', onShow: () => Demo.stop() },
     ];
   };
   TR.openTutorial = function (then) {
     WM.Tutorial.open(TR.tutorialSteps(), {
       doneLabel: "Let's go! 💰",
       onClose: () => {
+        Demo.stop();
         if (!TR.Store.data.tutorialDone) { TR.Store.data.tutorialDone = true; TR.Store.save(); }
         if (then) then(); else TR.Game.nudge(true);
       },
@@ -198,6 +235,7 @@ window.TR = window.TR || {};
       if (!b) return;
       Menu.close();
       if (b.dataset.input === 'mouse') TR.Game.useMouse();
+      else if (b.dataset.input === 'sensor') TR.Game.useSensor();
       else TR.Calib.open(false);
     });
     $('#recalBtn').addEventListener('click', () => { Menu.close(); TR.Calib.open(true); });

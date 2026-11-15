@@ -89,6 +89,16 @@ h2 .sub { font-size: 14px; color: var(--muted); font-weight: 500; }
 
 /* chart */
 .chart { width: 100%; height: auto; display: block; }
+.prog { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.prog .card { padding: 14px 16px; }
+.prog .n { font-size: 30px; font-weight: 700; line-height: 1.1; }
+.prog .n small { font-size: 16px; font-weight: 600; color: var(--muted); }
+.prog .l { font-weight: 600; }
+.prog .h { color: var(--muted); font-size: 13px; line-height: 1.35; margin-top: 4px; }
+.prog .warn { color: var(--accent); }
+.trend-card { margin-top: 12px; }
+.trend-card h3 { margin: 0 0 6px; font-size: 17px; }
+@media (max-width: 820px) { .prog { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 14px; color: var(--muted); margin-top: 6px; }
 .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 4px; margin-right: 6px; vertical-align: -1px; }
 
@@ -169,6 +179,15 @@ h2 .sub { font-size: 14px; color: var(--muted); font-weight: 500; }
   <div class="card">
     <svg class="chart" id="chart" role="img" aria-label="Movements per day, last 14 days"></svg>
     <div class="legend" id="legend"></div>
+  </div>
+
+  <h2>Reach progress <span class="sub">Treasure Reach with the Distance sensor, last 7 days</span></h2>
+  <div class="prog" id="prog"></div>
+  <div class="card trend-card">
+    <h3>Average reach length per day</h3>
+    <svg class="chart" id="trend" role="img" aria-label="Average reach length per day, last 14 days"></svg>
+    <p class="note" style="margin:6px 0 0">Reach length is how far the hand moved toward the sensor in a completed reach.
+      The sensor measures up to about 15 cm away, so longer reaches show as about 10 cm. Days without sensor reaches are left out.</p>
   </div>
 
   <h2>Game log <span class="sub" id="logCount"></span></h2>
@@ -286,6 +305,7 @@ function render() {
   ].map(s => `<div class="stat${s.c ? ' g' : ''}" ${s.c ? `style="--c:${s.c}"` : ''}><div class="n">${s.n}</div><div class="l">${esc(s.l)}</div></div>`).join('');
 
   drawChart(mine);
+  drawProgress(mine);
 
   // game log
   const list = mine.filter(s => (filter === 'all' || s.game === filter) && (showShort || s.movements > 0 || !s.closed));
@@ -320,6 +340,8 @@ function render() {
       s.pairs ? `<span class="chip">${s.pairs} with both hands together</span>` : '',
       s.breaks ? `<span class="chip">${s.breaks} rest break${s.breaks > 1 ? 's' : ''}</span>` : '',
       s.comfortable_mm ? `<span class="chip">Comfortable reach set: ${cm(s.comfortable_mm)}</span>` : '',
+      s.reach_avg_mm != null ? `<span class="chip">Average reach ${cm(s.reach_avg_mm)}${s.reach_max_mm != null ? ` · longest ${cm(s.reach_max_mm)}` : ''}</span>` : '',
+      s.quality_pct != null ? `<span class="chip">Sensor readings clear: ${s.quality_pct}%</span>` : '',
     ].filter(Boolean).join('');
     return `<article class="card session" style="--c:${G ? G.color : 'var(--line-d)'}">
       <div class="gicon">${s.icon}</div>
@@ -333,6 +355,58 @@ function render() {
 
   $('#sampleNote').textContent = state.children.some(c => c.endsWith('(sample)'))
     ? 'Children marked “(sample)” use simulated data to show how the page works.' : '';
+}
+
+function drawProgress(mine) {
+  const weekAgo = state.now - 7 * 86400;
+  const reach = mine.filter(s => s.game === 'reach' && s.start_t >= weekAgo);
+  const lens = reach.flatMap(s => s.reach_list || []);
+  const reps = reach.reduce((a, s) => a + s.movements, 0);
+  const days = new Set(reach.filter(s => s.movements).map(s => new Date(s.start_t * 1000).toDateString())).size;
+  const qOk = reach.reduce((a, s) => a + (s.quality_ok || 0), 0), qAll = reach.reduce((a, s) => a + (s.quality_all || 0), 0);
+  const q = qAll ? Math.round(100 * qOk / qAll) : null;
+  const sorted = [...lens].sort((a, b) => a - b);
+  const spread = sorted.length >= 4 ? sorted[Math.floor(3 * sorted.length / 4)] - sorted[Math.floor(sorted.length / 4)] : null;
+  const avg = lens.length ? lens.reduce((a, b) => a + b, 0) / lens.length : null;
+  const tiles = [
+    { n: reps, unit: '', l: 'Reaches completed', h: days ? `on ${days} day${days === 1 ? '' : 's'}` : 'No reaches this week yet' },
+    { n: avg == null ? '—' : (avg / 10).toFixed(1), unit: avg == null ? '' : ' cm', l: 'Average reach length',
+      h: lens.length ? `from ${lens.length} measured reach${lens.length === 1 ? '' : 'es'}, longest ${cm(Math.max(...lens))}` : 'Measured when playing with the sensor' },
+    { n: spread == null ? '—' : (spread / 10).toFixed(1), unit: spread == null ? '' : ' cm', l: 'How much reaches varied',
+      h: spread == null ? 'Shown after 4 measured reaches' : 'The middle half of reaches were within this range of each other' },
+    { n: q == null ? '—' : q, unit: q == null ? '' : '%', l: 'Sensor readings clear', warn: q != null && q < 80,
+      h: q == null ? 'Measured while Treasure Reach is played'
+        : q < 80 ? 'Low: wipe the sensor window and check its cable. Numbers above may be less reliable.'
+        : 'How sure the sensor was about its readings. The numbers above are reliable.' },
+  ];
+  $('#prog').innerHTML = tiles.map(t => `<div class="card"><div class="n ${t.warn ? 'warn' : ''}">${t.n}<small>${t.unit}</small></div>
+    <div class="l">${esc(t.l)}</div><div class="h">${esc(t.h)}</div></div>`).join('');
+
+  // trend: average reach length per day, last 14 days
+  const D = 14, W = 900, H = 200, pad = { l: 40, r: 12, t: 14, b: 28 };
+  const today = new Date(state.now * 1000); today.setHours(0, 0, 0, 0);
+  const pts = [...Array(D)].map((_, i) => {
+    const d = new Date(today - (D - 1 - i) * 86400000);
+    const v = mine.filter(s => s.game === 'reach' && new Date(s.start_t * 1000).toDateString() === d.toDateString()).flatMap(s => s.reach_list || []);
+    return { d, i, v: v.length ? v.reduce((a, b) => a + b, 0) / v.length : null, n: v.length };
+  });
+  const top = Math.max(100, ...pts.map(p => p.v || 0));
+  const x = i => pad.l + (W - pad.l - pad.r) * (i / (D - 1));
+  const y = v => pad.t + (H - pad.t - pad.b) * (1 - v / top);
+  let svg = '';
+  for (let k = 0; k <= 4; k++) {
+    const v = top * k / 4;
+    svg += `<line x1="${pad.l}" x2="${W - pad.r}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/>` +
+      `<text x="${pad.l - 6}" y="${y(v) + 4}" text-anchor="end" font-size="12" fill="var(--muted)">${(v / 10).toFixed(v % 10 ? 1 : 0)} cm</text>`;
+  }
+  const have = pts.filter(p => p.v != null);
+  if (have.length > 1) svg += `<polyline fill="none" stroke="var(--reach)" stroke-width="3" stroke-linejoin="round" points="${have.map(p => `${x(p.i)},${y(p.v)}`).join(' ')}"/>`;
+  have.forEach(p => { svg += `<circle cx="${x(p.i)}" cy="${y(p.v)}" r="6" fill="var(--reach)" stroke="var(--card)" stroke-width="2"><title>${p.d.toDateString()}: ${(p.v / 10).toFixed(1)} cm average over ${p.n} reach${p.n === 1 ? '' : 'es'}</title></circle>`; });
+  pts.forEach(p => { if (p.i % 2 === (D - 1) % 2) svg += `<text x="${x(p.i)}" y="${H - 8}" text-anchor="middle" font-size="12" fill="var(--muted)">${p.d.toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' })}</text>`; });
+  if (!have.length) svg += `<text x="${W / 2}" y="${H / 2}" text-anchor="middle" font-size="15" fill="var(--muted)">No measured reaches yet. Play Treasure Reach with the sensor to start the trend.</text>`;
+  const el = $('#trend');
+  el.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  el.innerHTML = svg;
 }
 
 function drawChart(mine) {

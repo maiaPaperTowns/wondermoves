@@ -38,6 +38,7 @@ def sessionize(events: list[dict], now: float) -> list[dict]:
                    "game": game, "game_name": g["name"], "icon": g["icon"], "movement_word": g["move"],
                    "movements": 0, "pairs": 0, "uncertain": 0, "breaks": 0, "rewards": [],
                    "detail": "", "comfortable_mm": None, "start_t": e["t"], "end_t": e["t"], "_last": e["t"],
+                   "reach_mms": [], "closest_mms": [], "rep_mss": [], "quality_ok": 0, "quality_all": 0,
                    "closed": False}
             if game == "reach" and e.get("level_name"):
                 cur["detail"] = f"Level {e.get('level')}: {e.get('level_name')}"
@@ -50,8 +51,14 @@ def sessionize(events: list[dict], now: float) -> list[dict]:
             continue
         cur["_last"] = cur["end_t"] = e["t"]
         counted = GAMES.get(cur["game"], {}).get("count", set())
+        if name == "sensor_quality":
+            cur["quality_ok"] += int(e.get("ok") or 0)
+            cur["quality_all"] += int(e.get("total") or 0)
         if name in counted:
             cur["movements"] += 1
+            for key, field in (("reach_mms", "reach_mm"), ("closest_mms", "closest_mm"), ("rep_mss", "rep_ms")):
+                if isinstance(e.get(field), (int, float)):
+                    cur[key].append(e[field])
             if e.get("kind") == "pair":
                 cur["pairs"] += 1
         elif name == "gesture_uncertain":
@@ -70,4 +77,32 @@ def sessionize(events: list[dict], now: float) -> list[dict]:
             s["closed"] = True
         s["minutes"] = round(max(s["end_t"] - s["start_t"], 0) / 60, 1)
         s.pop("_last", None)
+        s.update(progress(s))
     return sessions
+
+
+def _median(v):
+    v = sorted(v)
+    n = len(v)
+    return None if not n else v[n // 2] if n % 2 else (v[n // 2 - 1] + v[n // 2]) / 2
+
+
+def progress(s):
+    """Neutral numbers for the parent page: no scores, no judging words."""
+    reach, rep_ms = s.pop("reach_mms"), s.pop("rep_mss")
+    closest = s.pop("closest_mms")
+    q_ok, q_all = s.pop("quality_ok"), s.pop("quality_all")
+    out = {"reach_avg_mm": round(sum(reach) / len(reach)) if reach else None,
+           "reach_max_mm": max(reach) if reach else None,
+           "reach_n": len(reach),
+           # spread of reach lengths: the middle half of reaches lies within this many mm
+           "reach_spread_mm": None, "closest_mm": min(closest) if closest else None,
+           "rep_median_s": round(_median(rep_ms) / 1000, 1) if rep_ms else None,
+           "quality_pct": round(100 * q_ok / q_all) if q_all else None,
+           # raw values so the page can combine sessions (a week, a day)
+           "reach_list": reach, "quality_ok": q_ok, "quality_all": q_all}
+    if len(reach) >= 4:
+        r = sorted(reach)
+        out["reach_spread_mm"] = round(r[(3 * len(r)) // 4] - r[len(r) // 4])
+    return out
+
