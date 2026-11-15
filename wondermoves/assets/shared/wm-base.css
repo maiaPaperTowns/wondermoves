@@ -90,3 +90,10 @@ button:focus-visible { outline: 4px solid #fff; outline-offset: 3px; box-shadow:
 .wm-level-chip.lv-3 { --chip: #F08A2E; --chip-d: #B9621A; }
 .wm-level-chip.lv-4 { --chip: #E5484D; --chip-d: #A8282C; }
 @media (max-width: 640px) { .wm-level-chip .lc-name { display: none; } .wm-level-chip { padding: 0 8px; } }
+
+/* ---------- menu sections (same order in every game's menu) ---------- */
+.wm-menu-label {
+  margin: 8px 0 -4px; font-size: 13px; font-weight: 700; color: var(--ink-soft);
+  text-transform: uppercase; letter-spacing: .07em;
+}
+.wm-btn[hidden], .pill-btn[hidden] { display: none !important; }

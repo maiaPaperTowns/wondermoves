@@ -20,8 +20,9 @@ BP.KINDS = [
 
 BP.DEFAULTS = {
   difficulty: 'easy',
-  lift: true,           // true = WonderMoves lift rules (team decision, evidence brief): one straight lift per bubble, no timer, no missed bubbles
-                        // (bubbles wait above each resting hand; blue pairs need both hands). false = timed original.
+  // Lift mode must ALWAYS be false: the timed game is Bubble Pop's mode (product decision).
+  // Don't switch it back on here; the line in Store.load() below also forces it off for saved games.
+  lift: false,
   seconds: 60,          // session length (timed original only)
   bubbleSize: 'medium', // small | medium | big (accessibility)
   popWhileMoving: false,// only pop while the hand is moving (see BP.canPop)
@@ -59,7 +60,7 @@ BP.Store = {
       log: [],              // one record per session
     }, saved);
     this.data.settings = Object.assign({}, BP.DEFAULTS, this.data.settings);
-    this.data.settings.lift = BP.DEFAULTS.lift; // no in-game switch for this yet: always follow the default
+    this.data.settings.lift = false; // lift mode always off (see BP.DEFAULTS), even if an older save had it on
   },
   save() { try { localStorage.setItem(this.key, JSON.stringify(this.data)); } catch (e) { /* ignore */ } },
   get s() { return this.data.settings; },

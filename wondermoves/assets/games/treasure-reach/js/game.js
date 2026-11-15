@@ -473,9 +473,9 @@
   WM.bridge.onVisibility(v => { if (v && Game.mode === 'board' && Game.state !== 'idle') WM.Board.send('start', { game: 'reach_ui' }); });
   WM.Board.ready(() => {
     const sensorOk = WM.Board.available && WM.Board.sensors && WM.Board.sensors.distance !== false;
-    if (WM.Board.available && sensorOk !== false && TR.Store.data.inputMode !== 'mouse') Game.useBoard();
-    else if (TR.Store.data.inputMode === 'mouse') Game.useMouse();
-    else TR.Calib.open(false);
+    // Every launch starts with the camera (or the board's sensor on the UNO Q); Mouse lasts until reload.
+    if (WM.Board.available && sensorOk !== false) Game.useBoard();
+    else { TR.Store.data.inputMode = 'camera'; TR.Calib.open(false); }
   });
   requestAnimationFrame(frame);
 })();

@@ -42,7 +42,7 @@ The game gently favors treasures the child hasn't found yet. The 📖 Collection
 
 ## Grown-up settings (Menu)
 
-- Camera or mouse, plus **Redo reach setup**.
+- Camera or mouse. **Redo camera setup** appears under it in Camera mode.
 - Either hand or both hands, and chests per set (3, 5 or 10). Reach goal and hold time come from the level.
 - **Practice log:** one record per chest, with time to reach, peak (% of goal), palm growth, goal, settings and which hand. Download it as JSON.
 

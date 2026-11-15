@@ -10,10 +10,8 @@
   const GAMES = [
     { id: 'fossil-brush',   name: 'Fossil Brush',   icon: '🦴', color: '#FF8A3D', deep: '#D9621A', src: 'games/fossil-brush/index.html' },
     { id: 'treasure-reach', name: 'Treasure Reach', icon: '💰', color: '#22B4A3', deep: '#157F73', src: 'games/treasure-reach/index.html' },
-    // Andrew's Bubble Pop: timed mode by default; lift mode (BP.DEFAULTS.lift) = one straight lift per bubble, no timer,
-    // both-hands pairs (bimanual training). See docs/evidence-brief.html.
+    // Bubble Pop: the timed game (lift mode is always off, see BP.DEFAULTS in games/bubble-pop/js/data.js).
     { id: 'bubble-pop',     name: 'Bubble Pop',     icon: '🫧', color: '#5BA8F8', deep: '#2C74C9', src: 'games/bubble-pop/index.html' },
-    { id: 'grown-ups',      name: 'Grown-ups',      icon: '🧑‍🏫', color: '#8C7AE6', deep: '#5E4FB8', src: 'grownups.html' },
   ];
   const STORE_KEY = 'wondermoves.shell.v1';
 
