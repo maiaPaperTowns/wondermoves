@@ -771,10 +771,14 @@ body[data-mode="trace"] .buddy { bottom: 92px; }
   border-radius: 16px;
   overflow: hidden;
   background: #222;
-  z-index: 9999;
+  z-index: 9; /* above the game, below the drawer, modals and tutorial */
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.25);
   pointer-events: none;
+  transition: opacity .25s, visibility .25s;
 }
+
+/* only show the camera while the child is actually digging */
+body:not(.cam-live) #cameraPreview { opacity: 0; visibility: hidden; }
 
 #webcamVideo {
   width: 100%;

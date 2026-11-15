@@ -448,6 +448,7 @@
     const dt = Math.min(0.05, (t - lastT) / 1000);
     lastT = t;
     const blocking = FB.UI.blocking();
+    document.body.classList.toggle('cam-live', Game.canDig());
 
     if (Game.mode === 'trace') {
       FB.Trace.update(dt);
