@@ -81,7 +81,7 @@ window.TR = window.TR || {};
         <span class="diff-emoji wm-emoji">${d.emoji}</span>
         <span class="diff-name">${d.name}</span>
         <span class="diff-blurb">${d.blurb}</span>
-        <span class="diff-meta">${TR.Store.data.inputMode === 'board' ? `Reach to ${TR.SENSE.openMm / 10} cm` : `Reach ${Math.min(TR.MAX_GOAL_PCT, d.goalPct)}%`} · hold ${(d.holdMs / 1000).toFixed(1)} s</span>
+        <span class="diff-meta">${['board', 'sensor'].includes(TR.Store.data.inputMode) ? `Reach to ${TR.SENSE.openMm / 10} cm` : `Reach ${Math.min(TR.MAX_GOAL_PCT, d.goalPct)}%`} · hold ${(d.holdMs / 1000).toFixed(1)} s</span>
         <span class="diff-loot">Best loot: ${TR.RARITIES[d.weights.reduce((m, w, i) => (w > 0 ? i : m), 0)].icon} ${TR.RARITIES[d.weights.reduce((m, w, i) => (w > 0 ? i : m), 0)].name}</span>
       </button>`).join('');
     openLayer('#levelModal');
@@ -94,8 +94,9 @@ window.TR = window.TR || {};
     close() { closeLayer('#drawer'); $('#drawerBackdrop').classList.remove('open'); },
     render() {
       const d = TR.Store.data, s = TR.Store.s;
-      const cam = d.inputMode !== 'mouse'; // 'board' = camera + Distance sensor
-      $$('#inputToggle [data-input]').forEach(b => b.classList.toggle('active', b.dataset.input === (cam ? 'camera' : 'mouse')));
+      const cam = d.inputMode === 'camera' || d.inputMode === 'board'; // 'board' = camera + Distance sensor
+      $('#inputToggle [data-input="sensor"]').hidden = !TR.hasSensor();
+      $$('#inputToggle [data-input]').forEach(b => b.classList.toggle('active', b.dataset.input === (d.inputMode === 'board' ? 'camera' : d.inputMode)));
       $('#recalBtn').hidden = !cam;
       $$('#setToggle [data-set]').forEach(b => b.classList.toggle('active', +b.dataset.set === s.setSize));
       const c = d.calib;
@@ -127,18 +128,14 @@ window.TR = window.TR || {};
 
   /* ---------------- tutorial ---------------- */
   TR.tutorialSteps = function () {
-    const mouse = TR.Store.data.inputMode === 'mouse';
+    const mode = TR.Store.data.inputMode;
+    const how = mode === 'sensor' ? 'Reach your hand toward the sensor until the chest pops open! 🖐️'
+      : mode === 'mouse' ? 'Move the blue circle up to the chest to open it! 🖱️'
+      : 'Push both hands toward the laptop to open the chest! 🙌';
     return [
-      { text: `Hi, I'm ${WM.PIP.name}! Let's open some treasure chests together! 💰`, target: null },
-      { text: mouse ? 'This chest is locked tight! Move the blue circle up to it to open it. 🖱️' : 'This chest is locked tight! Keep both hands on the table and push them toward the laptop to open it. 🙌', target: '#chest', round: true, pad: 4 },
-      { text: mouse ? 'The blue circle is your hand. Bring it all the way to the chest! 🔵' : 'Your hands are the glowing circles: red for your left hand, blue for your right. They slide toward the chest as you reach. Push with both hands together! 🔴🔵', target: null },
-      { text: 'This bar fills up as you reach. Fill it to the star and hold it for a moment! ⭐', target: '#reachMeter' },
-      { text: 'Tap here to pick Easy, Medium or Hard. Harder means a bigger reach and a longer hold! 🐢🦀🦈', target: '#levelChip', pad: 8 },
-      { text: 'Then bring your hands back to rest, and a new chest appears. 🔁', target: '#setDots', pad: 12 },
-      { text: 'Every treasure goes into your Collection. Harder levels hide rarer treasures! 📖', target: '#collectionBtn' },
-      ...(mouse ? [] : [{ text: 'This is my camera window. Tap the eye to hide it or show it. 📷', target: '#wmCam' }]),
-      { text: 'Grown-ups can redo the reach setup and change settings in the Menu. ⚙️', target: '#menuBtn' },
-      { text: 'Need help? Tap ? and I\'ll come right back. Let\'s find treasure! 🎉', target: '#helpBtn' },
+      { text: `Hi, I'm ${WM.PIP.name}! ${how}`, target: '#chest', round: true, pad: 4 },
+      { text: 'Fill this bar to the star and hold for a moment. ⭐', target: '#reachMeter' },
+      { text: 'Then rest your hand, and a new chest appears. Need help? Tap ? 🎉', target: '#helpBtn' },
     ];
   };
   TR.openTutorial = function (then) {
@@ -198,6 +195,7 @@ window.TR = window.TR || {};
       if (!b) return;
       Menu.close();
       if (b.dataset.input === 'mouse') TR.Game.useMouse();
+      else if (b.dataset.input === 'sensor') TR.Game.useSensor();
       else TR.Calib.open(false);
     });
     $('#recalBtn').addEventListener('click', () => { Menu.close(); TR.Calib.open(true); });

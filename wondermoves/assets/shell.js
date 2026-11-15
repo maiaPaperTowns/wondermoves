@@ -8,10 +8,11 @@
    ========================================================================== */
 (function () {
   const GAMES = [
-    { id: 'fossil-brush',   name: 'Fossil Brush',   icon: '🦴', color: '#FF8A3D', deep: '#D9621A', src: 'games/fossil-brush/index.html',
-      move: 'Brush the sand away', how: 'Copy Pip\'s brush strokes to dig up a fossil.', log: 'brush', word: 'strokes' },
+    // Treasure Reach first: it uses the Distance sensor on the game board.
     { id: 'treasure-reach', name: 'Treasure Reach', icon: '💰', color: '#22B4A3', deep: '#157F73', src: 'games/treasure-reach/index.html',
       move: 'Reach forward', how: 'Reach out and hold to open the treasure chest.', log: 'reach', word: 'reaches' },
+    { id: 'fossil-brush',   name: 'Fossil Brush',   icon: '🦴', color: '#FF8A3D', deep: '#D9621A', src: 'games/fossil-brush/index.html',
+      move: 'Brush the sand away', how: 'Copy Pip\'s brush strokes to dig up a fossil.', log: 'brush', word: 'strokes' },
     // Bubble Pop: the timed game (lift mode is always off, see BP.DEFAULTS in games/bubble-pop/js/data.js).
     { id: 'bubble-pop',     name: 'Bubble Pop',     icon: '🫧', color: '#5BA8F8', deep: '#2C74C9', src: 'games/bubble-pop/index.html',
       move: 'Lift your hand', how: 'Move your hand onto the bubbles to pop them.', log: 'bubbles', word: 'bubbles' },
