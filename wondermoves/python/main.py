@@ -631,7 +631,20 @@ def parents_state(request: Request):
                 events.append(e)
     except FileNotFoundError:
         pass
-    sessions = [dict(s, insight=None) for s in sessionize(events, time.time())]
+    # Databricks notes, copied here by the laptop helper after each run (keyed by game + board start time).
+    try:
+        ins = json.loads((DATA / "parent_insights.json").read_text())
+    except (FileNotFoundError, ValueError):
+        ins = None
+    notes = (ins or {}).get("sessions", {})
+
+    def note_for(x):
+        for dt in (0, -1, 1, -2, 2):
+            n = notes.get(f"{x['game']}|{int(x['start_t']) + dt}")
+            if n:
+                return n
+        return None
+    sessions = [dict(s, insight=note_for(s)) for s in sessionize(events, time.time())]
     if not authorized(request.headers.get("x-wm-token")):
         # Without the parent PIN: only what Home needs (movement counts per session, and the hello).
         # The page works out "today" with its own clock (the board's clock can be wrong).
@@ -642,7 +655,9 @@ def parents_state(request: Request):
                                          "level", "break_minutes", "found", "child")}
     return {"children": [profile["child"]["nickname"] or "Your child"], "sessions": sessions, "daily": [], "profile": prof,
             "board": "connected (page served by the board)",
-            "databricks": {"state": "on the laptop", "updated": None,
+            "databricks": {"state": "up to date", "updated": ins.get("generated_at"),
+                           "detail": "Notes from the last Databricks run (copied from the laptop helper)."} if ins else
+                          {"state": "on the laptop", "updated": None,
                            "detail": "Notes from Databricks appear when the parent helper runs on a laptop (python3 parents/server.py)."},
             "now": time.time()}
 
