@@ -36,7 +36,7 @@ failed run. The tunnel keeps the hand in the beam without the child having to ai
  hand ▄▄  ·  ·  ·  ·  ·  ·  ·  ·  ◄ chip                │ [hand rest] ──reach──►   ◄ sensor  │
  ═towel═                          ▐ sensor on box       └───────────── wall ─────────────────┘
  ─────── table ──────────────────────────────            walls 8 cm apart, tunnel ~30 cm long
-   chip and hand both ~5 cm above the table; rest 15–20 cm from the chip
+   chip and hand both ~5 cm above the table; rest ~10 cm from the chip
 ```
 
 **Build (about 15 minutes):**
@@ -44,11 +44,12 @@ failed run. The tunnel keeps the hand in the beam without the child having to ai
    about 5 cm above the table**, facing straight along the tunnel. Make sure nothing (tape, cardboard lip, cable)
    sits in front of the chip: anything within ~4 cm reads as a fake target.
 2. **Hand rest at the same height.** A folded towel on a book, so the resting hand's centre is also ~5 cm up,
-   **15–20 cm** from the chip. Mark the spot with tape.
+   **about 10 cm** from the chip. (Measured: a hand closer than ~14 cm reads cleanly; farther, its weak return
+   competes with the sensor's own window reflection and drops out.) Mark the spot with tape.
 3. **Tunnel walls.** Two cardboard strips, ~30 cm long and 8 cm high, taped down **8 cm apart** from the rest to the
    sensor. The hand slides forward between them, so it stays in line.
-4. **Check before calibrating.** Grown-ups tab → "Distance:" must show a **steady number** (e.g. "170 mm") with the hand
-   at rest, and drop by ~50 mm when the hand moves 5 cm closer. "Nothing in range" means the hand is out of the beam:
+4. **Check before calibrating.** Grown-ups tab → "Distance:" must show a **steady number** (about "100 mm") with the hand
+   at rest, and drop by ~50 mm when the hand moves 5 cm closer. Keep the chip window clean (no fingerprints). "Nothing in range" means the hand is out of the beam:
    adjust the sensor's height or tilt, not the child.
 5. **Decorate:** the far wall is the "cave", the tunnel is the "dig path". Keep the floor of the tunnel matte (no foil).
 
