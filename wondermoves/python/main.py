@@ -199,8 +199,32 @@ def on_vision_event(event, data):
     # old two-hand detector events are not forwarded.
 
 
+VISION_STATS = DATA / "vision_stats.jsonl"
+_vstats = {"t0": time.time(), "n": 0, "left": 0, "right": 0, "both": 0}
+
+
+def on_board_hands(d):
+    """Relay hand positions to the game, and every 10 s log how often hands were found
+    (numbers only, no images) so camera tracking can be checked after a standalone run."""
+    ui.send_message("hands", d)
+    h = d.get("hands") or {}
+    _vstats["n"] += 1
+    _vstats["left"] += bool(h.get("left"))
+    _vstats["right"] += bool(h.get("right"))
+    _vstats["both"] += bool(h.get("left") and h.get("right"))
+    if time.time() - _vstats["t0"] >= 10:
+        n = max(1, _vstats["n"])
+        with VISION_STATS.open("a") as f:
+            f.write(json.dumps({"t": time.time(), "backend": d.get("backend"), "fps": d.get("fps"),
+                                "frames": _vstats["n"], "left_pct": round(100 * _vstats["left"] / n),
+                                "right_pct": round(100 * _vstats["right"] / n),
+                                "both_pct": round(100 * _vstats["both"] / n),
+                                "game": state.get("game") if state.get("mode") == "playing" else None}) + "\n")
+        _vstats.update(t0=time.time(), n=0, left=0, right=0, both=0)
+
+
 vision = Vision(on_event=on_vision_event,
-                on_hands=lambda d: ui.send_message("hands", d),
+                on_hands=on_board_hands,
                 assist_hand=profile.get("assist_hand", "left"))
 vision.start()
 
