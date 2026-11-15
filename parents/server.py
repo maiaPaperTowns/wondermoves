@@ -64,7 +64,9 @@ class BoardLog:
             f = DATA / "demo_board_log.jsonl"
             self.status = "simulated board"
             return f.read_text().splitlines() if f.exists() else []
-        adb = shutil.which("adb")
+        adb = shutil.which("adb") or next((str(p) for p in (Path.home() / ".local/bin/adb",
+                                                            Path.home() / "Library/Android/sdk/platform-tools/adb")
+                                           if p.exists()), None)
         if not adb:
             self.status = "adb not found (install Android platform-tools, or use --demo)"
             return None
