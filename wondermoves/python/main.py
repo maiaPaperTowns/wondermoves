@@ -268,6 +268,13 @@ def on_sensor_status(has_d, has_m, has_t, distance_hz, imu_hz, last_mm):
                          distance_hz=distance_hz, imu_hz=imu_hz,
                          last_distance_mm=last_mm if last_mm >= 0 else None)
     ui.send_message("sensors", sensor_status)
+    # Tell the caregiver right away when the Distance sensor can't see the hand during
+    # calibration or Treasure Reach (its beam is narrow), instead of waiting silently.
+    needs_hand = state["mode"] in ("calib_baseline", "calib_reach") or (
+        state["mode"] == "playing" and state["game"] == "reach")
+    if needs_hand and distance_hz == 0 and time.time() - state.get("hand_warned", 0) > 6:
+        state["hand_warned"] = time.time()
+        emit("hand_not_seen")
 
 
 # ---------------- Browser -> board messages ----------------

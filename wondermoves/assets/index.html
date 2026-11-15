@@ -208,6 +208,7 @@ setInterval(() => {
     say("I can't see your hand. Keep it straight in front of the sensor.");
   }
 }, 500);
+socket.on('hand_not_seen', () => say("I can't see your hand. Rest it on the towel, straight in front of the sensor."));
 socket.on('calibration_busy', () => say('Let\'s finish setting up first: rest, then 3 small reaches.'));
 socket.on('distance', (d) => {
   lastDistanceAt = performance.now();
