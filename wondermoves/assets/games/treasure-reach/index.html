@@ -76,29 +76,6 @@
     </div>
   </main>
 
-  <!-- Sensor mode: what to do right now ("touch the sensor"), under the chest -->
-  <div class="touch-cue" id="touchCue" hidden aria-live="polite">
-    <div class="tc-art" aria-hidden="true">
-      <svg viewBox="0 0 120 64" class="tc-svg">
-        <rect x="70" y="16" width="44" height="32" rx="7" fill="#2E6B4F" stroke="#1D4734" stroke-width="3"/>
-        <rect x="84" y="25" width="16" height="14" rx="3" fill="#1A1A1A"/>
-        <circle cx="92" cy="32" r="3.4" fill="#5BC8FF"/>
-        <circle class="tc-ping" cx="92" cy="32" r="10" fill="none" stroke="#FFD34D" stroke-width="3"/>
-      </svg>
-      <span class="tc-hand wm-emoji">👉</span>
-    </div>
-    <div class="tc-text">
-      <b id="tcTitle">Touch the sensor!</b>
-      <span id="tcSub">Slide your hand all the way to the little sensor.</span>
-    </div>
-  </div>
-
-  <!-- One-button play: a big hold-to-reach button (also Space / Enter / a USB switch) -->
-  <button class="switch-btn" id="switchBtn" hidden aria-label="Hold to reach (or hold Space)">
-    <span class="sw-emoji wm-emoji" aria-hidden="true">✋</span><span>Hold to reach</span>
-    <small>or hold Space</small>
-  </button>
-
   <!-- hands + coins -->
   <canvas id="fx" aria-hidden="true"></canvas>
 
@@ -150,9 +127,7 @@
     <p class="drawer-sub">Chests opened: <b id="totalChests">0</b></p>
 
     <p class="wm-menu-label">Play with</p>
-    <div class="seg two" id="inputToggle" style="grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:1fr" role="group" aria-label="Play with">
-      <button data-input="sensor" hidden>📏 Sensor</button>
-      <button data-input="switch">🔘 Button</button>
+    <div class="seg two" id="inputToggle" role="group" aria-label="Play with">
       <button data-input="camera">📷 Camera</button>
       <button data-input="mouse">🖱️ Mouse</button>
     </div>

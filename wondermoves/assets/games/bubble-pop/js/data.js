@@ -23,7 +23,7 @@ BP.DEFAULTS = {
   // Lift mode must ALWAYS be false: the timed game is Bubble Pop's mode (product decision).
   // Don't switch it back on here; the line in Store.load() below also forces it off for saved games.
   lift: false,
-  seconds: 0,           // round length in seconds; 0 = no timer (default: the child decides when to stop)
+  seconds: 60,          // session length (timed original only)
   bubbleSize: 'medium', // small | medium | big (accessibility)
   popWhileMoving: false,// only pop while the hand is moving (see BP.canPop)
 };
@@ -61,8 +61,6 @@ BP.Store = {
     }, saved);
     this.data.settings = Object.assign({}, BP.DEFAULTS, this.data.settings);
     this.data.settings.lift = false; // lift mode always off (see BP.DEFAULTS), even if an older save had it on
-    // One-time switch to "No timer" for saves from before it existed (WonderMoves rule: no timers).
-    if (!this.data.noTimerV1) { this.data.settings.seconds = 0; this.data.noTimerV1 = true; this.save(); }
   },
   save() { try { localStorage.setItem(this.key, JSON.stringify(this.data)); } catch (e) { /* ignore */ } },
   get s() { return this.data.settings; },
