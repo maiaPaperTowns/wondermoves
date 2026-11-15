@@ -106,10 +106,3 @@ js/camera.js      camera play: auto-start, table-view setup, fingertip brush rul
 js/ui.js          depth meter, menu, collection, found card, tutorial
 js/main.js        game loop, input (touch / mouse / camera finger), dig → reveal → collect flow
 ```
-
-## Playing with the WonderMoves board
-
-When the UNO Q app serves this page, `js/sensor.js` connects through `../../shared/wm-board.js` and brushes with the
-**Modulino Movement** sensor (in a chunky brush handle or a wrist cuff). The board counts **completed back-and-forth
-strokes** (`python/strokes.py`), the same at any speed, and each stroke plays one fixed sweep of sand in Free Play.
-Touch, mouse and the camera modes still work. Opened standalone, the board bridge stays off.

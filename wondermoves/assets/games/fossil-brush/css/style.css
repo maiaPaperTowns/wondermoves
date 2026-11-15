@@ -737,3 +737,8 @@ body.wm-calibrating .buddy-bubble { margin: 0 0 4px; max-width: min(270px, calc(
 /* scenery anchored with `bottom` grows upward from its base */
 .decor span[style*="bottom"] { transform-origin: 50% 100%; }
 @media (max-width: 640px) { .level-pill .wm-level-chip { display: inline-flex; } }
+
+/* ---------------- menu: same look as the other games ---------------- */
+.drawer .wm-menu-label { margin-bottom: -6px; }
+.drawer .drawer-actions { margin-top: 8px; padding-top: 0; }
+.seg button.active { background: var(--teal); color: #fff; box-shadow: 0 3px 0 var(--teal-d); }

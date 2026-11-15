@@ -86,27 +86,34 @@
 
   <!-- ===== Menu drawer ===== -->
   <div class="drawer-backdrop" id="drawerBackdrop"></div>
-  <nav class="drawer" id="drawer" aria-hidden="true" aria-label="Dig sites">
+  <nav class="drawer" id="drawer" aria-hidden="true" aria-label="Menu">
     <div class="drawer-head">
-      <h2>🗺️ Dig Sites</h2>
+      <h2>🦴 Fossil Brush</h2>
       <button class="close-btn" id="drawerClose" aria-label="Close menu">✕</button>
     </div>
+
+    <p class="wm-menu-label">Play with</p>
+    <div class="seg two-col" id="inputToggle" role="group" aria-label="Play with">
+      <button data-input="camera">📷 Camera</button>
+      <button data-input="touch">🖱️ Mouse</button>
+    </div>
+    <button class="pill-btn" id="camRecal" hidden>🎯 Redo camera setup</button>
+
+    <p class="wm-menu-label">Game mode</p>
     <div class="mode-toggle" id="modeToggle" role="group" aria-label="Game mode">
       <button data-mode="trace">✏️ Copy Pip</button>
       <button data-mode="free">🖌️ Free Play</button>
     </div>
     <p class="mode-hint" id="modeHint"></p>
-    <div class="seg two-col" id="inputToggle" role="group" aria-label="Play with">
-      <button data-input="touch">🖐️ Touch &amp; mouse</button>
-      <button data-input="camera">📷 Camera</button>
-    </div>
-    <button class="pill-btn small" id="camRecal" hidden>🎯 Redo camera setup</button>
+
+    <p class="wm-menu-label">Dig sites</p>
     <p class="drawer-sub">Pick a place to dig. Harder sites hide rarer treasures!</p>
     <div class="level-list" id="levelList"></div>
+
     <div class="drawer-actions">
-      <button class="pill-btn primary" id="newDigBtn">🔄 New Dig Here</button>
-      <button class="pill-btn" id="drawerCatalog">📖 My Collection</button>
-      <button class="pill-btn" id="drawerHelp">🎓 How to Play</button>
+      <button class="pill-btn primary" id="newDigBtn">🔄 New dig here</button>
+      <button class="pill-btn" id="drawerCatalog">📖 My collection</button>
+      <button class="pill-btn" id="drawerHelp">🎓 How to play</button>
     </div>
     <details class="grownups">
       <summary>👪 For grown-ups</summary>
@@ -214,8 +221,5 @@
   <script src="js/camera.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/main.js"></script>
-  <!-- WonderMoves: Movement-sensor brushing when served from the UNO Q (no-op when opened standalone) -->
-  <script src="../../shared/wm-board.js"></script>
-  <script src="js/sensor.js"></script>
 </body>
 </html>

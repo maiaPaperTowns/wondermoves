@@ -13,7 +13,7 @@
   FB.Sound.setMuted(!!FB.Store.data.muted);
 
   const canvas = $('#game');
-  const site = FB.site = new FB.DigSite(canvas);  // FB.site: used by js/sensor.js (WonderMoves board input)
+  const site = FB.site = new FB.DigSite(canvas);  // FB.site: used by js/camera.js (fingertip mapping)
   const cursor = $('#brushCursor');
   const hand = $('#handHint');
   const digArea = $('#digArea');
@@ -348,6 +348,7 @@
   layout();
   Game.setLevel(FB.Store.data.level);
   requestAnimationFrame(frame);
-  if (FB.Store.data.input === 'camera') FB.Cam.open();
-  else if (!FB.Store.data.tutorialDone) setTimeout(() => FB.Tutorial.open(), 700);
+  // Every launch starts in Camera mode (Mouse lasts until the page is reloaded).
+  // Fossil Brush doesn't use board sensors: camera, touch and mouse only.
+  FB.Cam.open();
 })();

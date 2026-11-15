@@ -95,6 +95,7 @@ window.TR = window.TR || {};
     render() {
       const d = TR.Store.data, s = TR.Store.s;
       $$('#inputToggle [data-input]').forEach(b => b.classList.toggle('active', b.dataset.input === d.inputMode));
+      $('#recalBtn').hidden = d.inputMode !== 'camera';
       $$('#handsToggle [data-hands]').forEach(b => b.classList.toggle('active', b.dataset.hands === s.hands));
       $$('#setToggle [data-set]').forEach(b => b.classList.toggle('active', +b.dataset.set === s.setSize));
       const c = d.calib;

@@ -82,15 +82,18 @@
       <h2>🫧 Bubble Pop</h2>
       <button class="wm-close" id="drawerClose" aria-label="Close menu">✕</button>
     </div>
-    <button class="wm-btn primary" id="newGameBtn">🫧 New game</button>
+    <p class="wm-menu-label">Play with</p>
     <div class="wm-seg two" id="inputToggle" role="group" aria-label="Play with">
       <button data-input="camera">📷 Camera</button>
       <button data-input="mouse">🖱️ Mouse</button>
     </div>
-    <button class="wm-btn" id="recalBtn">🎯 Redo camera setup</button>
+    <button class="wm-btn" id="recalBtn" hidden>🎯 Redo camera setup</button>
+
+    <p class="wm-menu-label">Game</p>
+    <button class="wm-btn primary" id="newGameBtn">🫧 New game</button>
     <button class="wm-btn" id="drawerHelp">🎓 How to play</button>
 
-    <details class="wm-grownups" open>
+    <details class="wm-grownups">
       <summary>👪 For grown-ups</summary>
       <p class="wm-gu-note" id="rangeInfo"></p>
       <div class="wm-gu-row">

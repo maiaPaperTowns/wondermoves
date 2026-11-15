@@ -503,7 +503,8 @@
   /* ---------------- boot ---------------- */
   BP.UI.init();
   resize();
-  if (BP.Store.data.inputMode === 'mouse') Game.useMouse();
-  else BP.Calib.open();
+  // Every launch starts in Camera mode (Mouse lasts until the page is reloaded).
+  BP.Store.data.inputMode = 'camera';
+  BP.Calib.open();
   requestAnimationFrame(frame);
 })();

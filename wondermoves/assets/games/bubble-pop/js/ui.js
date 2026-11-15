@@ -64,6 +64,7 @@ window.BP = window.BP || {};
     render() {
       const d = BP.Store.data, s = BP.Store.s;
       $$('#inputToggle [data-input]').forEach(b => b.classList.toggle('active', b.dataset.input === d.inputMode));
+      $('#recalBtn').hidden = d.inputMode !== 'camera';
       $$('#secToggle [data-sec]').forEach(b => b.classList.toggle('active', +b.dataset.sec === s.seconds));
       $$('#sizeToggle [data-size]').forEach(b => b.classList.toggle('active', b.dataset.size === s.bubbleSize));
       $('#moveOnly').checked = !!s.popWhileMoving;
