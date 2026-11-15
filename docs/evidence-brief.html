@@ -91,39 +91,40 @@ a:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
       <div class="head"><h3>Treasure Reach</h3><span class="pill ok">Meets the rule · evidence: moderate</span></div>
       <div class="body">
         <dl class="kv">
-          <dt>The movement</dt><dd>One forward reach from a supported rest, toward a Distance sensor 25–35 cm away, then back to rest.</dd>
+          <dt>The movement</dt><dd>One forward reach from a supported rest toward the Distance sensor, then back to rest. With the sensor connected the game starts straight away (no camera setup): the chest opens when the hand comes within the child's own distance (the caregiver's approved maximum or the calibrated comfortable reach, whichever is smaller) and is held for the level's hold time.</dd>
           <dt>Sensor</dt><dd>Modulino Distance (time-of-flight), facing the hand.</dd>
           <dt>Therapy approach</dt><dd>Goal-directed training: repeated practice of a real, meaningful movement toward a goal.</dd>
           <dt>Evidence</dt><dd>Goal-directed training improved hand function (AHA <span class="num">+3.8</span>) and goal achievement (COPM <span class="num">+2.3</span>) in the 2025 meta-analysis. Novak et al. (2020) list goal-directed training among effective interventions for CP.</dd>
-          <dt>How it scales</dt><dd>4 reaches clear a level; 5 levels unlock a coin, gemstone, fossil, cave and chest. The reach target stays at the approved and calibrated range: in testing, level 2 is listed at 70 mm but stays at 40 mm for a child whose comfortable reach is 40 mm.</dd>
-          <dt>Tested</dt><dd>On the UNO Q with the real sensor: calibration, then 3 of 3 reaches detected (41, 38, 37 mm against a 33 mm target).</dd>
+          <dt>How it scales</dt><dd>Current build: Easy, Medium and Hard change only the hold time (0.3, 0.8, 1.5 s) and the rarity of treasures, never the distance. Earlier board version: 4 reaches clear a level; 5 levels unlock a coin, gemstone, fossil, cave and chest. The reach target stays at the approved and calibrated range: in testing, level 2 is listed at 70 mm but stays at 40 mm for a child whose comfortable reach is 40 mm.</dd>
+          <dt>Tested</dt><dd>On the UNO Q with the real sensor: calibration, then 3 of 3 reaches detected (41, 38, 37 mm against a 33 mm target). Sensor mode in the current build: tested with simulated readings only, not yet with a child.</dd>
+          <dt>Known limit</dt><dd>The sensor sees a narrow cone (about 8 cm wide at 26 cm) and only the closest object, so it cannot tell a reach from leaning the trunk forward, a common compensation in CP. A grown-up should watch for leaning; camera-based trunk checks are future work.</dd>
         </dl>
       </div>
     </article>
 
     <article class="card verdict ok">
-      <div class="head"><h3>Fossil Brush</h3><span class="pill ok">Meets the rule · evidence: emerging</span></div>
+      <div class="head"><h3>Fossil Brush</h3><span class="pill warn">Partly meets the rule · evidence: emerging</span></div>
       <div class="body">
         <dl class="kv">
-          <dt>The movement</dt><dd>One back-and-forth brushing stroke, with the Movement sensor in a chunky brush handle or a soft wrist cuff.</dd>
-          <dt>Sensor</dt><dd>Modulino Movement (6-axis IMU).</dd>
+          <dt>The movement</dt><dd>Current build (camera): the child points a finger and traces the shape Pip shows (zigzag, square, triangle, circle) in the air to brush away the sand. These are several directions, not one movement, so it only partly meets the one-movement rule. The single back-and-forth stroke version uses the Movement sensor in a brush handle or wrist cuff; it is written but not in use, because the Movement sensor was not detected on our kit.</dd>
+          <dt>Sensor</dt><dd>Brio webcam with on-device hand tracking (current build); Modulino Movement (6-axis IMU) for the stroke version.</dd>
           <dt>Therapy approach</dt><dd>Action observation: before each dig, Pip demonstrates the back-and-forth stroke (the brush sweeps without digging), then the child copies it. On the board the game uses this single movement; the multi-directional shape tracing (Copy Pip) is only for touch play.</dd>
           <dt>Evidence</dt><dd>Action observation improved hand function in unilateral CP (AHA <span class="num">+4.9</span>, 2025 meta-analysis), but not self-care. A 2023 network meta-analysis found a smaller, uncertain effect, so this is our least certain game. In the UP-CAT trial (Sgandurra et al., 2013), 24 children with unilateral CP who watched, then practised, goal-directed actions improved their daily use of the affected arm.</dd>
         </dl>
-        <div class="fix"><strong>Done:</strong> the board now counts completed strokes from the swing angle (at least 8° one way, then turning back). A slow stroke and a fast stroke of the same size count the same, and each stroke clears one fixed sweep of sand. Tested with simulated gyro data: slow and fast brushing gave the same count, and a resting hand gave none.</div>
+        <div class="fix"><strong>Stroke version (not in use yet):</strong> the board counts completed strokes from the swing angle (at least 8° one way, then turning back). A slow stroke and a fast stroke of the same size count the same, and each stroke clears one fixed sweep of sand. Tested with simulated gyro data: slow and fast brushing gave the same count, and a resting hand gave none.</div>
       </div>
     </article>
 
     <article class="card verdict ok">
-      <div class="head"><h3>Bubble Pop, lift mode</h3><span class="pill ok">Meets the rule · evidence: strong</span></div>
+      <div class="head"><h3>Bubble Pop</h3><span class="pill warn">Partly meets the rule · evidence: moderate (strong for lift mode)</span></div>
       <div class="body">
         <dl class="kv">
-          <dt>Why it changed</dt><dd>Bubble Pop's timed version (60 s, countdown, bubbles rising from anywhere and escaping) asked the child to aim in many directions against a clock, the demands the CP research says to avoid. Its default is now lift mode, keeping Andrew's under-the-sea design.</dd>
-          <dt>The movement</dt><dd>One lift: from rest, raise the hand straight up. Each bubble appears directly above that hand's resting spot, always in the same place. The order is left, right, then a pair that needs both hands up together, held as long as needed.</dd>
+          <dt>Current build</dt><dd>The team chose Andrew's original game: bubbles rise from the sea floor and the child moves a hand onto them. Its default is now <strong>no timer</strong>: the child taps "I'm done" to finish (30, 60 and 90 s rounds are still available). Bubbles still rise in different places, so it asks for reaching in several directions, which only partly meets the one-movement rule. Therapy approach: goal-directed reaching to targets (moderate evidence).</dd>
+          <dt>Lift mode (written, switched off)</dt><dd>One lift: from rest, raise the hand straight up. Each bubble appears directly above that hand's resting spot, always in the same place. The order is left, right, then a pair that needs both hands up together, held as long as needed.</dd>
           <dt>Sensor</dt><dd>Brio webcam with on-device pose tracking. Only hand positions leave the vision code; no video is stored or sent.</dd>
-          <dt>Therapy approach</dt><dd>Bimanual training: practising using both hands together.</dd>
-          <dt>Evidence</dt><dd>Bimanual training was the most consistently effective approach in the 2025 meta-analysis: hand function (AHA <span class="num">+4.6</span>), goal achievement (COPM <span class="num">+3.3</span>) and self-care (SMD <span class="num">0.39</span>). Novak et al. (2020) also rate bimanual training as effective.</dd>
-          <dt>Tested</dt><dd>With real hands and the Brio: 23 pops in about 2 minutes (16 single lifts and 7 two-hand pairs), with no timer. With simulated hands: a half lift does not pop, a full lift does, holding up does not pop twice, and a pair needs both hands.</dd>
+          <dt>Therapy approach (lift mode)</dt><dd>Bimanual training: practising using both hands together.</dd>
+          <dt>Evidence (lift mode)</dt><dd>Bimanual training was the most consistently effective approach in the 2025 meta-analysis: hand function (AHA <span class="num">+4.6</span>), goal achievement (COPM <span class="num">+3.3</span>) and self-care (SMD <span class="num">0.39</span>). Novak et al. (2020) also rate bimanual training as effective.</dd>
+          <dt>Tested (lift mode)</dt><dd>With real hands and the Brio: 23 pops in about 2 minutes (16 single lifts and 7 two-hand pairs), with no timer. With simulated hands: a half lift does not pop, a full lift does, holding up does not pop twice, and a pair needs both hands.</dd>
         </dl>
       </div>
     </article>
@@ -199,7 +200,7 @@ a:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
     <table>
       <thead><tr><th>Guideline</th><th>How the games meet it</th><th>Changed in this review</th></tr></thead>
       <tbody>
-        <tr><td>One simple action per game</td><td>Reach forward (Treasure Reach), brush back and forth (Fossil Brush), lift a hand (Bubble Pop).</td><td>No change.</td></tr>
+        <tr><td>One simple action per game</td><td>Reach forward (Treasure Reach). Fossil Brush (shape tracing) and Bubble Pop (bubbles in several places) use more than one direction in the current build.</td><td>Stroke version of Fossil Brush and lift mode of Bubble Pop are written; switching to them would meet the rule.</td></tr>
         <tr><td>No precise timing, no speed reward</td><td>No timers. Each completed movement counts the same, slow or fast. Bubbles wait until the hand comes up.</td><td>No change.</td></tr>
         <tr><td>Low penalty for errors</td><td>No lives, no fail state, no score shown to the child. Uncertain gestures get a gentle hint.</td><td>No change.</td></tr>
         <tr><td>Adapt to the child's ability</td><td>Calibrated comfortable reach. The caregiver's approved maximum is never exceeded. Bubble lift height is set by the caregiver and never grows by itself.</td><td>Caregiver sets the <b>affected hand</b>. Bubble Pop now gives it 2 of every 3 single bubbles, plus both-hands pairs.</td></tr>

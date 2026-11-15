@@ -22,6 +22,12 @@ Then open **http://localhost:8090**.
 session straight from the board's log. Databricks notes appear only on the laptop helper, because
 the board has no Databricks sign-in.
 
+**Parent PIN (board only):** Progress and Settings ask for a 4-digit parent PIN, created the first time.
+The board keeps only a salted hash (`data/parent_pin.json`); without the PIN it shares only the child's
+nickname and per-session movement counts (for the Home screen), and ignores settings changes.
+Forgot it? Delete `data/parent_pin.json` on the board and create a new one. The laptop helper only
+listens on the laptop itself (127.0.0.1), so it asks for no PIN.
+
 - The game runs offline. The **laptop** needs internet (Wi-Fi or a phone hotspot) only for the Databricks notes.
   Without internet the page still shows every session, and the notes are added when the connection comes back.
 - A session closes when the child pauses or leaves the game (`break_requested`), or after 3 quiet minutes.

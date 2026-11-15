@@ -95,7 +95,9 @@ The shell has two hooks so a voice agent can be added without touching the games
 - **Opening a game by voice:** call `location.hash = '#treasure-reach'` (or `'#home'`).
 
 - **Who Pip is talking to:** a grown-up fills in *About your child* in Settings. The shell puts it in
-  `window.WM_CHILD` once Home loads, and `GET /api/state` returns it as `profile.child`:
+  `window.WM_CHILD` once Home loads (from `GET /api/state` → `profile.child`). Without the parent PIN the
+  board only shares the nickname, plus the other fields below when the grown-up has switched on
+  *Let Pip talk with my child by voice* (`voice_ok`), because the agent needs them:
 
   ```js
   { nickname: 'Mia', age_band: '6-8' | '9-12' | '', language: 'en' | 'es' | 'vi' | 'zh' | 'fr' | 'ar' | 'hi',
