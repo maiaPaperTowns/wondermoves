@@ -760,3 +760,44 @@ body[data-mode="free"] .mode-chip { background: var(--orange); }
 
 body[data-mode="trace"] .buddy { bottom: 92px; }
 @media (max-width: 640px) { body[data-mode="trace"] .buddy { bottom: 66px; left: 6px; } }
+
+#cameraPreview {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  width: 240px;
+  height: 180px;
+  border: 4px solid white;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #222;
+  z-index: 9999;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+}
+
+#webcamVideo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+
+.cameraLabel {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.65);
+  color: white;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+#trackingOverlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}

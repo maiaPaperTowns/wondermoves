@@ -208,6 +208,13 @@
     </div>
   </div>
 
+  <!-- Webcam preview: bottom-left corner -->
+  <div id="cameraPreview">
+    <video id="webcamVideo" autoplay playsinline muted></video>
+    <canvas id="trackingOverlay"></canvas>
+    <span class="cameraLabel">📷 Live Hand Tracking</span>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
   <script src="js/data.js"></script>
   <script src="js/store.js"></script>
@@ -216,5 +223,6 @@
   <script src="js/trace.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/main.js"></script>
+
 </body>
 </html>

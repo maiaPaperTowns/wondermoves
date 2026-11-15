@@ -214,7 +214,11 @@
   }
   function updateCursorVisibility(e) {
     const over = Game.canDig() && site.contains(e.clientX, e.clientY, 1.05);
-    const show = over && (e.pointerType === 'mouse' || down);
+    const show = over && (
+      e.pointerType === 'mouse' ||
+      e.pointerId === 999 ||
+      down
+    );
     cursor.classList.toggle('show', show);
     canvas.classList.toggle('digging', over);
   }
@@ -265,6 +269,147 @@
   canvas.addEventListener('pointerup', endStroke);
   canvas.addEventListener('pointercancel', endStroke);
   canvas.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse' && !down) cursor.classList.remove('show'); });
+
+
+  /* ---------------- webcam hand tracking ---------------- */
+
+  const cameraSocket = new WebSocket("ws://localhost:8765");
+
+  const webcamVideo = document.getElementById("webcamVideo");
+
+  const trackingOverlay = document.getElementById("trackingOverlay");
+  const trackingCtx = trackingOverlay.getContext("2d");
+
+  function drawTrackingDot(data) {
+    const width = trackingOverlay.clientWidth;
+    const height = trackingOverlay.clientHeight;
+
+    trackingOverlay.width = width;
+    trackingOverlay.height = height;
+
+    trackingCtx.clearRect(0, 0, width, height);
+
+    if (!data.detected) return;
+
+    const x = data.x * width;
+    const y = data.y * height;
+
+    trackingCtx.beginPath();
+    trackingCtx.arc(x, y, 10, 0, Math.PI * 2);
+    trackingCtx.fillStyle = "#00FF66";
+    trackingCtx.fill();
+
+    trackingCtx.lineWidth = 3;
+    trackingCtx.strokeStyle = "white";
+    trackingCtx.stroke();
+  }
+
+  async function startWebcamPreview() {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+
+      const logitech = devices.find(device =>
+        device.kind === "videoinput" &&
+        /logitech|brio/i.test(device.label)
+      );
+
+      if (!logitech) {
+        console.error("Logitech webcam not found:", devices);
+        return;
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { deviceId: { exact: logitech.deviceId } },
+        audio: false
+      });
+
+      webcamVideo.srcObject = stream;
+    } catch (error) {
+      console.error("Webcam preview error:", error);
+    }
+  }
+
+  startWebcamPreview();
+
+  let cameraDown = false;
+
+  function cameraPointer(type, x, y) {
+    canvas.dispatchEvent(new PointerEvent(type, {
+      bubbles: true,
+      pointerId: 999,
+      pointerType: "touch",
+      isPrimary: true,
+      clientX: x,
+      clientY: y
+    }));
+  }
+
+  cameraSocket.addEventListener("message", event => {
+    const data = JSON.parse(event.data);
+
+    drawTrackingDot(data);
+
+    if (!data.detected || !Game.canDig()) {
+      if (cameraDown) {
+        cameraPointer("pointerup", 0, 0);
+        cameraDown = false;
+      }
+      return;
+    }
+
+    const rect = digArea.getBoundingClientRect();
+    const x = rect.left + data.x * rect.width;
+    const y = rect.top + data.y * rect.height;
+
+    // Always move the pen with the fingertip, even before drawing.
+    if (!cameraDown) {
+      cameraPointer("pointermove", x, y);
+    }
+
+    // Free Play: draw whenever a finger is detected.
+    if (Game.mode === "free") {
+      if (!cameraDown) {
+        cameraPointer("pointerdown", x, y);
+        cameraDown = true;
+      } else {
+        cameraPointer("pointermove", x, y);
+      }
+      return;
+    }
+
+    // Copy Pip: only start when near the current glowing dot.
+    const trace = FB.Trace;
+
+    if (!trace.active || trace.phase !== "trace") {
+      if (cameraDown) {
+        cameraPointer("pointerup", x, y);
+        cameraDown = false;
+      }
+      return;
+    }
+
+    if (!cameraDown) {
+      const start = trace.pts[Math.floor(trace.p)];
+      if (!start) return;
+
+      const distance = Math.hypot(x - start[0], y - start[1]);
+
+      // Allow a slightly larger starting area for accessibility.
+      if (distance <= trace.tol * 1.2) {
+        cameraPointer("pointerdown", x, y);
+        cameraDown = true;
+      }
+    } else {
+      cameraPointer("pointermove", x, y);
+    }
+  });
+
+  cameraSocket.addEventListener("close", () => {
+    if (cameraDown) {
+      cameraPointer("pointerup", 0, 0);
+      cameraDown = false;
+    }
+  });
 
   /* ---------------- hand hint (Free Play) ---------------- */
   function showHand() {
