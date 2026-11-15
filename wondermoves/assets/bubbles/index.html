@@ -68,13 +68,9 @@ let step = 0, target = null, nextAt = 0, particles = [], lastLine = 0, waitingSi
 function resize() { W = canvas.width = innerWidth * devicePixelRatio; H = canvas.height = innerHeight * devicePixelRatio; }
 addEventListener('resize', resize); resize();
 
-/* ---------- Pip: voice + subtitles ---------- */
+/* ---------- Pip: subtitles (the browser's built-in voice was removed) ---------- */
 function say(text) {
   $('subtitle').textContent = text; lastLine = performance.now();
-  if ('speechSynthesis' in window) {
-    speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text); u.rate = 0.95; u.pitch = 1.2; speechSynthesis.speak(u);
-  }
 }
 const pick = (a) => a[(Math.random() * a.length) | 0];
 let actx = null;

@@ -57,7 +57,7 @@ The QRB2210 can run a small hand/pose model on the Brio feed locally. Nothing le
                               │                          game state, session log
                               │  WebUI brick (socket.io)
                               ▼
-                   Browser (assets/)                  ← Child Game Portal + Parent Portal, Digger voice/subtitles
+                   Browser (assets/)                  ← Child Game Portal + Parent Portal, Pip subtitles
 ```
 
 Digger, the AI companion, receives only structured events: `reach_completed`, `gesture_uncertain`,
