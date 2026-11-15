@@ -15,6 +15,9 @@ window.WM = window.WM || {};
     image: here ? new URL('assets/mascot.svg', here).href : 'assets/mascot.svg',
   };
 
+  /** Glue a trailing emoji to the word before it so it never wraps onto a line by itself. */
+  WM.keepTogether = text => String(text).replace(/\s+(\S+)\s*$/, '\u00A0$1');
+
   /* ---------------- Buddy ---------------- */
   const Buddy = WM.Buddy = {
     el: null, timer: null,
@@ -29,7 +32,7 @@ window.WM = window.WM || {};
     },
     say(text, ms = 3400) {
       this.mount();
-      this.el.querySelector('.wm-buddy-bubble').textContent = text;
+      this.el.querySelector('.wm-buddy-bubble').textContent = WM.keepTogether(text);
       this.el.classList.remove('talk'); void this.el.offsetWidth;
       this.el.classList.add('show', 'talk');
       clearTimeout(this.timer);

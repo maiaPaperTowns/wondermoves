@@ -51,10 +51,10 @@ FB.LEVELS = [
       rock: '#A39A8F', bed: '#A88560', bedDark: '#7F6142',
     },
     decor: [
-      { e: '🌴', x: 2, y: 34, s: 17 },
-      { e: '⛵', x: 58, y: 27, s: 5 },
-      { e: '🦀', x: 8, y: 80, s: 6 },
-      { e: '🐚', x: 74, y: 86, s: 4.5 },
+      { e: '🌴', x: 2, b: 30, s: 17 },
+      { e: '⛵', x: 71, b: 46, s: 5 },
+      { e: '🦀', x: 8, b: 8, s: 6 },
+      { e: '🐚', x: 74, b: 6, s: 4.5 },
     ],
     items: [
       { id: 'beach-shell',    name: 'Spiral Shell',      emoji: '🐚', rarity: 'common',    image: null, fact: 'Some seashells are millions of years old — older than the dinosaurs!' },
@@ -84,10 +84,10 @@ FB.LEVELS = [
       rock: '#9B8774', bed: '#9A6A44', bedDark: '#6F4A2E',
     },
     decor: [
-      { e: '🌵', x: 3, y: 42, s: 14 },
-      { e: '🐫', x: 66, y: 36, s: 7 },
-      { e: '🦂', x: 10, y: 82, s: 5 },
-      { e: '🌵', x: 74, y: 70, s: 8 },
+      { e: '🌵', x: 3, b: 30, s: 14 },
+      { e: '🐫', x: 70, b: 33, s: 7 },
+      { e: '🦂', x: 10, b: 8, s: 5 },
+      { e: '🌵', x: 77, b: 12, s: 8 },
     ],
     items: [
       { id: 'desert-bone',      name: 'Dino Bone',       emoji: '🦴', rarity: 'common',    image: null, fact: 'Fossil bones are made of stone! Minerals slowly replaced the bone over millions of years.' },
@@ -117,10 +117,10 @@ FB.LEVELS = [
       rock: '#8D8580', bed: '#7D5544', bedDark: '#563A2F',
     },
     decor: [
-      { e: '⛰️', x: 1, y: 30, s: 17 },
+      { e: '⛰️', x: 1, b: 35, s: 17 },
       { e: '🦅', x: 22, y: 14, s: 6 },
-      { e: '🪨', x: 8, y: 80, s: 7 },
-      { e: '🌵', x: 74, y: 64, s: 8 },
+      { e: '🪨', x: 8, b: 8, s: 7 },
+      { e: '🌵', x: 74, b: 20, s: 8 },
     ],
     items: [
       { id: 'canyon-wood',      name: 'Petrified Wood',    emoji: '🪵', rarity: 'common',    image: null, fact: 'Petrified wood is a tree that slowly turned into rock!' },
@@ -150,10 +150,10 @@ FB.LEVELS = [
       rock: '#2F2A2A', bed: '#4A332D', bedDark: '#2E1F1B',
     },
     decor: [
-      { e: '🌋', x: 1, y: 26, s: 19 },
-      { e: '🔥', x: 10, y: 80, s: 6 },
-      { e: '🦕', x: 70, y: 44, s: 8 },
-      { e: '🪨', x: 76, y: 82, s: 5 },
+      { e: '🌋', x: 1, b: 35, s: 19 },
+      { e: '🔥', x: 10, b: 8, s: 6 },
+      { e: '🦕', x: 70, b: 30, s: 8 },
+      { e: '🪨', x: 76, b: 6, s: 5 },
     ],
     items: [
       { id: 'volcano-rock',   name: 'Lava Rock',      emoji: '🪨', rarity: 'common',    image: null, fact: 'Lava rock has tiny holes made by gas bubbles when the lava cooled.' },

@@ -6,9 +6,9 @@ window.BP = window.BP || {};
 /* Difficulty = how fast bubbles rise and how often they appear.
    speed: fraction of the play-area height per second; every: seconds between bubbles. */
 BP.DIFFICULTIES = [
-  { id: 'easy',   name: 'Easy',   emoji: '🐢', blurb: 'Slow, big bubbles',   speed: [0.08, 0.11], every: 1.5, size: 1.15 },
-  { id: 'medium', name: 'Medium', emoji: '🐠', blurb: 'Bubbles drift by',    speed: [0.13, 0.18], every: 1.05, size: 1.0 },
-  { id: 'hard',   name: 'Hard',   emoji: '🐬', blurb: 'Speedy bubbles!',     speed: [0.2, 0.28],  every: 0.7, size: 0.85 },
+  { id: 'easy',   name: 'Easy',   emoji: '🐢', lv: 1, blurb: 'Slow, big bubbles',   speed: [0.08, 0.11], every: 1.5, size: 1.15 },
+  { id: 'medium', name: 'Medium', emoji: '🐠', lv: 2, blurb: 'Bubbles drift by',    speed: [0.13, 0.18], every: 1.05, size: 1.0 },
+  { id: 'hard',   name: 'Hard',   emoji: '🐬', lv: 3, blurb: 'Speedy bubbles!',     speed: [0.2, 0.28],  every: 0.7, size: 0.85 },
 ];
 
 /* Bubble kinds. `w` = how often; `pts` = score. */

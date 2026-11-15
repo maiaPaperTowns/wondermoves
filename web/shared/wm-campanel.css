@@ -22,7 +22,7 @@ body.wm-calibrating .wm-buddy { z-index: 65; }
   width: min(680px, calc(100vw - 32px), calc((100dvh - 330px) * 1.333 + 8px));
   min-width: min(420px, calc(100vw - 32px));
 }
-.wm-cam.docked { left: 16px; bottom: 116px; transform: none; width: 290px; }
+.wm-cam.docked { left: 16px; bottom: 156px; transform: none; width: 290px; }
 .wm-cam.collapsed { opacity: 0; pointer-events: none; transform: translateY(20px) scale(.9); }
 .wm-cam-head { display: flex; align-items: center; gap: 8px; padding: 8px 10px 8px 14px; font-weight: 700; font-size: 15px; }
 .wm-cam-title { white-space: nowrap; flex: none; }
@@ -40,7 +40,7 @@ body.wm-calibrating .wm-buddy { z-index: 65; }
 .wm-cam.docked .wm-cam-body { display: none; }
 
 .wm-cam-pill {
-  position: fixed; left: 16px; bottom: 120px; z-index: 20;
+  position: fixed; left: 16px; bottom: 160px; z-index: 20;
   padding: 10px 16px; border-radius: 999px;
   background: var(--paper); border: 3px solid var(--line); box-shadow: 0 4px 0 var(--line-d);
   font-weight: 700; font-size: 15px;
@@ -66,10 +66,10 @@ body.wm-calibrating .wm-buddy { z-index: 65; }
 .wm-stepper li.done b { background: #3DBB6B; color: #fff; }
 
 @media (max-width: 640px) {
-  .wm-cam.docked { width: 170px; bottom: 92px; left: 8px; }
+  .wm-cam.docked { width: 170px; bottom: 130px; left: 8px; }
   .wm-cam.docked .wm-cam-title { font-size: 13px; }
   .wm-cam.docked .wm-cam-status { display: none; }
-  .wm-cam-pill { bottom: 96px; left: 8px; }
+  .wm-cam-pill { bottom: 134px; left: 8px; }
   .wm-cam.calibrating { width: calc(100vw - 20px); min-width: 0; }
   .wm-cam-body h2 { font-size: 20px; }
 }

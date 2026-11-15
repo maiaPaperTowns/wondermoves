@@ -1,7 +1,9 @@
 /* ==========================================================================
    Treasure Reach: camera setup + reach calibration.
-   The camera looks down at the table (a front-facing camera works too).
-     1. hands — both hands flat on the table, inside the outlines
+   Uses the computer's front camera: the hands rest on the table in front of
+   the screen, so in the picture they're near the bottom, fingers pointing
+   down toward the camera.
+     1. hands — both hands flat on the table, inside the (upside-down) outlines
      2. rest  — stay still → resting position of each hand
      3. reach — 3 comfortable reaches toward the screen → goal
 
@@ -22,7 +24,7 @@ window.TR = window.TR || {};
   const OUT_AT = 0.06, BACK_AT = 0.03, MIN_PEAK = 0.08;
   const K_SIZE = 0.6; // weight of palm-size change vs. position change
   /** Where the hand outlines sit in the camera picture (fractions). Tweak for your camera mount. */
-  const GUIDE = { y: 0.62, dx: 0.17, size: 0.17 };
+  const GUIDE = { y: 0.7, dx: 0.17, size: 0.17, upsideDown: true };
 
   TR.rest = { left: null, right: null };
 
@@ -76,9 +78,9 @@ window.TR = window.TR || {};
       this.render();
       const say = {
         start: `Hi, I'm ${WM.PIP.name}! I need to see your hands to play. Ask a grown-up to turn on the camera! 📷`,
-        hands: 'Put your hands flat on the table, inside the outlines! 🖐️🖐️',
+        hands: 'Put your hands flat on the table, fingers pointing at the screen, inside the outlines! 🖐️🖐️',
         rest: 'Now keep your hands still and comfy… 😌',
-        reach: `Reach toward the screen as far as feels comfy, then come back. Let's do it ${REPS} times! 🙌`,
+        reach: `Slide your hands toward the camera as far as feels comfy, then come back. Let's do it ${REPS} times! 🙌`,
         done: 'All set! Your reach goal is ready! 🎯',
       }[step];
       if (say) WM.Buddy.say(say, 0);
@@ -182,7 +184,7 @@ window.TR = window.TR || {};
           }
         }
         this.setBar(g / this.best);
-        this.setLive(this.out ? 'Reaching… now come back! 🔁' : 'Reach toward the screen! 🙌');
+        this.setLive(this.out ? 'Reaching… now come back! 🔁' : 'Reach toward the camera! 🙌');
         if (!this.saidSlow && now - this.stepStart > 25000 && this.reps.length < REPS) {
           this.saidSlow = true;
           WM.Buddy.say('Any comfy reach is great, even a small one! Reach toward me, then come back. 💛', 0);
@@ -196,7 +198,7 @@ window.TR = window.TR || {};
       const L = WM.Hands.latest;
       ['left', 'right'].forEach(side => {
         const gx = (0.5 + (side === 'left' ? -1 : 1) * GUIDE.dx) * w;
-        WM.CamPanel.drawHandGuide(ctx, gx, GUIDE.y * h, GUIDE.size * w, { side, ok: inGuide(side, L[side]), color: WM.Hands.COLORS[side] });
+        WM.CamPanel.drawHandGuide(ctx, gx, GUIDE.y * h, GUIDE.size * w, { side, ok: inGuide(side, L[side]), color: WM.Hands.COLORS[side], upsideDown: GUIDE.upsideDown });
       });
     },
 
@@ -219,7 +221,7 @@ window.TR = window.TR || {};
       if (this.step === 'start') {
         el.innerHTML = `
           <h2>Let's set up the camera!</h2>
-          <p>Point the camera down at the table so it can see both hands resting in front of you.</p>
+          <p>Sit in front of the computer with your hands resting on the table, so the camera can see them.</p>
           <div class="wm-calib-actions">
             <button class="wm-btn primary" id="calStart" data-cal="start">📷 Turn on camera</button>
             ${mouseLink}
@@ -229,7 +231,7 @@ window.TR = window.TR || {};
       } else if (this.step === 'done') {
         el.innerHTML = `${stepper}<h2>🎯 All set!</h2><p>Your reach goal is ready. Let's find some treasure!</p>`;
       } else {
-        const title = { hands: 'Hands flat on the table 🖐️🖐️', rest: 'Keep your hands still 😌', reach: 'Reach toward the screen, then come back 🙌' }[this.step];
+        const title = { hands: 'Hands flat on the table 🖐️🖐️', rest: 'Keep your hands still 😌', reach: 'Reach toward the camera, then come back 🙌' }[this.step];
         el.innerHTML = `
           ${stepper}
           <h2>${title}</h2>

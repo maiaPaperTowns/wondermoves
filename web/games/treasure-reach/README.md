@@ -4,10 +4,10 @@ Reach toward the screen to open a treasure chest. The game uses the webcam and o
 
 ## Flow
 
-1. **Camera setup:** the camera looks down at the table (a front-facing camera also works). The camera panel opens large in the center of the screen and Pip gives instructions from the bottom-left. Setup has three steps:
-   1. **Hands:** both hands flat on the table, inside the red and blue hand outlines.
+1. **Camera setup:** uses the computer's front camera. The hands rest on the table in front of the screen, so they appear near the bottom of the picture with fingers pointing down toward the camera. The camera panel opens large in the center of the screen and Pip gives instructions from the bottom-left. Setup has three steps:
+   1. **Hands:** both hands flat on the table, inside the red and blue (upside-down) hand outlines.
    2. **Rest:** hold still for 3 seconds. This records each hand's resting position.
-   3. **Reach:** make 3 comfortable reaches toward the screen.
+   3. **Reach:** make 3 comfortable reaches toward the camera.
 2. **Docking:** the panel shrinks to the bottom-left. Tap the 👁️ to hide it and the **📷 Show camera** pill to bring it back.
 3. **Level:** pick a level with the chip in the top bar, or from the Menu. Each level sets how far to reach (a share of the child's comfortable reach, capped at 120%) and how long to hold:
 
@@ -25,6 +25,18 @@ Reach toward the screen to open a treasure chest. The game uses the webcam and o
 **Re-arming:** a new reach only counts after the hands have come back to rest. This stops a chest opening by accident after a popup closes.
 
 **Mouse mode:** if there's no camera, or for testing, the blue circle follows the pointer. Bringing it to the chest fills the bar.
+
+## Treasure collection
+
+There are 12 treasures across 5 rarities, from Common to Legendary. Which rarity comes out of a chest depends on the level (`weights` in `TR.DIFFICULTIES`, in `js/data.js`):
+
+| Level | Rare or better | Legendary |
+| --- | --- | --- |
+| 🐢 Easy | 10% | never |
+| 🦀 Medium | 28% | 2% |
+| 🦈 Hard | 48% | 10% |
+
+The game gently favors treasures the child hasn't found yet. The 📖 Collection button shows every treasure. Unfound ones appear as silhouettes with their rarity and the levels where they can appear. Tap a found treasure to read a fun fact.
 
 ## Grown-up settings (Menu)
 

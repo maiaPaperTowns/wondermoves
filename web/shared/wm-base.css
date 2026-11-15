@@ -72,3 +72,21 @@ button:focus-visible { outline: 4px solid #fff; outline-offset: 3px; box-shadow:
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+/* ---------- difficulty / stage chip (same in every game's top bar; tap to change) ---------- */
+.wm-level-chip {
+  display: inline-flex; align-items: center; gap: 5px; flex: none;
+  height: 32px; padding: 0 10px 0 12px; border-radius: 999px;
+  color: #fff; font-family: var(--font); font-weight: 700; font-size: 15px; line-height: 1; white-space: nowrap;
+  background: var(--chip, #3DBB6B); box-shadow: 0 3px 0 var(--chip-d, #2A8A4E);
+  cursor: pointer; transition: transform .12s, box-shadow .12s;
+}
+.wm-level-chip:hover { transform: translateY(-1px); }
+.wm-level-chip:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--chip-d, #2A8A4E); }
+.wm-level-chip .wm-emoji { font-size: 17px; }
+.wm-level-chip .caret { font-size: 11px; opacity: .85; margin-left: 1px; }
+.wm-level-chip.lv-1 { --chip: #3DBB6B; --chip-d: #2A8A4E; }
+.wm-level-chip.lv-2 { --chip: #3D9BE0; --chip-d: #2670A8; }
+.wm-level-chip.lv-3 { --chip: #F08A2E; --chip-d: #B9621A; }
+.wm-level-chip.lv-4 { --chip: #E5484D; --chip-d: #A8282C; }
+@media (max-width: 640px) { .wm-level-chip .lc-name { display: none; } .wm-level-chip { padding: 0 8px; } }

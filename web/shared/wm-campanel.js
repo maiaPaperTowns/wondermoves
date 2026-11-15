@@ -94,8 +94,19 @@ WM.CamPanel = {
    * Dashed outline of a hand seen from above, fingers pointing up the picture.
    * Used as a "put your hand here" guide when the camera looks down at the table.
    * side: 'left' | 'right' (thumb position), pointing: only the index finger out.
+   * upsideDown: fingers point DOWN the picture, i.e. toward a front-facing laptop
+   *   camera that sees the hands resting on the table in front of it.
    */
-  drawHandGuide(ctx, cx, cy, s, { side = 'right', pointing = false, ok = false, color } = {}) {
+  drawHandGuide(ctx, cx, cy, s, { side = 'right', pointing = false, ok = false, color, upsideDown = false } = {}) {
+    if (upsideDown) {
+      // rotate half a turn; swap the thumb side so the thumb still faces the middle
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(Math.PI);
+      this.drawHandGuide(ctx, 0, 0, s, { side: side === 'right' ? 'left' : 'right', pointing, ok, color });
+      ctx.restore();
+      return;
+    }
     const col = ok ? '#7BE0A4' : (color || 'rgba(255,255,255,0.9)');
     const flip = side === 'right' ? 1 : -1; // right hand: thumb on the left of the picture
     const capsule = (x, y, w, len, ang = 0) => {

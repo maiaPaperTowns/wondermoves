@@ -72,7 +72,7 @@ window.FB = window.FB || {};
     timer: null,
     say(text, ms = 3400) {
       const b = $('#buddy');
-      $('#buddyBubble').textContent = text;
+      $('#buddyBubble').textContent = String(text).replace(/\s+(\S+)\s*$/, '\u00A0$1'); // keep a trailing emoji with its word
       b.classList.remove('talk'); void b.offsetWidth;
       b.classList.add('show', 'talk');
       clearTimeout(this.timer);
@@ -96,7 +96,7 @@ window.FB = window.FB || {};
     scene.style.backgroundImage = lv.background ? `url("${lv.background}")` : '';
     scene.dataset.level = lv.id;
     $('#decor').innerHTML = (lv.background ? [] : lv.decor).map((d, i) =>
-      `<span style="left:${d.x}%;top:${d.y}%;font-size:${d.s}vmin;animation-delay:${-i * 1.3}s">${d.e}</span>`).join('');
+      `<span style="left:${d.x}%;${d.b != null ? `bottom:${d.b}%` : `top:${d.y}%`};font-size:${d.s}vmin;animation-delay:${-i * 1.3}s">${d.e}</span>`).join('');
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.content = th.skyTop;
   };
@@ -105,7 +105,7 @@ window.FB = window.FB || {};
     $('#levelPill').innerHTML = `
       <span class="lp-emoji">${lv.emoji}</span>
       <span class="lp-name">${esc(lv.name)}</span>
-      <span class="diff-chip diff-${lv.diffLevel}">${lv.difficulty}</span>
+      <button class="wm-level-chip lv-${lv.diffLevel}" id="levelChip" aria-label="Change dig site"><span>${lv.difficulty}</span><span class="caret">▾</span></button>
       <span class="mode-chip">${FB.Game && FB.Game.mode === 'free' ? '🖌️ Free Play' : '✏️ Copy Pip'}</span>`;
   };
 
@@ -368,6 +368,7 @@ window.FB = window.FB || {};
     });
 
     $('#menuBtn').addEventListener('click', () => Menu.open());
+    $('#levelPill').addEventListener('click', e => { if (e.target.closest('#levelChip')) Menu.open(); });
     $('#drawerClose').addEventListener('click', () => Menu.close());
     $('#drawerBackdrop').addEventListener('click', () => Menu.close());
     $('#levelList').addEventListener('click', e => {

@@ -168,3 +168,6 @@ body { background: #1C6FA8; touch-action: none; }
   .start-pip { width: 64px; height: 64px; }
   .start-head h2 { font-size: 24px; }
 }
+
+.start-resume { display: block; margin: 10px auto 0; }
+.start-resume[hidden] { display: none; }

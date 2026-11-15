@@ -69,7 +69,10 @@
           <path d="M66 54 Q130 34 194 54" stroke="#fff" stroke-opacity=".35" stroke-width="7" fill="none" stroke-linecap="round"/>
         </g>
       </svg>
-      <div class="reward" id="reward"><span class="reward-art wm-emoji"></span><span class="reward-name"></span></div>
+      <div class="reward" id="reward">
+        <span class="reward-art wm-emoji"></span>
+        <span class="reward-label"><span class="reward-new" hidden>NEW!</span><span class="reward-rarity"></span><span class="reward-name"></span></span>
+      </div>
     </div>
   </main>
 
@@ -86,9 +89,12 @@
       <span class="wm-emoji">💰</span>
       <span class="tp-name">Treasure Reach</span>
       <span class="set-dots" id="setDots" aria-label="Chests opened this set"></span>
-      <button class="level-chip" id="levelChip" aria-label="Change level"></button>
+      <button class="wm-level-chip" id="levelChip" aria-label="Change level"></button>
     </div>
     <div class="top-right">
+      <button id="collectionBtn" class="chunky-btn collection-btn" aria-label="Open my treasure collection">
+        <span class="wm-emoji" aria-hidden="true">📖</span><span class="btn-label">Collection</span>
+      </button>
       <button id="helpBtn" class="chunky-btn round help-btn" aria-label="How to play">?</button>
       <button id="soundBtn" class="chunky-btn round" aria-label="Toggle sound">🔊</button>
     </div>
@@ -125,6 +131,7 @@
       <button data-input="mouse">🖱️ Mouse</button>
     </div>
     <button class="wm-btn primary" id="drawerLevel">🐢🦀🦈 Change level</button>
+    <button class="wm-btn" id="drawerCollection">📖 Treasure collection</button>
     <button class="wm-btn" id="recalBtn">🎯 Redo reach setup</button>
     <button class="wm-btn" id="drawerHelp">🎓 How to play</button>
 
@@ -162,6 +169,27 @@
       <div class="set-actions">
         <button class="wm-btn" id="setLevel">🐢🦀🦈 Change level</button>
         <button class="wm-btn primary" id="setAgain">Keep going! 💰</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Treasure collection ===== -->
+  <div class="modal" id="collectionModal" role="dialog" aria-label="Treasure collection">
+    <div class="panel collection-panel wm-card">
+      <div class="col-head">
+        <div>
+          <h2>📖 Treasure Collection</h2>
+          <div class="col-progress"><div class="bar"><i id="colBar"></i></div><span><b id="colCount">0 / 0</b> treasures found</span></div>
+        </div>
+        <button class="close-btn" id="colClose" aria-label="Close collection">✕</button>
+      </div>
+      <p class="col-tip">Harder levels hide rarer treasures. Try 🦈 Hard for a Legendary find!</p>
+      <div class="col-grid" id="colGrid"></div>
+      <div class="col-detail" id="colDetail">
+        <div class="col-detail-card">
+          <button class="close-btn" id="colDetailClose" aria-label="Back to collection">✕</button>
+          <div id="colDetailBody"></div>
+        </div>
       </div>
     </div>
   </div>

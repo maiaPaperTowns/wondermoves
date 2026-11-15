@@ -16,8 +16,17 @@ window.BP = window.BP || {};
   const openLayer = sel => { $(sel).classList.add('open'); UI.open.add(sel); };
   const closeLayer = sel => { $(sel).classList.remove('open'); UI.open.delete(sel); };
 
+  UI.updateLevelChip = function () {
+    const d = BP.DIFFICULTIES.find(x => x.id === BP.Store.s.difficulty) || BP.DIFFICULTIES[0];
+    const chip = $('#levelChip');
+    chip.className = `wm-level-chip lv-${d.lv}`;
+    chip.innerHTML = `<span class="wm-emoji">${d.emoji}</span><span class="lc-name">${d.name}</span><span class="caret">▾</span>`;
+  };
+
   /* ---------------- start card ---------------- */
   UI.openStart = function () {
+    const midRound = BP.Game.state === 'playing' || BP.Game.state === 'countdown';
+    $('#startResume').hidden = !midRound;
     const cur = BP.Store.s.difficulty;
     $('#diffGrid').innerHTML = BP.DIFFICULTIES.map(d => `
       <button class="diff-card ${d.id === cur ? 'active' : ''}" data-diff="${d.id}">
@@ -26,7 +35,7 @@ window.BP = window.BP || {};
         <span class="diff-blurb">${d.blurb}</span>
         <span class="diff-best">Best: ${BP.Store.data.best[d.id] || 0}</span>
       </button>`).join('');
-    $('#startGo').textContent = `🫧 Start! (${BP.Store.s.seconds} s)`;
+    $('#startGo').textContent = midRound ? `🫧 Start a new round (${BP.Store.s.seconds} s)` : `🫧 Start! (${BP.Store.s.seconds} s)`;
     openLayer('#startModal');
   };
   UI.closeStart = () => closeLayer('#startModal');
@@ -102,6 +111,7 @@ window.BP = window.BP || {};
   /* ---------------- wiring ---------------- */
   UI.init = function () {
     updateSoundBtn();
+    UI.updateLevelChip();
     document.addEventListener('click', e => { if (e.target.closest('button') && !e.target.closest('[data-cal],[data-act]')) WM.Sound.click(); });
 
     $('#menuBtn').addEventListener('click', () => Menu.open());
@@ -120,8 +130,11 @@ window.BP = window.BP || {};
       if (!b) return;
       BP.Store.s.difficulty = b.dataset.diff; BP.Store.save();
       $$('#diffGrid [data-diff]').forEach(x => x.classList.toggle('active', x === b));
+      UI.updateLevelChip();
     });
     $('#startGo').addEventListener('click', () => { UI.closeStart(); BP.Game.begin(); });
+    $('#startResume').addEventListener('click', () => UI.closeStart());
+    $('#levelChip').addEventListener('click', () => { if (!BP.Calib.active) UI.openStart(); });
     $('#resAgain').addEventListener('click', () => { UI.closeResults(); BP.Game.begin(); });
     $('#resChange').addEventListener('click', () => { UI.closeResults(); UI.openStart(); });
 

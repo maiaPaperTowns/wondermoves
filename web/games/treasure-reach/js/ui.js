@@ -25,7 +25,52 @@ window.TR = window.TR || {};
 
   UI.updateLevelChip = function () {
     const d = TR.level();
-    $('#levelChip').innerHTML = `<span class="wm-emoji">${d.emoji}</span><span class="lc-name">${d.name}</span>`;
+    const chip = $('#levelChip');
+    chip.className = `wm-level-chip lv-${d.lv}`;
+    chip.innerHTML = `<span class="wm-emoji">${d.emoji}</span><span class="lc-name">${d.name}</span><span class="caret">▾</span>`;
+  };
+
+  /* ---------------- treasure collection ---------------- */
+  const stars = n => '★'.repeat(n) + '☆'.repeat(5 - n);
+  const art = t => t.image ? `<img src="${t.image}" alt="">` : `<span class="wm-emoji">${t.emoji}</span>`;
+  const Collection = TR.Collection = {
+    open() { this.render(); this.hideDetail(); openLayer('#collectionModal'); },
+    close() { closeLayer('#collectionModal'); },
+    render() {
+      const got = TR.Store.data.totals.treasures;
+      const n = TR.TREASURES.filter(t => got[t.id]).length;
+      $('#colCount').textContent = `${n} / ${TR.TREASURES.length}`;
+      $('#colBar').style.width = (n / TR.TREASURES.length) * 100 + '%';
+      $('#colGrid').innerHTML = TR.TREASURES.map(t => {
+        const r = TR.rarityById(t.rarity), c = got[t.id] || 0;
+        return `
+        <button class="item-card ${c ? 'found' : 'locked'} rar-${r.id}" data-item="${t.id}" style="--rc:${r.color};--rd:${r.deep}">
+          <span class="item-rarity">${r.name}</span>
+          <span class="item-art ${c ? '' : 'silhouette'}">${art(t)}</span>
+          <span class="item-name">${c ? t.name : '???'}</span>
+          <span class="item-stars">${stars(r.stars)}</span>
+          ${c ? `<span class="item-count">×${c}</span>` : '<span class="item-lock">🔒</span>'}
+        </button>`;
+      }).join('');
+    },
+    showDetail(id) {
+      const t = TR.TREASURES.find(x => x.id === id);
+      if (!t) return;
+      const r = TR.rarityById(t.rarity), c = TR.Store.data.totals.treasures[t.id] || 0;
+      const levels = TR.levelsFor(t.rarity).map(d => `${d.emoji} ${d.name}`).join(', ');
+      const d = $('#colDetail');
+      d.style.setProperty('--rc', r.color);
+      d.style.setProperty('--rd', r.deep);
+      $('#colDetailBody').innerHTML = `
+        <div class="detail-art ${c ? '' : 'silhouette'}"><div class="detail-rays"></div>${art(t)}</div>
+        <div class="rarity-ribbon">${r.icon} ${r.name}</div>
+        <h3>${c ? t.name : 'Mystery Treasure'}</h3>
+        <div class="item-stars big">${stars(r.stars)}</div>
+        ${c ? `<p class="fact">💡 ${t.fact}</p><p class="meta">Found ${c} time${c > 1 ? 's' : ''}</p>`
+            : `<p class="fact">This ${r.name.toLowerCase()} treasure hides in chests on <b>${levels}</b>. Keep reaching to find it!</p>`}`;
+      d.classList.add('open');
+    },
+    hideDetail() { $('#colDetail').classList.remove('open'); },
   };
 
   /* ---------------- level picker ---------------- */
@@ -37,6 +82,7 @@ window.TR = window.TR || {};
         <span class="diff-name">${d.name}</span>
         <span class="diff-blurb">${d.blurb}</span>
         <span class="diff-meta">Reach ${Math.min(TR.MAX_GOAL_PCT, d.goalPct)}% · hold ${(d.holdMs / 1000).toFixed(1)} s</span>
+        <span class="diff-loot">Best loot: ${TR.RARITIES[d.weights.reduce((m, w, i) => (w > 0 ? i : m), 0)].icon} ${TR.RARITIES[d.weights.reduce((m, w, i) => (w > 0 ? i : m), 0)].name}</span>
       </button>`).join('');
     openLayer('#levelModal');
   };
@@ -83,11 +129,12 @@ window.TR = window.TR || {};
     const mouse = TR.Store.data.inputMode === 'mouse';
     return [
       { text: `Hi, I'm ${WM.PIP.name}! Let's open some treasure chests together! 💰`, target: null },
-      { text: mouse ? 'This chest is locked tight! Move the blue circle up to it to open it. 🖱️' : 'This chest is locked tight! Reach toward the screen to open it. 🙌', target: '#chest', round: true, pad: 4 },
+      { text: mouse ? 'This chest is locked tight! Move the blue circle up to it to open it. 🖱️' : 'This chest is locked tight! Reach toward the camera to open it. 🙌', target: '#chest', round: true, pad: 4 },
       { text: mouse ? 'The blue circle is your hand. Bring it all the way to the chest! 🔵' : 'Your hands are the glowing circles: red for your left hand, blue for your right. They float to the chest as you reach! 🔴🔵', target: null },
       { text: 'This bar fills up as you reach. Fill it to the star and hold it for a moment! ⭐', target: '#reachMeter' },
       { text: 'Tap here to pick Easy, Medium or Hard. Harder means a bigger reach and a longer hold! 🐢🦀🦈', target: '#levelChip', pad: 8 },
       { text: 'Then bring your hands back to rest, and a new chest appears. 🔁', target: '#setDots', pad: 12 },
+      { text: 'Every treasure goes into your Collection. Harder levels hide rarer treasures! 📖', target: '#collectionBtn' },
       { text: 'This is my camera window. Tap the eye to hide it or show it. 📷', target: '#wmCam' },
       { text: 'Grown-ups can redo the reach setup and change settings in the Menu. ⚙️', target: '#menuBtn' },
       { text: 'Need help? Tap ? and I\'ll come right back. Let\'s find treasure! 🎉', target: '#helpBtn' },
@@ -127,6 +174,11 @@ window.TR = window.TR || {};
     });
 
     $('#levelChip').addEventListener('click', () => UI.openLevels());
+    $('#collectionBtn').addEventListener('click', () => Collection.open());
+    $('#drawerCollection').addEventListener('click', () => { Menu.close(); Collection.open(); });
+    $('#colClose').addEventListener('click', () => Collection.close());
+    $('#colDetailClose').addEventListener('click', () => Collection.hideDetail());
+    $('#colGrid').addEventListener('click', e => { const c = e.target.closest('[data-item]'); if (c) Collection.showDetail(c.dataset.item); });
     $('#levelGrid').addEventListener('click', e => {
       const b = e.target.closest('[data-diff]');
       if (!b) return;
@@ -187,6 +239,8 @@ window.TR = window.TR || {};
     document.addEventListener('keydown', e => {
       if (e.key !== 'Escape') return;
       if (UI.open.has('#drawer')) Menu.close();
+      else if ($('#colDetail').classList.contains('open')) Collection.hideDetail();
+      else if (UI.open.has('#collectionModal')) Collection.close();
       else if (UI.open.has('#setModal')) TR.SetCard.close();
     });
   };

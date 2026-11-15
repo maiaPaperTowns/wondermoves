@@ -144,14 +144,18 @@
       this.hold = 0;
       chest.classList.add('open');
       WM.Sound.creak();
-      setTimeout(() => WM.Sound.fanfare(2), 180);
+      setTimeout(() => WM.Sound.fanfare(2 + Math.floor(pickRank() / 2)), 180);
 
-      const total = TR.TREASURES.reduce((a, t) => a + t.w, 0);
-      let r = Math.random() * total, prize = TR.TREASURES[0];
-      for (const t of TR.TREASURES) { r -= t.w; if (r < 0) { prize = t; break; } }
+      const prize = pickTreasure();
+      const rar = TR.rarityById(prize.rarity), rank = TR.rarityIndex(prize.rarity);
+      const isNew = !TR.Store.data.totals.treasures[prize.id];
       const rw = $('#reward');
+      rw.style.setProperty('--rc', rar.color);
+      rw.style.setProperty('--rd', rar.deep);
       rw.querySelector('.reward-art').innerHTML = prize.image ? `<img src="${prize.image}" alt="">` : prize.emoji;
       rw.querySelector('.reward-name').textContent = prize.name;
+      rw.querySelector('.reward-rarity').textContent = `${rar.icon} ${rar.name}`;
+      rw.querySelector('.reward-new').hidden = !isNew;
       rw.classList.remove('show'); void rw.offsetWidth; rw.classList.add('show');
 
       for (let k = 0; k < 34; k++) {
@@ -163,9 +167,9 @@
         });
       }
       if (typeof window.confetti === 'function') {
-        window.confetti({ particleCount: 110, spread: 90, startVelocity: 42, origin: { x: chestC.x / W, y: chestC.y / H }, colors: ['#FFC94A', '#FF8A3D', '#ffffff', '#22B4A3'] });
+        window.confetti({ particleCount: 90 + rank * 40, spread: 90 + rank * 10, startVelocity: 42, origin: { x: chestC.x / W, y: chestC.y / H }, colors: [rar.color, rar.deep, '#FFC94A', '#ffffff'] });
       }
-      WM.Buddy.say(pick(TR.LINES.open), 2400);
+      WM.Buddy.say(isNew && rank >= 2 ? `WOW! ${/^[AEIOU]/.test(rar.name) ? 'An' : 'A'} ${rar.name} ${prize.name}! ${rar.icon}` : isNew ? `A new treasure for your collection! 📖` : pick(TR.LINES.open), 2600);
 
       const d = TR.Store.data;
       d.totals.chests++;
@@ -216,6 +220,22 @@
       $('#setDots').innerHTML = Array.from({ length: n }, (_, i) => `<i class="${i < done ? 'on' : ''}"></i>`).join('');
     },
   };
+
+  /* ---------------- treasure roll: rarity odds come from the level ---------------- */
+  let lastRank = 0;
+  function pickRank() { return lastRank; }
+  function pickTreasure() {
+    const w = TR.level().weights;
+    let r = Math.random() * w.reduce((a, b) => a + b, 0), ri = 0;
+    for (; ri < w.length - 1; ri++) { r -= w[ri]; if (r < 0) break; }
+    let pool = [];
+    for (let k = ri; k >= 0 && !pool.length; k--) pool = TR.TREASURES.filter(t => t.rarity === TR.RARITIES[k].id);
+    const fresh = pool.filter(t => !TR.Store.data.totals.treasures[t.id]);
+    if (fresh.length && Math.random() < 0.6) pool = fresh; // gently favour treasures not found yet
+    const prize = pool[(Math.random() * pool.length) | 0];
+    lastRank = TR.rarityIndex(prize.rarity);
+    return prize;
+  }
 
   /* ---------------- reach meter ---------------- */
   const rmFill = $('#rmFill'), rmVal = $('#rmVal'), rmL = $('#rmLeft'), rmR = $('#rmRight'), rmHold = $('#rmHoldRing'), meter = $('#reachMeter');
