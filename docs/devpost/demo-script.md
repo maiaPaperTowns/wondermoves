@@ -1,6 +1,6 @@
 # WonderMoves: 3-minute demo video
 
-About 430 words of voiceover, spoken calmly, like you're showing a friend. **[Shot]** is what's on screen; the indented text is the voiceover. Numbers stay in the opening. Each scene is its own clip, so you can trim in editing.
+About 340 words of voiceover, spoken calmly, like you're showing a friend. That leaves room for the game sounds and pauses while the shots play. **[Shot]** is what's on screen; the indented text is the voiceover. Numbers stay in the opening. Each scene is its own clip, so you can trim in editing.
 
 ---
 
