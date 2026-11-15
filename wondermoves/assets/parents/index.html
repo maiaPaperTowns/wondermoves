@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#2B2350">
+<title>WonderMoves for Grown-ups</title>
+<link rel="icon" href="../shared/assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* WonderMoves look (see shared/wm-base.css), calmer for grown-ups. Works offline: the font falls back. */
+:root {
+  --frame: #2B2350; --frame-2: #372D66;
+  --bg: #FFF3DD; --card: #FFFBF2; --ink: #4A2C17; --muted: #85634A; --line: #EED6AE; --line-d: #D5B07A;
+  --accent: #FF8A3D; --accent-soft: #FFE6D2; --ok: #1F8F63; --ok-soft: #DDF4EA; --info: #3D6FC2; --info-soft: #E4EEFB;
+  --reach: #22B4A3; --brush: #FF8A3D; --bubbles: #5BA8F8;
+  --shadow: 0 4px 0 var(--line), 0 10px 24px rgba(60, 32, 12, .08);
+  --font: 'Fredoka', ui-rounded, 'Arial Rounded MT Bold', 'Trebuchet MS', system-ui, sans-serif;
+  --emoji: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1E1934; --card: #2B2448; --ink: #F3EEFF; --muted: #B9AEDB; --line: #3F3668; --line-d: #5A4F8C;
+    --accent: #FF9C59; --accent-soft: #4A3328; --ok: #6BD6A4; --ok-soft: #1D3B33; --info: #8DB4F5; --info-soft: #23305A;
+    --shadow: 0 4px 0 #191430, 0 10px 24px rgba(0, 0, 0, .3);
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.5 var(--font); }
+.emoji { font-family: var(--emoji); line-height: 1; }
+
+/* top bar: same purple frame as the game */
+.topbar {
+  background: radial-gradient(rgba(255, 255, 255, .06) 1.5px, transparent 1.5px) 0 0 / 22px 22px, var(--frame);
+  color: #EDE8FF;
+}
+.topbar-in { max-width: 1080px; margin: 0 auto; padding: 14px 16px; display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+.brand { display: flex; align-items: center; gap: 8px; font-size: 22px; font-weight: 500; margin-right: auto; }
+.brand b { color: #FFD34D; font-weight: 700; }
+.brand small { font-size: 15px; color: #CFC7F2; font-weight: 500; margin-left: 4px; }
+.top-btn {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 18px; border-radius: 999px;
+  background: rgba(255, 255, 255, .1); color: #EDE8FF; text-decoration: none; font-weight: 600; font-size: 16px;
+  border: 2px solid rgba(255, 255, 255, .12);
+}
+.top-btn:hover, .top-btn:focus-visible { background: rgba(255, 255, 255, .2); outline: none; }
+.top-btn.primary { background: #FFD34D; color: #3B2A00; border-color: #FFD34D; }
+.status { max-width: 1080px; margin: 0 auto; padding: 0 16px 14px; display: flex; flex-wrap: wrap; gap: 8px; }
+.pill { display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px; border-radius: 999px; font-size: 14px; background: rgba(255, 255, 255, .08); color: #DCD4FA; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: #9C92C4; flex: none; }
+.dot.green { background: #7BE0A4; } .dot.blue { background: #8DB4F5; animation: pulse 1.2s infinite; } .dot.orange { background: #FFB36B; }
+@keyframes pulse { 50% { opacity: .35; } }
+
+.wrap { max-width: 1080px; margin: 0 auto; padding: 22px 16px 56px; }
+h2 { font-size: 21px; margin: 30px 0 12px; display: flex; align-items: center; gap: 10px; }
+h2 .sub { font-size: 14px; color: var(--muted); font-weight: 500; }
+.card { background: var(--card); border-radius: 22px; padding: 18px 20px; box-shadow: var(--shadow); border: 2px solid var(--line); }
+.note { color: var(--muted); font-size: 14px; }
+
+/* profile + week */
+.top-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 16px; }
+.profile { display: grid; gap: 14px; }
+.who { display: flex; align-items: center; gap: 14px; }
+.avatar { width: 64px; height: 64px; border-radius: 20px; display: grid; place-items: center; font-size: 38px; background: var(--accent-soft); flex: none; }
+.who h1 { margin: 0; font-size: 26px; line-height: 1.1; }
+.who select { font: inherit; font-size: 16px; padding: 6px 10px; border-radius: 12px; border: 2px solid var(--line); background: var(--card); color: var(--ink); }
+.facts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0; }
+.facts div { background: var(--bg); border-radius: 14px; padding: 8px 12px; }
+.facts dt { font-size: 13px; color: var(--muted); }
+.facts dd { margin: 0; font-weight: 700; font-size: 18px; }
+.link-btn { justify-self: start; display: inline-flex; align-items: center; gap: 6px; min-height: 42px; padding: 0 16px; border-radius: 999px; border: 2px dashed var(--line-d); color: var(--ink); text-decoration: none; font-weight: 600; font-size: 15px; }
+.link-btn:hover, .link-btn:focus-visible { border-style: solid; background: var(--bg); outline: none; }
+
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.stat { border-radius: 18px; padding: 14px 16px; background: var(--bg); }
+.stat .n { font-size: 32px; font-weight: 700; line-height: 1.1; }
+.stat .l { color: var(--muted); font-size: 14px; }
+.stat.g { border-left: 6px solid var(--c); }
+.week h3 { margin: 0 0 12px; font-size: 18px; }
+
+/* live */
+.live { border-color: var(--accent); display: flex; gap: 16px; align-items: center; margin-bottom: 4px; }
+.live .big { font-size: 44px; font-weight: 700; line-height: 1; }
+.live .tag { color: var(--accent); font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.live .tag .dot { background: var(--accent); animation: pulse 1.2s infinite; }
+.gicon { font-family: var(--emoji); font-size: 30px; width: 52px; height: 52px; display: grid; place-items: center; border-radius: 16px; background: color-mix(in srgb, var(--c) 22%, transparent); flex: none; }
+
+/* chart */
+.chart { width: 100%; height: auto; display: block; }
+.legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 14px; color: var(--muted); margin-top: 6px; }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 4px; margin-right: 6px; vertical-align: -1px; }
+
+/* game log */
+.filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+.chipbtn { font: inherit; font-size: 15px; font-weight: 600; min-height: 40px; padding: 0 14px; border-radius: 999px; border: 2px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; }
+.chipbtn[aria-pressed="true"] { background: var(--ink); color: var(--card); border-color: var(--ink); }
+.filters label { margin-left: auto; font-size: 14px; color: var(--muted); display: flex; gap: 6px; align-items: center; cursor: pointer; }
+.sessions { display: grid; gap: 12px; }
+.session { display: grid; grid-template-columns: auto 1fr auto; gap: 6px 14px; align-items: start; border-left: 6px solid var(--c); }
+.session .when { color: var(--muted); font-size: 14px; }
+.session .title { font-weight: 700; font-size: 18px; }
+.session .count { text-align: right; }
+.session .count b { font-size: 30px; display: block; line-height: 1.1; }
+.session .count span { color: var(--muted); font-size: 13px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.chip { font-size: 13px; padding: 2px 10px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); }
+.insight { grid-column: 1 / -1; border-radius: 14px; padding: 10px 14px; background: var(--info-soft); font-size: 16px; }
+.insight.done { background: var(--ok-soft); }
+.insight .src { font-size: 12px; color: var(--muted); display: block; margin-top: 4px; }
+.change { font-weight: 700; }
+.more { display: block; margin: 14px auto 0; }
+.empty { color: var(--muted); text-align: center; padding: 28px; }
+.foot { margin-top: 32px; }
+:focus-visible { outline: 3px solid var(--info); outline-offset: 2px; }
+
+@media (max-width: 820px) {
+  .top-grid { grid-template-columns: 1fr; }
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+  .session { grid-template-columns: auto 1fr; }
+  .session .count { grid-column: 2; text-align: left; }
+  .live .big { font-size: 36px; }
+  .facts { grid-template-columns: 1fr; }
+  .filters label { margin-left: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .dot.blue, .live .tag .dot { animation: none; } }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-in">
+    <div class="brand"><span class="emoji">✨</span><span>Wonder<b>Moves</b></span><small>for grown-ups</small></div>
+    <a class="top-btn" href="../grownups.html?settings"><span class="emoji">⚙️</span> Settings</a>
+    <a class="top-btn primary" href="../"><span class="emoji">🎮</span> Back to games</a>
+  </div>
+  <div class="status">
+    <span class="pill" id="boardPill"><span class="dot"></span><span>Game board</span></span>
+    <span class="pill" id="dbPill" title=""><span class="dot"></span><span>Databricks</span></span>
+  </div>
+</header>
+
+<main class="wrap">
+  <div id="live" aria-live="polite"></div>
+
+  <div class="top-grid">
+    <section class="card profile" aria-labelledby="childName">
+      <div class="who">
+        <div class="avatar emoji" aria-hidden="true">🧒</div>
+        <div>
+          <h1 id="childName">Your child</h1>
+          <label for="child" class="note" id="childLabel" hidden>Showing</label>
+          <select id="child" aria-label="Choose a child" hidden></select>
+        </div>
+      </div>
+      <dl class="facts" id="facts"></dl>
+      <a class="link-btn" href="../grownups.html?settings"><span class="emoji">⚙️</span> Change hand, range or breaks</a>
+    </section>
+
+    <section class="card week" aria-labelledby="weekTitle">
+      <h3 id="weekTitle">Last 7 days</h3>
+      <div class="stats" id="stats"></div>
+    </section>
+  </div>
+
+  <h2>Movements per day <span class="sub">last 14 days</span></h2>
+  <div class="card">
+    <svg class="chart" id="chart" role="img" aria-label="Movements per day, last 14 days"></svg>
+    <div class="legend" id="legend"></div>
+  </div>
+
+  <h2>Game log <span class="sub" id="logCount"></span></h2>
+  <div class="filters" role="group" aria-label="Filter the game log">
+    <div id="gameFilters" style="display:contents"></div>
+    <label><input type="checkbox" id="showShort"> Show visits with no movements</label>
+  </div>
+  <div class="insight" id="dbNote" hidden style="margin-bottom:12px"></div>
+  <div class="sessions" id="sessions" aria-live="polite"></div>
+  <button class="chipbtn more" id="more" hidden>Show more</button>
+
+  <p class="note foot">
+    WonderMoves shows what happened while your child played: how many movements they completed, for how long, and what they found.
+    It never scores, diagnoses or compares children. Notes are written by an AI model on Databricks from these numbers only.
+    <span id="sampleNote"></span>
+  </p>
+</main>
+
+<script>
+const GAMES = {
+  reach:   { name: 'Treasure Reach', icon: '💰', word: 'reaches', color: 'var(--reach)' },
+  brush:   { name: 'Fossil Brush', icon: '🦴', word: 'brush strokes', color: 'var(--brush)' },
+  bubbles: { name: 'Bubble Pop', icon: '🫧', word: 'bubbles popped', color: 'var(--bubbles)' },
+};
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+let state = null, chosen = null, filter = 'all', showShort = false, limit = 20;
+try { chosen = localStorage.getItem('wm-child'); } catch (_) {}
+
+function when(t) {
+  const d = new Date(t * 1000), now = new Date();
+  const day = d.toDateString() === now.toDateString() ? 'Today'
+    : new Date(now - 86400000).toDateString() === d.toDateString() ? 'Yesterday'
+    : d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+  return `${day}, ${d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`;
+}
+const firstName = c => String(c).split(' (')[0];
+const cm = mm => mm == null ? '—' : `${(mm / 10).toFixed(mm % 10 ? 1 : 0)} cm`;
+
+$('#gameFilters').innerHTML = [['all', 'All games', '']].concat(Object.entries(GAMES).map(([k, G]) => [k, G.name, G.icon]))
+  .map(([k, n, i]) => `<button class="chipbtn" data-f="${k}" aria-pressed="${k === filter}">${i ? `<span class="emoji">${i}</span> ` : ''}${n}</button>`).join('');
+$('#gameFilters').addEventListener('click', e => {
+  const b = e.target.closest('[data-f]'); if (!b) return;
+  filter = b.dataset.f; limit = 20;
+  document.querySelectorAll('[data-f]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  render();
+});
+$('#showShort').addEventListener('change', e => { showShort = e.target.checked; limit = 20; render(); });
+$('#more').addEventListener('click', () => { limit += 20; render(); });
+
+function render() {
+  if (!state) return;
+  const sel = $('#child');
+  const kids = state.children.length ? state.children : ['Your child'];
+  if (!kids.includes(chosen)) chosen = kids[0];
+  if (sel.options.length !== kids.length || [...sel.options].some((o, i) => o.value !== kids[i])) {
+    sel.innerHTML = kids.map(k => `<option value="${esc(k)}">${esc(k)}</option>`).join('');
+  }
+  sel.value = chosen;
+  const many = kids.length > 1;   // the picker only appears in testing with sample children
+  sel.hidden = !many; $('#childLabel').hidden = !many;
+  const name = firstName(chosen);
+  $('#childName').textContent = name;
+
+  // status
+  const b = state.board, bOk = /connected|simulated/.test(b) && !/not/.test(b);
+  $('#boardPill').innerHTML = `<span class="dot ${bOk ? 'green' : 'orange'}"></span><span>Game board: ${esc(b)}</span>`;
+  const db = state.databricks, busy = ['sending', 'analyzing'].includes(db.state);
+  const dbDot = busy ? 'blue' : db.state === 'up to date' ? 'green' : db.state === 'offline' ? 'orange' : '';
+  $('#dbPill').innerHTML = `<span class="dot ${dbDot}"></span><span>Databricks: ${esc(db.state)}</span>`;
+  $('#dbPill').title = db.detail || '';
+
+  // profile (set by a grown-up in Settings; only the board knows it)
+  const p = state.profile;
+  const hand = p && p.assist_hand ? p.assist_hand[0].toUpperCase() + p.assist_hand.slice(1) : '—';
+  $('#facts').innerHTML = p ? [
+    ['Hand to practise', hand],
+    ['Comfortable reach', cm(p.comfortable_mm)],
+    ['Approved reach (max)', cm(p.approved_max_mm)],
+    ['Break reminder', p.break_minutes ? `every ${p.break_minutes} min` : 'off'],
+    ['Treasure Reach level', p.level ?? '—'],
+    ['Treasures found', (p.found || []).length],
+  ].map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')
+    : `<div style="grid-column:1/-1"><dt>Settings</dt><dd style="font-weight:500;font-size:15px">Open this page from the game board to see the hand and range settings.</dd></div>`;
+
+  const mine = state.sessions.filter(s => s.child === chosen).sort((a, b) => b.start_t - a.start_t);
+
+  // playing now
+  const live = mine.find(s => !s.closed);
+  const lg = live && GAMES[live.game];
+  $('#live').innerHTML = live ? `
+    <div class="card live" style="--c:${lg ? lg.color : 'var(--accent)'}; margin-bottom:16px">
+      <div class="gicon">${live.icon}</div>
+      <div style="flex:1">
+        <div class="tag"><span class="dot"></span>${esc(name)} is playing ${esc(live.game_name)} now</div>
+        <div class="note">${esc(live.detail || '')}${live.detail ? ' · ' : ''}started ${esc(when(live.start_t))}</div>
+      </div>
+      <div style="text-align:right"><div class="big">${live.movements}</div><div class="note">${esc(live.movement_word)}</div></div>
+    </div>` : '';
+
+  // last 7 days
+  const weekAgo = state.now - 7 * 86400;
+  const week = mine.filter(s => s.start_t >= weekAgo);
+  const played = week.filter(s => s.movements > 0);
+  const per = g => week.filter(s => s.game === g).reduce((a, s) => a + s.movements, 0);
+  const minutes = played.reduce((a, s) => a + s.minutes, 0);
+  const days = new Set(played.map(s => new Date(s.start_t * 1000).toDateString())).size;
+  $('#stats').innerHTML = [
+    { n: days, l: days === 1 ? 'day with practice' : 'days with practice' },
+    { n: Math.round(minutes), l: 'minutes of play' },
+    { n: played.length, l: 'play sessions' },
+    ...Object.entries(GAMES).map(([g, G]) => ({ n: per(g), l: `${G.icon} ${G.word}`, c: G.color })),
+  ].map(s => `<div class="stat${s.c ? ' g' : ''}" ${s.c ? `style="--c:${s.c}"` : ''}><div class="n">${s.n}</div><div class="l">${esc(s.l)}</div></div>`).join('');
+
+  drawChart(mine);
+
+  // game log
+  const list = mine.filter(s => (filter === 'all' || s.game === filter) && (showShort || s.movements > 0 || !s.closed));
+  const hidden = mine.filter(s => (filter === 'all' || s.game === filter)).length - list.length;
+  $('#logCount').textContent = `${list.length} session${list.length === 1 ? '' : 's'}` + (hidden && !showShort ? ` · ${hidden} short visit${hidden === 1 ? '' : 's'} hidden` : '');
+  const dbState = state.databricks.state;
+  $('#dbNote').hidden = dbState !== 'on the laptop';
+  $('#dbNote').textContent = 'Short notes from Databricks are added to each session when the parent helper runs on a laptop (python3 parents/server.py). Everything else on this page comes straight from the game board.';
+  $('#sessions').innerHTML = list.length ? list.slice(0, limit).map(s => {
+    const G = GAMES[s.game];
+    const ins = s.insight;
+    let insight = '';
+    if (!s.closed) insight = `<div class="insight">Playing now. A note will appear after ${esc(name)} finishes.</div>`;
+    else if (ins) {
+      const ch = ins.change ? `<span class="change">${ins.change.movements} ${esc(s.movement_word)} this time · ${ins.change.last_time} last time</span><br>` : '';
+      const src = ins.note_source === 'template' ? 'Summary from Databricks' : 'Note written on Databricks';
+      insight = `<div class="insight done">${ch}${esc(ins.note)}<span class="src">${src}</span></div>`;
+    } else if (!s.movements) {
+      insight = '';
+    } else if (['sending', 'analyzing'].includes(dbState)) {
+      insight = `<div class="insight"><span class="dot blue" style="display:inline-block;margin-right:8px"></span>Databricks is looking at this session…</div>`;
+    } else if (dbState === 'on the laptop') {
+      insight = '';
+    } else if (dbState === 'offline') {
+      insight = `<div class="insight">Waiting for an internet connection to add the Databricks note.</div>`;
+    } else {
+      insight = `<div class="insight">The Databricks note is on its way.</div>`;
+    }
+    const chips = [
+      s.detail && `<span class="chip">${esc(s.detail)}</span>`,
+      ...s.rewards.map(r => `<span class="chip">Found ${esc(r)}</span>`),
+      s.pairs ? `<span class="chip">${s.pairs} with both hands together</span>` : '',
+      s.breaks ? `<span class="chip">${s.breaks} rest break${s.breaks > 1 ? 's' : ''}</span>` : '',
+      s.comfortable_mm ? `<span class="chip">Comfortable reach set: ${cm(s.comfortable_mm)}</span>` : '',
+    ].filter(Boolean).join('');
+    return `<article class="card session" style="--c:${G ? G.color : 'var(--line-d)'}">
+      <div class="gicon">${s.icon}</div>
+      <div><div class="title">${esc(s.game_name)}</div><div class="when">${esc(when(s.start_t))} · ${s.minutes} min</div>
+        ${chips ? `<div class="chips">${chips}</div>` : ''}</div>
+      <div class="count"><b>${s.movements}</b><span>${esc(s.movement_word)}</span></div>
+      ${insight}
+    </article>`;
+  }).join('') : `<div class="card empty">No play sessions here yet. They appear as soon as ${esc(name)} plays.</div>`;
+  $('#more').hidden = list.length <= limit;
+
+  $('#sampleNote').textContent = state.children.some(c => c.endsWith('(sample)'))
+    ? 'Children marked “(sample)” use simulated data to show how the page works.' : '';
+}
+
+function drawChart(mine) {
+  const days = 14, W = 900, H = 240, pad = { l: 36, r: 8, t: 12, b: 30 };
+  const today = new Date(state.now * 1000); today.setHours(0, 0, 0, 0);
+  const cols = [...Array(days)].map((_, i) => {
+    const d = new Date(today - (days - 1 - i) * 86400000);
+    const v = {};
+    for (const s of mine) {
+      const sd = new Date(s.start_t * 1000); sd.setHours(0, 0, 0, 0);
+      if (sd.getTime() === d.getTime()) v[s.game] = (v[s.game] || 0) + s.movements;
+    }
+    return { d, v };
+  });
+  const max = Math.max(10, ...cols.map(c => Object.values(c.v).reduce((a, b) => a + b, 0)));
+  const step = Math.ceil(max / 4 / 5) * 5, top = step * 4;
+  const cw = (W - pad.l - pad.r) / days, bw = Math.min(34, cw * .62);
+  const y = v => pad.t + (H - pad.t - pad.b) * (1 - v / top);
+  let svg = '';
+  for (let k = 0; k <= 4; k++) {
+    const v = step * k;
+    svg += `<line x1="${pad.l}" x2="${W - pad.r}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/>` +
+      `<text x="${pad.l - 6}" y="${y(v) + 4}" text-anchor="end" font-size="12" fill="var(--muted)">${v}</text>`;
+  }
+  cols.forEach((c, i) => {
+    const x = pad.l + i * cw + (cw - bw) / 2;
+    let acc = 0;
+    for (const g of Object.keys(GAMES)) {
+      const v = c.v[g] || 0;
+      if (!v) continue;
+      svg += `<rect x="${x}" y="${y(acc + v)}" width="${bw}" height="${y(acc) - y(acc + v)}" rx="5" fill="${GAMES[g].color}" stroke="var(--card)" stroke-width="2"><title>${c.d.toDateString()}: ${v} ${GAMES[g].word}</title></rect>`;
+      acc += v;
+    }
+    if (i % 2 === (days - 1) % 2) svg += `<text x="${x + bw / 2}" y="${H - 10}" text-anchor="middle" font-size="12" fill="var(--muted)">${c.d.toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' })}</text>`;
+  });
+  const el = $('#chart');
+  el.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  el.innerHTML = svg;
+  $('#legend').innerHTML = Object.values(GAMES).map(G => `<span><i style="background:${G.color}"></i>${G.icon} ${G.name}</span>`).join('');
+}
+
+$('#child').addEventListener('change', e => {
+  chosen = e.target.value;
+  try { localStorage.setItem('wm-child', chosen); } catch (_) {}
+  render();
+});
+
+async function poll() {
+  try {
+    const r = await fetch('/api/state', { cache: 'no-store' });
+    state = await r.json();
+    // The board's clock can be wrong (it boots in Sep 2025). Shift all times onto this device's clock.
+    const off = Date.now() / 1000 - state.now;
+    if (Math.abs(off) > 120) {
+      state.now += off;
+      state.sessions.forEach(s => { s.start_t += off; s.end_t += off; });
+    }
+    render();
+  } catch (_) {
+    $('#boardPill').innerHTML = '<span class="dot orange"></span><span>Can’t reach the game board</span>';
+  }
+  setTimeout(poll, 2000);
+}
+poll();
+</script>
+</body>
+</html>

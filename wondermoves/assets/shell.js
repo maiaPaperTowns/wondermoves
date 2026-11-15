@@ -8,11 +8,16 @@
    ========================================================================== */
 (function () {
   const GAMES = [
-    { id: 'fossil-brush',   name: 'Fossil Brush',   icon: '🦴', color: '#FF8A3D', deep: '#D9621A', src: 'games/fossil-brush/index.html' },
-    { id: 'treasure-reach', name: 'Treasure Reach', icon: '💰', color: '#22B4A3', deep: '#157F73', src: 'games/treasure-reach/index.html' },
+    { id: 'fossil-brush',   name: 'Fossil Brush',   icon: '🦴', color: '#FF8A3D', deep: '#D9621A', src: 'games/fossil-brush/index.html',
+      move: 'Brush the sand away', how: 'Copy Pip\'s brush strokes to dig up a fossil.', log: 'brush', word: 'strokes' },
+    { id: 'treasure-reach', name: 'Treasure Reach', icon: '💰', color: '#22B4A3', deep: '#157F73', src: 'games/treasure-reach/index.html',
+      move: 'Reach forward', how: 'Reach out and hold to open the treasure chest.', log: 'reach', word: 'reaches' },
     // Bubble Pop: the timed game (lift mode is always off, see BP.DEFAULTS in games/bubble-pop/js/data.js).
-    { id: 'bubble-pop',     name: 'Bubble Pop',     icon: '🫧', color: '#5BA8F8', deep: '#2C74C9', src: 'games/bubble-pop/index.html' },
+    { id: 'bubble-pop',     name: 'Bubble Pop',     icon: '🫧', color: '#5BA8F8', deep: '#2C74C9', src: 'games/bubble-pop/index.html',
+      move: 'Lift your hand', how: 'Move your hand onto the bubbles to pop them.', log: 'bubbles', word: 'bubbles' },
   ];
+  const HOME = { id: 'home', name: 'Home', icon: '🏠', color: '#FFD34D', deep: '#D9A400' };
+  const TABS = [HOME, ...GAMES];
   const STORE_KEY = 'wondermoves.shell.v1';
 
   const stage = document.getElementById('stage');
@@ -21,7 +26,7 @@
   let current = null;
 
   /* ---------- tabs ---------- */
-  tabsEl.innerHTML = GAMES.map(g => `
+  tabsEl.innerHTML = TABS.map(g => `
     <button class="tab" role="tab" id="tab-${g.id}" data-game="${g.id}" aria-selected="false"
       aria-controls="frame-${g.id}" tabindex="-1" style="--c:${g.color};--cd:${g.deep}">
       <span class="tab-icon" aria-hidden="true">${g.icon}</span>
@@ -35,13 +40,13 @@
   tabsEl.addEventListener('keydown', e => {
     if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
     e.preventDefault();
-    const i = GAMES.findIndex(g => g.id === current);
+    const i = TABS.findIndex(g => g.id === current);
     let n = i;
-    if (e.key === 'ArrowLeft') n = (i - 1 + GAMES.length) % GAMES.length;
-    if (e.key === 'ArrowRight') n = (i + 1) % GAMES.length;
+    if (e.key === 'ArrowLeft') n = (i - 1 + TABS.length) % TABS.length;
+    if (e.key === 'ArrowRight') n = (i + 1) % TABS.length;
     if (e.key === 'Home') n = 0;
-    if (e.key === 'End') n = GAMES.length - 1;
-    activate(GAMES[n].id, { focusTab: true });
+    if (e.key === 'End') n = TABS.length - 1;
+    activate(TABS[n].id, { focusTab: true });
   });
 
   /* ---------- frames (created lazily, then kept alive so games keep their state) ---------- */
@@ -71,19 +76,24 @@
     if (f && f.contentWindow) f.contentWindow.postMessage(Object.assign({ source: 'wondermoves' }, msg), '*');
   }
 
+  const home = document.getElementById('home');
+
   function activate(id, opts = {}) {
-    const game = GAMES.find(g => g.id === id) || GAMES[0];
+    const game = TABS.find(g => g.id === id) || HOME;
     if (game.id === current) return;
     current = game.id;
-    const wrap = ensureFrame(game);
+    const isHome = game === HOME;
+    const wrap = isHome ? null : ensureFrame(game);
 
+    home.classList.toggle('active', isHome);
+    home.setAttribute('aria-hidden', String(!isHome));
     Object.entries(frames).forEach(([fid, el]) => {
       const on = fid === game.id;
       el.classList.toggle('active', on);
       el.setAttribute('aria-hidden', String(!on));
       post(fid, { type: 'visibility', visible: on });
     });
-    GAMES.forEach(g => {
+    TABS.forEach(g => {
       const t = document.getElementById('tab-' + g.id);
       const on = g.id === game.id;
       t.classList.toggle('active', on);
@@ -91,13 +101,56 @@
       t.tabIndex = on ? 0 : -1;
     });
     document.documentElement.style.setProperty('--active', game.color);
-    document.title = `${game.name} · WonderMoves`;
+    document.title = isHome ? 'WonderMoves' : `${game.name} · WonderMoves`;
 
     try { localStorage.setItem(STORE_KEY, JSON.stringify({ last: game.id })); } catch (_) { /* ignore */ }
     if (location.hash !== '#' + game.id) history.replaceState(null, '', '#' + game.id);
+    // Tells add-ons (e.g. the AI voice agent) which screen the child is on.
+    window.dispatchEvent(new CustomEvent('wm:screen', { detail: { screen: game.id, name: game.name } }));
+    if (isHome) loadToday();
 
     if (opts.focusTab) document.getElementById('tab-' + game.id).focus();
-    else if (wrap.classList.contains('loaded')) wrap.querySelector('iframe').focus();
+    else if (wrap && wrap.classList.contains('loaded')) wrap.querySelector('iframe').focus();
+  }
+
+  /* ---------- home ---------- */
+  document.getElementById('homeGames').innerHTML = GAMES.map(g => `
+    <button class="game-card" data-game="${g.id}" style="--c:${g.color};--cd:${g.deep}">
+      <span class="game-card-art" aria-hidden="true"><span>${g.icon}</span></span>
+      <span class="game-card-text">
+        <span class="game-card-name">${g.name}</span>
+        <span class="game-card-move">${g.move}</span>
+        <span class="game-card-how">${g.how}</span>
+      </span>
+      <span class="game-card-count" id="count-${g.id}" hidden></span>
+      <span class="game-card-play">Play <span aria-hidden="true">▶</span></span>
+    </button>`).join('');
+  document.getElementById('homeGames').addEventListener('click', e => {
+    const b = e.target.closest('[data-game]');
+    if (b) activate(b.dataset.game);
+  });
+
+  // Today's moves, from the board's play log (the same data the grown-ups page uses).
+  async function loadToday() {
+    try {
+      const r = await fetch('/api/state', { cache: 'no-store' });
+      if (!r.ok) return;
+      const st = await r.json();
+      const off = Date.now() / 1000 - st.now;               // the board clock can be wrong
+      const midnight = new Date(); midnight.setHours(0, 0, 0, 0);
+      const today = st.sessions.filter(s => (s.start_t + off) * 1000 >= midnight.getTime());
+      let total = 0;
+      GAMES.forEach(g => {
+        const n = today.filter(s => s.game === g.log).reduce((a, s) => a + s.movements, 0);
+        total += n;
+        const el = document.getElementById('count-' + g.id);
+        el.hidden = !n;
+        el.textContent = `⭐ ${n} ${g.word} today`;
+      });
+      document.getElementById('homeToday').textContent = total
+        ? `You've made ${total} moves today. Every move counts!`
+        : 'Every move you make helps Pip find treasure.';
+    } catch (_) { /* no board: keep the friendly default */ }
   }
 
   /* ---------- messages from games ---------- */
@@ -109,10 +162,8 @@
   });
 
   /* ---------- start ---------- */
-  let first = location.hash.slice(1);
-  if (!GAMES.some(g => g.id === first)) {
-    try { first = (JSON.parse(localStorage.getItem(STORE_KEY)) || {}).last; } catch (_) { first = null; }
-  }
-  activate(first || GAMES[0].id);
+  // Start on Home unless the URL names a game (e.g. index.html#bubble-pop).
+  const first = location.hash.slice(1);
+  activate(TABS.some(g => g.id === first) ? first : HOME.id);
   window.addEventListener('hashchange', () => activate(location.hash.slice(1)));
 })();

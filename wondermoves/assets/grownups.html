@@ -268,9 +268,17 @@ socket.on('practice', (d) => {
 socket.on('sensor_hint', (d) => { $('sensorHint').style.display = d.distance_window_blocked ? 'block' : 'none'; });
 socket.on('connect', () => send('get_state'));
 // Inside the WonderMoves shell this page is the Grown-ups tab: open the caregiver view, hide the old child buttons.
-if (window.parent !== window) {
+// Opened from the parent page (grownups.html?settings): same, with links back to progress and the games.
+const fromParents = new URLSearchParams(location.search).has('settings');
+if (window.parent !== window || fromParents) {
   show('parent');
   document.querySelectorAll('header button').forEach(b => b.hidden = true);
+}
+if (fromParents) {
+  document.title = 'WonderMoves Settings';
+  document.querySelector('header').insertAdjacentHTML('beforeend',
+    '<a class="tab" href="parents/" style="text-decoration:none">← Progress</a>' +
+    '<a class="tab" href="./" style="text-decoration:none">🎮 Games</a>');
 }
 </script>
 </body>

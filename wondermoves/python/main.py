@@ -13,6 +13,7 @@ from pathlib import Path
 from arduino.app_bricks.web_ui import WebUI
 from arduino.app_utils import App, Bridge
 
+from parent_sessions import sessionize
 from strokes import StrokeCounter
 from vision import Vision
 
@@ -444,6 +445,33 @@ def on_distance_debug(s0, s1, s2, s_err, raw_mm, raw_status):
 
 Bridge.provide("distance_debug", on_distance_debug)
 Bridge.provide("i2c_scan", lambda found: ui.send_message("i2c_scan", {"found": found}))
+
+def parents_state():
+    """GET /api/state for the parent page at /parents/ (the same page the laptop helper serves).
+    The board has no Databricks sign-in, so notes come only from the laptop helper."""
+    events = []
+    try:
+        for line in SESSIONS.read_text().splitlines():
+            try:
+                e = json.loads(line)
+            except ValueError:
+                continue
+            if "event" in e and "t" in e:
+                e.setdefault("child", "Your child")
+                events.append(e)
+    except FileNotFoundError:
+        pass
+    sessions = [dict(s, insight=None) for s in sessionize(events, time.time())]
+    prof = {k: profile.get(k) for k in ("assist_hand", "comfortable_mm", "baseline_mm", "approved_max_mm",
+                                         "level", "break_minutes", "found")}
+    return {"children": ["Your child"], "sessions": sessions, "daily": [], "profile": prof,
+            "board": "connected (page served by the board)",
+            "databricks": {"state": "on the laptop", "updated": None,
+                           "detail": "Notes from Databricks appear when the parent helper runs on a laptop (python3 parents/server.py)."},
+            "now": time.time()}
+
+
+ui.expose_api("GET", "/api/state", parents_state)
 ui.on_message("start", on_start)
 ui.on_message("pause", on_pause)
 ui.on_message("calibrate", on_calibrate)

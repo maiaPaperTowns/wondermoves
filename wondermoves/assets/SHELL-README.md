@@ -13,13 +13,16 @@ python3 -m http.server 8000   # then visit http://localhost:8000
 
 **The camera needs a server.** Chrome blocks the camera for games inside the shell when the shell is opened straight from disk as a `file://` URL. Everything else, including mouse play, also works from `file://`.
 
-To open a specific game directly, add its id to the URL, for example `index.html#bubble-pop`. The shell also remembers the last tab you played.
+The shell opens on **Home**: Pip says hello, shows today's moves from the board, and has a big card for each game. Games load only when picked, so the camera isn't asked for on Home. To open a specific game directly, add its id to the URL, for example `index.html#bubble-pop`.
+
+Grown-ups reach the parent page from **For grown-ups** on Home or **Grown-ups** in the tab bar (`parents/`, served by the board). It links to Settings (`grownups.html?settings`) and back to the games.
 
 ## Layout
 
 ```
 web/
-  index.html, shell.css, shell.js   the frame + bottom tab bar
+  index.html, shell.css, shell.js   the frame, Home screen + bottom tab bar
+  parents/index.html                the grown-ups page: child profile, game log, Databricks notes
   shared/
     wm-base.css                     shared look: colors, font, buttons, cards
     wm-pip.css / wm-pip.js          Pip: bottom-left helper bubble + spotlight tutorial
@@ -74,3 +77,23 @@ Treasure Reach still uses its own copy of the camera panel and top-bar styles. B
 The **Touch & mouse** pill on the right of the tab bar is a placeholder. It will become the camera / finger-tracking status. The camera panel, where Pip helps the child get their finger in frame, is planned to live in the shell, not in each game, so every game shares one camera setup.
 
 The iframes already allow `camera`, so a shell-level camera can later send finger positions down to the active game through the bridge.
+
+## Plugging in the AI voice agent (Talk to Pip)
+
+The shell has two hooks so a voice agent can be added without touching the games:
+
+- **Where the button goes:** `#voiceSlot`, top right of the Home screen. It's hidden while empty, so add the
+  button from your script (for example `document.getElementById('voiceSlot').append(btn)`).
+- **What screen the child is on:** the shell fires `wm:screen` on `window` every time the screen changes:
+
+  ```js
+  window.addEventListener('wm:screen', e => {
+    // e.detail = { screen: 'home' | 'fossil-brush' | 'treasure-reach' | 'bubble-pop', name: 'Treasure Reach' }
+  });
+  ```
+
+- **Opening a game by voice:** call `location.hash = '#treasure-reach'` (or `'#home'`).
+
+Load the agent with one `<script>` tag at the end of `index.html`. Keep the project rules: no timers, no
+scores or comparisons, a slow movement counts like a fast one, and nothing recorded or sent without a
+grown-up's say-so.

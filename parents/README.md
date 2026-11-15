@@ -17,6 +17,11 @@ python3 parents/server.py --demo             # no board: simulated board log
 
 Then open **http://localhost:8090**.
 
+**On the board, no laptop needed:** the WonderMoves app serves the same page at **/parents/**
+(the 👪 Parents button in the game's tab bar, e.g. http://localhost:7070/parents/ over USB). It shows every
+session straight from the board's log. Databricks notes appear only on the laptop helper, because
+the board has no Databricks sign-in.
+
 - The game runs offline. The **laptop** needs internet (Wi-Fi or a phone hotspot) only for the Databricks notes.
   Without internet the page still shows every session, and the notes are added when the connection comes back.
 - A session closes when the child pauses or leaves the game (`break_requested`), or after 3 quiet minutes.
@@ -69,8 +74,9 @@ judging words, no body-side wording, and no he/she guessed from a name. A note t
 
 | File | What |
 |---|---|
-| `parents/server.py` | Laptop helper: reads the board log, splits sessions, serves the page, runs Databricks |
-| `parents/site/index.html` | The parent page (no external files; works offline) |
+| `parents/server.py` | Laptop helper: reads the board log, serves the page, runs Databricks |
+| `wondermoves/assets/parents/index.html` | The parent page (no external files; works offline). Served by the board at /parents/ and by the laptop helper |
+| `wondermoves/python/parent_sessions.py` | Splits the log into sessions; shared by the board and the laptop helper |
 | `parents/simulate_board.py` | Simulated board events for demos and testing |
 | `databricks/notebooks/parent_progress.py` | Databricks: session history tables, per-day totals, notes for parents |
 
