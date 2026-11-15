@@ -69,14 +69,6 @@ window.TR = window.TR || {};
       this.active = true;
       WM.CamPanel.calibrating();
       this.go(WM.Hands.running ? 'max' : 'start');
-      // Turn the camera on by itself when the browser already allows it (no "Turn on camera" click).
-      if (!WM.Hands.running) {
-        try {
-          navigator.permissions && navigator.permissions.query({ name: 'camera' }).then(p => {
-            if (p.state === 'granted' && this.step === 'start' && !WM.Hands.running) this.startCamera();
-          }).catch(() => {});
-        } catch (e) { /* older browser: keep the button */ }
-      }
     },
 
     go(step) {
