@@ -77,7 +77,7 @@ The notes are read by parents of disabled children, so the rules are strict and 
 - **Databricks gets movement data only:** counts, minutes, reach lengths and sensor quality, plus a display label (default "Your child").
 - **The child's profile stays on the board.** Nickname, age, interests and the hand to practise are never sent to Databricks.
 - **The dashboard is behind a 4-digit parent PIN.** The board stores only a salted hash. The laptop helper only listens on `127.0.0.1`.
-- **No transcripts and no recordings.**
+- **No transcripts and no recordings.** Voice commands are turned into text on the computer itself, used once, and never kept.
 
 ## Run the Databricks part yourself
 
@@ -122,6 +122,8 @@ Rules for every game:
 - gentle break reminders.
 
 Accessibility: Calm mode (no flashing, softer sounds), one-button play for children who can't use a camera or mouse, and a choice of hand to practise.
+
+**Pip's voice:** everything a child can see is also said out loud, in one friendly voice, so children who can't read yet, or who have low vision, can still play. Children can also talk back: "Pip, open the fossil game", "dig again", "I need a break". Speech is turned into text offline with Whisper (tiny) in the browser, and only when a grown-up has switched it on in Settings. Buttons always keep working too. Details: [docs/PIP_VOICE.md](docs/PIP_VOICE.md).
 
 Evidence and sources: [docs/evidence-brief.html](docs/evidence-brief.html). The main source is Burgess et al., *Developmental Medicine & Child Neurology* (2025), a network meta-analysis of 48 randomised trials with children with CP. The UP-CAT trial (Sgandurra et al., 2013) is the evidence for action observation.
 
