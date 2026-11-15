@@ -67,6 +67,7 @@ class BoardLog:
         if not adb:
             self.status = "adb not found (install Android platform-tools, or use --demo)"
             return None
+        self.adb = adb
         if not self.board_path:
             # Most recently written log: the board can also hold old copies (e.g. a wondermoves-live
             # test app), and "first found" picked one of those.
@@ -83,6 +84,24 @@ class BoardLog:
             return None
         self.status = "board connected"
         return r.stdout.splitlines()
+
+    def push_insights(self, sessions: list[dict], insights: dict) -> bool:
+        """Copy the Databricks notes to the board, keyed by game and the board's own session start time,
+        so the parent page served by the board shows them too (data/parent_insights.json there)."""
+        adb = getattr(self, "adb", None)
+        if self.demo or not adb or not self.board_path:
+            return False
+        notes = insights.get("sessions", {})
+        out = {"generated_at": insights.get("generated_at"), "sessions": {}}
+        for s in sessions:
+            ins = notes.get(s["session_id"])
+            if ins:
+                out["sessions"][f"{s['game']}|{int(s.get('board_start_t', s['start_t']))}"] = ins
+        tmp = DATA / "board_parent_insights.json"
+        tmp.write_text(json.dumps(out))
+        dest = str(Path(self.board_path).parent / "parent_insights.json")
+        r = subprocess.run([adb, "push", str(tmp), dest], capture_output=True, text=True, timeout=20)
+        return r.returncode == 0
 
     def poll(self) -> bool:
         lines = self._read_lines()
@@ -101,6 +120,7 @@ class BoardLog:
             # New lines arrived within the last poll: re-anchor the clock to them.
             self.offset = time.time() - max(e.get("t", 0) for e in new)
         for e in new:
+            e["board_t"] = e.get("t", 0)             # keep the board's own time (see push_insights)
             e["t"] = e.get("t", 0) + self.offset
             e.setdefault("child", self.child)
         self.events += new
@@ -121,9 +141,18 @@ def load_history() -> list[dict]:
 # Databricks
 # ---------------------------------------------------------------------------
 
+class SetupError(Exception):
+    """Databricks needs a person to fix something (not a network problem)."""
+
+    def __init__(self, state: str, detail: str):
+        super().__init__(detail)
+        self.state, self.detail = state, detail
+
+
 class Databricks:
     def __init__(self, enabled: bool):
         self.enabled = enabled
+        self.on_update = None          # called with the new insights after each successful run
         self.cli = shutil.which("databricks") or str(Path.home() / ".local/bin/databricks")
         self.state = "waiting for a finished session" if enabled else "off"
         self.detail = ""
@@ -147,10 +176,13 @@ class Databricks:
 
     def notebook_path(self) -> str:
         if not Path(self.cli).exists():
-            raise RuntimeError("Databricks CLI not installed on this laptop (see parents/README.md)")
+            raise SetupError("not set up", "The Databricks CLI isn't installed on this laptop (see parents/README.md).")
         r = self.db("current-user", "me", "-o", "json", timeout=30)
         if r.returncode != 0:
-            raise RuntimeError("not signed in to Databricks: run `databricks auth login --host <your workspace>`")
+            err = (r.stderr or r.stdout).lower()
+            if any(w in err for w in ("no such host", "connection", "timeout", "network", "dial tcp", "unreachable")):
+                raise RuntimeError("no internet: " + err.strip()[:80])
+            raise SetupError("not signed in", "Sign in once: databricks auth login --host <your workspace address>")
         me = json.loads(r.stdout)["userName"]
         return f"/Users/{me}/wondermoves/{NOTEBOOK}"
 
@@ -170,7 +202,8 @@ class Databricks:
             self.state, self.detail = "sending", "Uploading finished sessions to Databricks"
             DATA.mkdir(exist_ok=True)
             out = DATA / "closed_sessions.jsonl"
-            out.write_text("".join(json.dumps(s) + "\n" for s in closed))
+            out.write_text("".join(json.dumps({**s, "local_day": time.strftime("%Y-%m-%d", time.localtime(s["start_t"]))}) + "\n"
+                                   for s in closed))
             path = self.notebook_path()
             if not self.deployed:
                 # First use on this Databricks account: create the storage (fine if it already exists)
@@ -198,7 +231,7 @@ class Databricks:
                     "tasks": [{"task_key": "parent_progress", "notebook_task": {"notebook_path": path}}]}
             r = self.db("jobs", "submit", "--json", json.dumps(spec), "-o", "json", "--timeout", "20m", timeout=1300)
             if r.returncode != 0:
-                raise RuntimeError((r.stderr or r.stdout).strip()[-200:])
+                raise SetupError("error", "The Databricks notebook run failed: " + (r.stderr or r.stdout).strip()[-160:])
             dest = DATA / "parent_insights.json"
             r = self.db("fs", "cp", f"dbfs:{VOL}/exports/parent_insights.json", str(dest), "--overwrite")
             if r.returncode != 0:
@@ -207,6 +240,12 @@ class Databricks:
             self.failed_ids = set()
             self.state = "up to date"
             self.detail = time.strftime("Updated %H:%M")
+            if self.on_update:
+                self.on_update(self.insights)
+        except SetupError as e:            # needs a person: don't call it "no internet"
+            self.state, self.detail = e.state, e.detail
+            self.failed_at = time.time()
+            self.failed_ids = {s["session_id"] for s in closed}
         except (OSError, ValueError, KeyError, RuntimeError, subprocess.TimeoutExpired) as e:
             self.state = "offline"
             self.failed_at = time.time()
@@ -225,6 +264,7 @@ class App:
         self.board = BoardLog(args.demo, args.board_path, args.child)
         self.history = load_history() if args.samples else []
         self.databricks = Databricks(not args.no_databricks)
+        self.databricks.on_update = lambda ins: self.board.push_insights(self.sessions, ins)
         self.lock = threading.Lock()
         self.sessions: list[dict] = []
         self.refresh()

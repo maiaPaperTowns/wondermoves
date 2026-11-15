@@ -3,7 +3,7 @@
 # MAGIC # WonderMoves · Parent progress
 # MAGIC Runs after each closed play session (started by `parents/server.py` on the laptop).
 # MAGIC
-# MAGIC Input: one row per finished session, for all three games (Treasure Reach, Fossil Brush, Bubble Lift),
+# MAGIC Input: one row per finished session, for all three games (Treasure Reach, Fossil Brush, Bubble Pop),
 # MAGIC uploaded to `/Volumes/workspace/wondermoves/raw/parents/sessions.jsonl`.
 # MAGIC
 # MAGIC It works out, per child:
@@ -30,15 +30,47 @@ import pandas as pd
 
 rows = [json.loads(l) for l in open(f"{BASE}/parents/sessions.jsonl") if l.strip()]
 df = pd.DataFrame(rows)
+# Visits with no movements (opened a game and left) are not practice: they would make "last time" 0
+# and use up AI notes on sessions the parent page hides.
+skipped = int((df["movements"] <= 0).sum()) if len(df) else 0
+df = df[df["movements"] > 0].copy() if len(df) else df
+if df.empty:
+    os.makedirs(f"{BASE}/exports", exist_ok=True)
+    with open(f"{BASE}/exports/parent_insights.json", "w") as f:
+        json.dump({"generated_at": datetime.datetime.utcnow().isoformat() + "Z", "source": "Databricks",
+                   "sessions": {}, "daily": []}, f)
+    dbutils.notebook.exit(f"no sessions with movements yet ({skipped} empty visits skipped)")
 df["start"] = pd.to_datetime(df["start_t"], unit="s")
 df = df.sort_values(["child", "game", "start_t"])
 df["prev_movements"] = df.groupby(["child", "game"])["movements"].shift(1)
 df["prev_minutes"] = df.groupby(["child", "game"])["minutes"].shift(1)
 df["sessions_so_far"] = df.groupby(["child", "game"]).cumcount() + 1
-print(f"{len(df)} sessions, {df.child.nunique()} children")
+print(f"{len(df)} sessions, {df.child.nunique()} children ({skipped} empty visits skipped)")
 
-spark.createDataFrame(df.drop(columns=["rewards"]).astype({"prev_movements": "float", "prev_minutes": "float"})) \
-    .write.mode("overwrite").option("overwriteSchema", "true").saveAsTable(f"{CAT}.{SCH}.parent_sessions")
+# A fixed, typed set of columns. Saving every field as-is breaks the Delta table when a field is empty
+# in every session (no type to infer), and new fields from the board would change the schema each time.
+COLUMNS = {"session_id": str, "child": str, "game": str, "game_name": str, "movement_word": str, "detail": str,
+           "local_day": str, "movements": int, "pairs": int, "breaks": int, "sessions_so_far": int, "reach_n": int,
+           "minutes": float, "start_t": float, "end_t": float, "prev_movements": float, "prev_minutes": float,
+           "comfortable_mm": float, "reach_avg_mm": float, "reach_max_mm": float, "closest_mm": float,
+           "quality_pct": float}
+
+
+def typed(frame):
+    out = pd.DataFrame(index=frame.index)
+    for col, kind in COLUMNS.items():
+        v = frame[col] if col in frame else pd.Series([None] * len(frame), index=frame.index)
+        if kind is str:
+            out[col] = v.fillna("").astype(str)
+        elif kind is int:
+            out[col] = pd.to_numeric(v, errors="coerce").fillna(0).astype("int64")
+        else:
+            out[col] = pd.to_numeric(v, errors="coerce").astype("float64")
+    return out
+
+
+spark.createDataFrame(typed(df)).write.mode("overwrite").option("overwriteSchema", "true") \
+    .saveAsTable(f"{CAT}.{SCH}.parent_sessions")
 
 # COMMAND ----------
 
@@ -46,7 +78,9 @@ spark.createDataFrame(df.drop(columns=["rewards"]).astype({"prev_movements": "fl
 
 # COMMAND ----------
 
-df["day"] = df["start"].dt.strftime("%Y-%m-%d")
+# The family's own calendar day (sent by the laptop helper); UTC only as a fallback.
+utc_day = df["start"].dt.strftime("%Y-%m-%d")
+df["day"] = df["local_day"].where(df["local_day"].astype(bool), utc_day) if "local_day" in df else utc_day
 daily = df.groupby(["child", "day", "game"], as_index=False).agg(movements=("movements", "sum"),
                                                                   minutes=("minutes", "sum"),
                                                                   sessions=("session_id", "count"))
@@ -96,6 +130,8 @@ def facts(r):
         f["found"] = r.rewards
     if r.pairs:
         f["times_both_hands_lifted_together"] = int(r.pairs)
+    if "reach_avg_mm" in df and pd.notna(getattr(r, "reach_avg_mm", None)):
+        f["average_reach_cm"] = round(float(r.reach_avg_mm) / 10, 1)
     if pd.notna(r.prev_movements):
         f["movements_last_time_in_this_game"] = int(r.prev_movements)
     f["this_was_session_number"] = int(r.sessions_so_far)
@@ -103,7 +139,8 @@ def facts(r):
 
 
 def template(r):
-    t = f"{r.child.split(' (')[0]} played {r.game_name} for {r.minutes} minutes and completed {int(r.movements)} {r.movement_word}."
+    how_long = "under a minute" if r.minutes < 1 else f"{round(r.minutes)} minute{'s' if round(r.minutes) != 1 else ''}"
+    t = f"{r.child.split(' (')[0]} played {r.game_name} for {how_long} and completed {int(r.movements)} {r.movement_word}."
     if pd.notna(r.prev_movements):
         t += f" Last time in this game: {int(r.prev_movements)}."
     return t
