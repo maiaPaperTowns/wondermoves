@@ -13,6 +13,7 @@ from pathlib import Path
 from arduino.app_bricks.web_ui import WebUI
 from arduino.app_utils import App, Bridge
 
+from parent_sessions import sessionize
 from strokes import StrokeCounter
 from vision import Vision
 
@@ -40,6 +41,43 @@ profile.setdefault("found", [])  # rewards the child has uncovered (shown in the
 profile.setdefault("lift_height", 0.16)  # Bubble Lift: caregiver-set lift (fraction of camera height)
 profile.setdefault("break_minutes", 10)  # gentle break suggestion after this much continuous play (0 = off)
 profile.pop("bubble_area", None)
+
+# About the child, for Pip's voice. Entered by a grown-up in Settings, kept only in data/profile.json on
+# this board. Never written to the play log (sessions.jsonl), so it never goes to Databricks.
+CHILD_DEFAULTS = {"nickname": "", "age_band": "", "language": "en", "interests": [], "needs": [],
+                  "avoid": "", "pronouns": "", "voice_ok": False}
+CHILD_NEEDS = {"tap_answers", "short_sentences", "extra_time", "quiet_sounds", "read_aloud"}
+CHILD_LANGS = {"en", "es", "vi", "zh", "fr", "ar", "hi"}
+profile["child"] = {**CHILD_DEFAULTS, **(profile.get("child") or {})}
+
+
+def clean_child(data):
+    """Keep only short, expected values. Free text is trimmed and stripped of control characters."""
+    def text(v, n):
+        return "".join(ch for ch in str(v or "") if ch.isprintable()).strip()[:n]
+    c = dict(profile["child"])
+    if "nickname" in data:
+        c["nickname"] = text(data["nickname"], 20)
+    if data.get("age_band") in ("", "6-8", "9-12"):
+        c["age_band"] = data["age_band"]
+    if data.get("language") in CHILD_LANGS:
+        c["language"] = data["language"]
+    if isinstance(data.get("interests"), list):
+        c["interests"] = [t for t in (text(x, 24) for x in data["interests"]) if t][:3]
+    if isinstance(data.get("needs"), list):
+        c["needs"] = [x for x in data["needs"] if x in CHILD_NEEDS]
+    if "avoid" in data:
+        c["avoid"] = text(data["avoid"], 120)
+    if data.get("pronouns") in ("", "they", "she", "he"):
+        c["pronouns"] = data["pronouns"]
+    if "voice_ok" in data:
+        c["voice_ok"] = bool(data["voice_ok"])
+    return c
+
+
+def logged_profile():
+    """The profile without the child's personal details, for events that go into the play log."""
+    return {k: v for k, v in profile.items() if k != "child"}
 
 # Illustrative game settings, not prescribed distances. Level 5 uses the child's own range.
 LEVELS = {
@@ -138,7 +176,7 @@ def on_distance(mm):
                     profile["comfortable_mm"] = statistics.median(state["calib"])
                     PROFILE.write_text(json.dumps(profile, indent=2))
                     state["mode"] = "idle"
-                    emit("calibration_done", **profile, target_mm=target_mm())
+                    emit("calibration_done", **logged_profile(), target_mm=target_mm())
         return
 
     if state["mode"] == "playing" and state["game"] == "reach_ui":
@@ -411,7 +449,20 @@ def on_set_limits(_client, data):
         profile["assist_hand"] = data["assist_hand"]
         vision.set_assist_hand(profile["assist_hand"])
     PROFILE.write_text(json.dumps(profile, indent=2))
-    emit("limits_updated", **{**profile, **level_info()})
+    emit("limits_updated", **{**logged_profile(), **level_info()})
+
+
+def on_set_child(_client, data):
+    """Settings → About your child. Saved on the board only; sent to open pages, never logged."""
+    profile["child"] = clean_child(data or {})
+    PROFILE.write_text(json.dumps(profile, indent=2))
+    ui.send_message("child_updated", profile["child"])
+
+
+def on_forget_child(_client, _data):
+    profile["child"] = dict(CHILD_DEFAULTS)
+    PROFILE.write_text(json.dumps(profile, indent=2))
+    ui.send_message("child_updated", profile["child"])
 
 
 def on_bubble_pop(_client, data):
@@ -444,10 +495,39 @@ def on_distance_debug(s0, s1, s2, s_err, raw_mm, raw_status):
 
 Bridge.provide("distance_debug", on_distance_debug)
 Bridge.provide("i2c_scan", lambda found: ui.send_message("i2c_scan", {"found": found}))
+
+def parents_state():
+    """GET /api/state for the parent page at /parents/ (the same page the laptop helper serves).
+    The board has no Databricks sign-in, so notes come only from the laptop helper."""
+    events = []
+    try:
+        for line in SESSIONS.read_text().splitlines():
+            try:
+                e = json.loads(line)
+            except ValueError:
+                continue
+            if "event" in e and "t" in e:
+                e["child"] = profile["child"]["nickname"] or "Your child"
+                events.append(e)
+    except FileNotFoundError:
+        pass
+    sessions = [dict(s, insight=None) for s in sessionize(events, time.time())]
+    prof = {k: profile.get(k) for k in ("assist_hand", "comfortable_mm", "baseline_mm", "approved_max_mm",
+                                         "level", "break_minutes", "found", "child")}
+    return {"children": [profile["child"]["nickname"] or "Your child"], "sessions": sessions, "daily": [], "profile": prof,
+            "board": "connected (page served by the board)",
+            "databricks": {"state": "on the laptop", "updated": None,
+                           "detail": "Notes from Databricks appear when the parent helper runs on a laptop (python3 parents/server.py)."},
+            "now": time.time()}
+
+
+ui.expose_api("GET", "/api/state", parents_state)
 ui.on_message("start", on_start)
 ui.on_message("pause", on_pause)
 ui.on_message("calibrate", on_calibrate)
 ui.on_message("set_limits", on_set_limits)
+ui.on_message("set_child", on_set_child)
+ui.on_message("forget_child", on_forget_child)
 ui.on_message("get_state", on_get_state)
 ui.on_message("vision_hello", on_vision_hello)
 ui.on_message("vision_event", on_remote_vision_event)

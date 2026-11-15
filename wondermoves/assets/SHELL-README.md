@@ -13,13 +13,16 @@ python3 -m http.server 8000   # then visit http://localhost:8000
 
 **The camera needs a server.** Chrome blocks the camera for games inside the shell when the shell is opened straight from disk as a `file://` URL. Everything else, including mouse play, also works from `file://`.
 
-To open a specific game directly, add its id to the URL, for example `index.html#bubble-pop`. The shell also remembers the last tab you played.
+The shell opens on **Home**: Pip says hello, shows today's moves from the board, and has a big card for each game. Games load only when picked, so the camera isn't asked for on Home. To open a specific game directly, add its id to the URL, for example `index.html#bubble-pop`.
+
+Grown-ups reach the parent page from **For grown-ups** on Home or **Grown-ups** in the tab bar (`parents/`, served by the board). It links to Settings (`grownups.html?settings`) and back to the games.
 
 ## Layout
 
 ```
 web/
-  index.html, shell.css, shell.js   the frame + bottom tab bar
+  index.html, shell.css, shell.js   the frame, Home screen + bottom tab bar
+  parents/index.html                the grown-ups page: child profile, game log, Databricks notes
   shared/
     wm-base.css                     shared look: colors, font, buttons, cards
     wm-pip.css / wm-pip.js          Pip: bottom-left helper bubble + spotlight tutorial
@@ -74,3 +77,45 @@ Treasure Reach still uses its own copy of the camera panel and top-bar styles. B
 The **Touch & mouse** pill on the right of the tab bar is a placeholder. It will become the camera / finger-tracking status. The camera panel, where Pip helps the child get their finger in frame, is planned to live in the shell, not in each game, so every game shares one camera setup.
 
 The iframes already allow `camera`, so a shell-level camera can later send finger positions down to the active game through the bridge.
+
+## Plugging in the AI voice agent (Talk to Pip)
+
+The shell has two hooks so a voice agent can be added without touching the games:
+
+- **Where the button goes:** `#voiceSlot`, top right of the Home screen. It's hidden while empty, so add the
+  button from your script (for example `document.getElementById('voiceSlot').append(btn)`).
+- **What screen the child is on:** the shell fires `wm:screen` on `window` every time the screen changes:
+
+  ```js
+  window.addEventListener('wm:screen', e => {
+    // e.detail = { screen: 'home' | 'fossil-brush' | 'treasure-reach' | 'bubble-pop', name: 'Treasure Reach' }
+  });
+  ```
+
+- **Opening a game by voice:** call `location.hash = '#treasure-reach'` (or `'#home'`).
+
+- **Who Pip is talking to:** a grown-up fills in *About your child* in Settings. The shell puts it in
+  `window.WM_CHILD` once Home loads, and `GET /api/state` returns it as `profile.child`:
+
+  ```js
+  { nickname: 'Mia', age_band: '6-8' | '9-12' | '', language: 'en' | 'es' | 'vi' | 'zh' | 'fr' | 'ar' | 'hi',
+    interests: ['dinosaurs'],              // up to 3
+    needs: ['tap_answers', 'short_sentences', 'extra_time', 'read_aloud', 'quiet_sounds'],
+    avoid: 'loud noises', pronouns: '' | 'they' | 'she' | 'he', voice_ok: false }
+  ```
+
+  **Only listen to the microphone when `voice_ok` is true.** Without it, Pip can still speak, and the
+  child answers with buttons. With `tap_answers`, always show answer buttons as well. With `extra_time`,
+  wait longer before Pip speaks again. Talk to the child as "you"; `pronouns` is only for notes to grown-ups.
+
+Privacy rules for the agent (the child is under 13):
+- Turn speech into text on the device. Don't keep or upload audio, and don't keep transcripts.
+- Send the language model only the child's words plus `nickname`, `age_band`, `language`, `interests`,
+  `needs` and `avoid`. Nothing else from the board.
+- Don't learn or store new personal facts from what the child says. Only a grown-up adds details, in Settings.
+- Pip only talks about the games, moving and resting. It says it's a game helper, not a person, and for
+  anything off-topic or worrying it says "let's ask your grown-up".
+
+Load the agent with one `<script>` tag at the end of `index.html`. Keep the project rules: no timers, no
+scores or comparisons, a slow movement counts like a fast one, and nothing recorded or sent without a
+grown-up's say-so.
