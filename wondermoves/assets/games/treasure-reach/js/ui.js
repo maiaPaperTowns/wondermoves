@@ -81,7 +81,7 @@ window.TR = window.TR || {};
         <span class="diff-emoji wm-emoji">${d.emoji}</span>
         <span class="diff-name">${d.name}</span>
         <span class="diff-blurb">${d.blurb}</span>
-        <span class="diff-meta">${TR.Store.data.inputMode === 'board' ? `Within ${(d.slackMm / 10).toFixed(1).replace('.0', '')} cm of max` : `Reach ${Math.min(TR.MAX_GOAL_PCT, d.goalPct)}%`} · hold ${(d.holdMs / 1000).toFixed(1)} s</span>
+        <span class="diff-meta">${TR.Store.data.inputMode === 'board' ? `Reach to ${TR.SENSE.openMm / 10} cm` : `Reach ${Math.min(TR.MAX_GOAL_PCT, d.goalPct)}%`} · hold ${(d.holdMs / 1000).toFixed(1)} s</span>
         <span class="diff-loot">Best loot: ${TR.RARITIES[d.weights.reduce((m, w, i) => (w > 0 ? i : m), 0)].icon} ${TR.RARITIES[d.weights.reduce((m, w, i) => (w > 0 ? i : m), 0)].name}</span>
       </button>`).join('');
     openLayer('#levelModal');

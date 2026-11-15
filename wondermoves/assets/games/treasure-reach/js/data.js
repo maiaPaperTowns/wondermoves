@@ -30,27 +30,30 @@ TR.TREASURES = [
 ];
 
 /* In-game difficulty. A chest opens when the reach is far enough AND held for `holdMs`.
-   - With the board's Distance sensor: the sensor must read within `slackMm` of the
-     "max forward" reading from calibration (hands pressed against the laptop).
+   - With the board's Distance sensor: the camera moves the progress bar up to
+     TR.SENSE.switchAt (it can't get closer), then the sensor takes over from
+     handoffMm (100 mm) to openMm (50 mm). The chest opens at openMm or closer,
+     held for `holdMs`; with the sensor, the levels only change the hold time.
    - Camera only (no board): both wrists must be `goalPct`% of the way from the start
      position to max forward.
    Max forward is the child's own comfortable maximum, so no level asks for more. */
 TR.DIFFICULTIES = [
   // weights = chance of [common, uncommon, rare, epic, legendary]; harder levels find rarer treasure
-  { id: 'easy',   name: 'Easy',   emoji: '🐢', lv: 1, blurb: 'Little reach, quick hold',   slackMm: 50, goalPct: 60,  holdMs: 300,  weights: [62, 28, 9, 1, 0] },
-  { id: 'medium', name: 'Medium', emoji: '🦀', lv: 2, blurb: 'Comfy reach, hold a moment', slackMm: 25, goalPct: 80,  holdMs: 800,  weights: [42, 30, 17, 9, 2] },
-  { id: 'hard',   name: 'Hard',   emoji: '🦈', lv: 3, blurb: 'All the way, hold it steady', slackMm: 8,  goalPct: 100, holdMs: 1500, weights: [26, 26, 22, 16, 10] },
+  { id: 'easy',   name: 'Easy',   emoji: '🐢', lv: 1, blurb: 'Little reach, quick hold',   goalPct: 60,  holdMs: 300,  weights: [62, 28, 9, 1, 0] },
+  { id: 'medium', name: 'Medium', emoji: '🦀', lv: 2, blurb: 'Comfy reach, hold a moment', goalPct: 80,  holdMs: 800,  weights: [42, 30, 17, 9, 2] },
+  { id: 'hard',   name: 'Hard',   emoji: '🦈', lv: 3, blurb: 'All the way, hold it steady', goalPct: 100, holdMs: 1500, weights: [26, 26, 22, 16, 10] },
 ];
 // Never beyond the child's calibrated maximum (WonderMoves evidence rule, docs/evidence-brief.html).
 TR.MAX_GOAL_PCT = 100;
 
 /* Reach measurement (camera + Distance sensor). Tune these for the kit. */
 TR.SENSE = {
+  handoffMm: 100,        // the sensor takes over the progress bar at this reading…
+  openMm: 50,            // …and the chest opens at this reading or closer
   trustMm: 150,          // sensor readings farther than this are ignored (the chip only sees hands up close)
   freshMs: 400,          // a reading older than this means "sensor sees nothing"
-  fallbackTouchMm: 15,   // sensor distance at max forward, if calibration couldn't read it
   levelTol: 0.25,        // both wrists within this share of the start→max-forward travel = "level"
-  switchAt: 0.7,         // the hand circles follow the camera up to here, then the sensor takes over
+  switchAt: 0.7,         // camera movement alone fills the bar (and moves the circles) only up to here
   restBelow: 0.3,        // hands are "back at the start" below this share of the travel
 };
 
