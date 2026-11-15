@@ -647,6 +647,7 @@
   .wmv-mic{display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;border:0;cursor:pointer;
     background:rgba(255,255,255,.12);color:#EDE8FF;font:600 14px Fredoka,ui-rounded,system-ui,sans-serif;max-width:300px}
   .wmv-mic:hover{background:rgba(255,255,255,.2)}
+  .wmv-mic[hidden]{display:none!important}
   .wmv-mic .dot{width:10px;height:10px;border-radius:50%;background:#8f86b8;flex:none}
   .wmv-mic.on .dot{background:#7BE0A4}.wmv-mic.hearing .dot{background:#FFB547;animation:wmvPulse .6s infinite}
   .wmv-mic.thinking .dot{background:#7DB9FF;animation:wmvPulse 1s infinite}
@@ -664,18 +665,25 @@
   @media (prefers-reduced-motion: reduce){.wmv-mic .dot{animation:none!important}}`;
   document.head.appendChild(css);
 
+  // Voice commands are switched OFF for now: both "Talk to Pip" buttons (the big one on Home and the
+  // small 🎤 in the tab bar) are hidden and the microphone never starts. Pip still talks out loud.
+  // Set to true to bring them back.
+  const VOICE_COMMANDS = false;
+
   const mic = document.createElement('button');
   mic.className = 'wmv-mic';
+  mic.hidden = !VOICE_COMMANDS;
   mic.innerHTML = '<span class="dot"></span><span class="txt">🎤 Talk to Pip</span>';
   mic.title = 'Turn on voice commands';
   // The big button goes in the slot the shell keeps for it on Home (SHELL-README, "#voiceSlot").
   // In games, a small 🎤 status sits in the bottom bar so the child can see Pip is listening.
   const slot = document.getElementById('voiceSlot');
-  if (slot) { mic.classList.add('big'); slot.appendChild(mic); slot.hidden = false; }
+  if (slot) { mic.classList.add('big'); slot.appendChild(mic); slot.hidden = !VOICE_COMMANDS; }
   else document.body.appendChild(mic);
   const mini = document.createElement('button');
   mini.className = 'wmv-mic mini';
   mini.innerHTML = '<span class="dot"></span><span class="txt">🎤</span>';
+  mini.hidden = !VOICE_COMMANDS;
   const right = document.querySelector('.tabbar-right');
   if (right) right.insertBefore(mini, right.firstChild); else { mini.classList.add('floating'); document.body.appendChild(mini); }
   const narrow = window.matchMedia('(max-width: 900px)');
@@ -784,7 +792,7 @@
     });
   }
   async function startListening() {
-    if (listening) return;
+    if (listening || !VOICE_COMMANDS) return;   // voice commands are off for now (see VOICE_COMMANDS)
     unlock();
     // A grown-up decides: with a child profile on the board, Pip only listens when
     // "Let Pip talk with my child by voice" is switched on (SHELL-README). No board: the click is the grown-up's choice.
