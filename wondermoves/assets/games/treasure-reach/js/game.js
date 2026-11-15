@@ -104,13 +104,15 @@
       const back = seen.length > 0 && Math.max(...seen) < S.restBelow;
       let p, bar, ok;
       if (this.mode === 'board') {
-        // (a) Distance sensor within the level's distance of max forward
-        const d = TR.sensorMm(), goal = TR.sensorGoalMm();
-        const sensorP = d == null ? null : clamp((S.trustMm - d) / (S.trustMm - goal), 0, 1);
+        // Camera alone fills the bar only up to S.switchAt (a gap stays between the circles and
+        // the chest). The sensor closes that gap: handoffMm (100 mm) → switchAt, openMm (50 mm) → 100%.
+        const d = TR.sensorMm(), goal = S.openMm;
+        const near = d != null && d <= S.handoffMm;
+        const sensorP = near ? clamp((S.handoffMm - d) / (S.handoffMm - goal), 0, 1) : null;
         if (d != null) this.minMm = this.minMm == null ? d : Math.min(this.minMm, d);
         const camPart = clamp(avg, 0, 1) * S.switchAt;
         bar = sensorP == null ? camPart : Math.max(camPart, S.switchAt + (1 - S.switchAt) * sensorP);
-        ok = d != null && d <= goal && level;               // (a) and (b)
+        ok = d != null && d <= goal && level;               // (a) sensor at 50 mm and (b) both hands
         p = {};
         ['left', 'right'].forEach(s => {
           p[s] = cam[s] == null ? null : sensorP == null ? clamp(cam[s], 0, 1) * S.switchAt : bar;
@@ -386,7 +388,8 @@
           const off = side === 'left' ? -1 : 1;
           const startX = chestC.x + off * startSpread();
           const endX = chestC.x + off * chestC.r * 0.42;
-          const e = ease(Math.min(1, p));
+          // straight in proportion to the bar, so the camera's 70% cap leaves a clear gap to the chest
+          const e = Math.min(1, p);
           target = { x: startX + (endX - startX) * e, y: chestC.y + chestC.r * 0.05 };
         }
       }

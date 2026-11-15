@@ -20,14 +20,9 @@ Reach toward the screen to open a treasure chest. The game uses the webcam and o
 Two conditions must hold together:
 
 **(a) Far enough.**
-- **On the UNO Q:** the Distance sensor, pointed at the hands, must read within the level's distance of the max-forward reading from setup:
-
-  | Level | Within | Hold |
-  | --- | --- | --- |
-  | 🐢 Easy | 5 cm | 0.3 s |
-  | 🦀 Medium | 2.5 cm | 0.8 s |
-  | 🦈 Hard | 0.8 cm | 1.5 s |
-
+- **On the UNO Q:** the progress comes in two parts.
+  - **Camera:** moving the wrists toward max forward fills the bar, and moves the circles, only up to 70% (`switchAt`). A gap always stays between the circles and the chest; camera movement alone can't close it.
+  - **Sensor:** once the Distance sensor reads **100 mm** (`handoffMm`), it takes over. Going from 100 mm to **50 mm** (`openMm`) fills the last 30% and brings the circles to the chest. The chest opens at 50 mm or closer, held for the level's hold time (Easy 0.3 s, Medium 0.8 s, Hard 1.5 s).
 - **Camera only (no board):** both wrists must be 60% (Easy), 80% (Medium) or 100% (Hard) of the way from the start spot to max forward.
 
 **(b) Both hands pushing.** The tops of both hands must stay in the camera picture, at about the same point between the start spot and max forward. The default tolerance is a quarter of the way. This matters because the sensor only measures the closest object, so one hand alone could otherwise open the chest.
@@ -35,8 +30,8 @@ Two conditions must hold together:
 If the hands are uneven, Pip says "Push with both hands together!". If a hand leaves the picture, Pip says "Keep the tops of both hands in the picture".
 
 **The red and blue circles** don't show where the hands are on camera. They sit on the horizon beside the chest and slide toward it as the reach progresses:
-- **Camera first:** the wrists moving toward max forward fill the first 70%. This is needed because the sensor only sees the hands up close.
-- **Sensor after that:** once the sensor reads 15 cm or closer, it fills the rest.
+- **Camera first:** the wrists moving toward max forward fill the first 70%, and no more.
+- **Sensor after that:** from 100 mm to 50 mm, the sensor fills the rest.
 
 The bar on the right only reaches the top when the chest can really open.
 
@@ -44,7 +39,7 @@ The bar on the right only reaches the top when the chest can really open.
 
 **Mouse mode:** the blue circle follows the pointer. Bringing it to the chest fills the bar.
 
-All the sensor numbers are in `TR.SENSE` and `TR.DIFFICULTIES` (`slackMm`) in `js/data.js`, so they're easy to tune on the real kit.
+All the sensor numbers (`handoffMm`, `openMm`, `switchAt`) are in `TR.SENSE` in `js/data.js`, so they're easy to tune on the real kit.
 
 ## Treasure collection
 

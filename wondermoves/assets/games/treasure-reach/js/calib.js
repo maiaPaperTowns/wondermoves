@@ -46,12 +46,8 @@ window.TR = window.TR || {};
     return B.distMm > 0 && B.distMm <= TR.SENSE.trustMm ? B.distMm : null;
   };
 
-  /** Sensor distance that opens the chest at the current level. */
-  TR.sensorGoalMm = function () {
-    const c = TR.Store.data.calib;
-    const touch = c && c.touchMm != null ? c.touchMm : TR.SENSE.fallbackTouchMm;
-    return touch + TR.level().slackMm;
-  };
+  /** Sensor distance that opens the chest. */
+  TR.sensorGoalMm = () => TR.SENSE.openMm;
 
   /** A hand's progress from start (0) to max forward (1) on camera, or null. */
   TR.camProgress = function (side, hand) {
