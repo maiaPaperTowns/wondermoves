@@ -9,6 +9,18 @@ movement activities: reaching, controlled positioning and repeated movement sequ
 > WonderMoves is **not** a medical device and does not replace occupational or physical therapy.
 > Reach targets never auto-increase past the range a caregiver or therapist approves.
 
+## Try it
+
+| Where | Link | What works |
+|---|---|---|
+| **Public demo** | https://maiapapertowns.github.io/wondermoves/ | Home, all three games with the webcam or a mouse. No sensors, play log or parent data (those need the board). |
+| **On the board** (USB) | http://localhost:7070/ after `adb forward tcp:7070 tcp:7000` | Everything: sensors, games, play log. |
+| Parent page on the board | http://localhost:7070/parents/ | Child profile, game log, chart. |
+| Settings on the board | http://localhost:7070/grownups.html?settings | Hand, range, breaks, About your child, Calibrate, sensors. |
+| Parent page + Databricks notes (laptop) | http://localhost:8090/ after `python3 parents/server.py` | The same page, plus Databricks notes. |
+
+The public site redeploys automatically from `main` (`.github/workflows/pages.yml`).
+
 ## Hardware we have (confirmed from photos, 3 kits: boards #21, #23, …)
 
 | Item | Part | Used for |
