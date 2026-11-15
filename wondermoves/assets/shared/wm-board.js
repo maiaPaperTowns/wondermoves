@@ -24,6 +24,7 @@ WM.Board = (function () {
     profile: null,      // { baseline_mm, comfortable_mm, approved_max_mm, level, lift_height, ... }
     sensors: null,      // { distance, movement, thermo, distance_hz, imu_hz, last_distance_mm }
     reachMm: null, reachAt: 0,
+    distMm: null, distAt: 0,   // latest Distance-sensor reading (mm from the sensor), ~30 per second while it sees something
     on(ev, fn) { (handlers[ev] = handlers[ev] || []).push(fn); if (socket) socket.on(ev, fn); },
     send(ev, data) { if (socket) socket.emit(ev, data || {}); },
     /** Runs fn once we know whether a board is there (immediately if already known). */
@@ -73,6 +74,7 @@ WM.Board = (function () {
     ['profile', 'calibration_done', 'limits_updated'].forEach(ev => socket.on(ev, merge));
     socket.on('sensors', st => { B.sensors = st; });
     socket.on('reach_progress', d => { B.reachMm = d.reach_mm; B.reachAt = performance.now(); });
+    socket.on('distance', d => { B.distMm = d.mm; B.distAt = performance.now(); });
     socket.on('break_suggested', showBreak);
     // The board answers get_state with 'profile'; treat that as "board is here".
     socket.once('profile', () => { B.available = true; settle(); });

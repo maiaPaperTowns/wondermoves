@@ -1,91 +1,95 @@
 /* ==========================================================================
    Treasure Reach: camera setup + reach calibration.
-   Uses the computer's front camera: the hands rest on the table in front of
-   the screen, so in the picture they're near the bottom, fingers pointing
-   down toward the camera.
-     1. hands — both hands flat on the table, inside the (upside-down) outlines
-     2. rest  — stay still → resting position of each hand
-     3. reach — 3 comfortable reaches toward the screen → goal
 
-   How reach is measured: each hand is described by (x, y, log palm size).
-   From above, a reach moves the hand across the picture; from the front, it
-   makes the hand look bigger. Calibration learns the child's own reach
-   direction from their 3 reaches, and progress = how far the hand has moved
-   along that direction (goal = the median comfortable reach), so it works
-   for either camera position.
+   Setup (laptop front camera tilted down at the hands on the table):
+     1. max   — press both hands against the laptop and tilt the screen down until the
+                tops of the hands (the wrists) touch the line near the bottom of the
+                picture. The line turns green (with a chime) when both are on it.
+                Records each wrist's height = "max forward", and the Distance sensor's
+                reading there (when the board is connected).
+     2. space — push the laptop forward until there is room to stretch comfortably.
+                The camera moves with the laptop, so "max forward" stays valid.
+     3. home  — pull both hands back behind the start line and keep still. The line
+                turns green (with a chime) when both are behind it.
+                Records each wrist's height = "start".
+
+   During play a hand's camera progress = how far its wrist has moved from start (0)
+   to max forward (1). See TR.camProgress / TR.sensorMm below and game.js.
    ========================================================================== */
 window.TR = window.TR || {};
 
 (function () {
   const $ = s => document.querySelector(s);
   const median = a => { const b = [...a].sort((x, y) => x - y); const m = b.length >> 1; return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; };
-  const REPS = 3;
-  const HANDS_S = 1.2, REST_S = 3;
-  const OUT_AT = 0.06, BACK_AT = 0.03, MIN_PEAK = 0.08;
-  const K_SIZE = 0.6; // weight of palm-size change vs. position change
-  /** Where the hand outlines sit in the camera picture (fractions). Tweak for your camera mount. */
-  // Resting hands go at the TOP of the picture, so the rest of it is room to reach toward the
-  // camera. Moving the laptop back gives even more room.
-  const GUIDE = { y: 0.27, dx: 0.17, size: 0.17, upsideDown: true };
-  /** Resting hands lower than this leave too little room to reach before leaving the picture. */
-  const TOO_LOW_Y = 0.45;
+  const MAX_S = 1.5, HOME_S = 2;
+  /** The max-forward line: where the tops of the hands (wrists) should touch, as a fraction
+      of the picture height, and how close counts as "touching". */
+  // y: high enough that the whole hand (fingers too) stays in the picture, so the tracker can still recognise it
+  const MAX_LINE = { y: 0.72, touch: 0.09, keep: 0.14 };   // turns green within `touch`, stays green until past `keep`
+  /** The start line sits this far above the max-forward position (fraction of the picture). */
+  const START_GAP = 0.14;
+  const START_KEEP = 0.05; // once behind the start line, stays green until this far in front of it
+  const LINE_GRACE_S = 0.5; // a green line only turns red after the hands are off it this long
+  const STEADY = 0.05;     // wrist moving less than this (picture height) over ~1 s = still
+  const GREEN = '#3DDC84', RED = '#FF5A3D';
 
-  TR.rest = { left: null, right: null };
+  const other = s => (s === 'left' ? 'right' : 'left');
+  const wrist = h => (h ? h.wrist || { x: h.x, y: h.y } : null);
 
-  const feature = h => [h.x, h.y, Math.log(h.size) * K_SIZE];
+  /** Is a Distance sensor available (UNO Q board answering, sensor plugged in)? */
+  TR.hasSensor = () => !!(window.WM && WM.Board && WM.Board.available && !(WM.Board.sensors && WM.Board.sensors.distance === false));
 
-  /** Movement of a hand away from its resting spot: { vec, mag } or null. */
-  TR.offset = function (side, hand) {
-    const r = TR.rest[side];
-    if (!hand || !r) return null;
-    const f = feature(hand);
-    const vec = [f[0] - r[0], f[1] - r[1], f[2] - r[2]];
-    return { vec, mag: Math.hypot(...vec) };
+  /** Latest trusted Distance-sensor reading in mm, or null (no board / nothing close enough). */
+  TR.sensorMm = function () {
+    const B = window.WM && WM.Board;
+    if (!B || !B.available || B.distMm == null || performance.now() - B.distAt > TR.SENSE.freshMs) return null;
+    return B.distMm > 0 && B.distMm <= TR.SENSE.trustMm ? B.distMm : null;
   };
 
-  /** How far along the child's own reach direction a hand is (1 = calibrated comfy reach). */
-  TR.reachAmount = function (side, hand) {
-    const c = TR.Store.data.calib, o = TR.offset(side, hand);
-    if (!o || !c || !c.dir) return null;
-    return (o.vec[0] * c.dir[0] + o.vec[1] * c.dir[1] + o.vec[2] * c.dir[2]) / c.goal;
+  /** Sensor distance that opens the chest at the current level. */
+  TR.sensorGoalMm = function () {
+    const c = TR.Store.data.calib;
+    const touch = c && c.touchMm != null ? c.touchMm : TR.SENSE.fallbackTouchMm;
+    return touch + TR.level().slackMm;
   };
 
-  /** Is this side's hand roughly inside its outline? */
-  function inGuide(side, h) {
-    if (!h) return false;
-    const gx = 0.5 + (side === 'left' ? -1 : 1) * GUIDE.dx;
-    return Math.hypot(h.x - gx, h.y - GUIDE.y) < GUIDE.size * 0.9;
-  }
+  /** A hand's progress from start (0) to max forward (1) on camera, or null. */
+  TR.camProgress = function (side, hand) {
+    const c = TR.Store.data.calib, w = wrist(hand);
+    if (!c || c.v !== 2 || !w) return null;
+    const home = c.homeY[side] != null ? c.homeY[side] : c.homeY[other(side)];
+    const max = c.maxY[side] != null ? c.maxY[side] : c.maxY[other(side)];
+    if (home == null || max == null || max - home < 0.04) return null;
+    return (w.y - home) / (max - home);
+  };
 
   const Calib = TR.Calib = {
-    active: false, step: 'start', full: true,
-    t: 0, samples: { left: [], right: [] }, reps: [], out: false, peak: null, best: 0.3,
-    stepStart: 0, saidSlow: false,
+    active: false, step: 'start', t: 0, stepStart: 0,
+    samples: { left: [], right: [] }, sensor: [], recent: { left: [], right: [] },
+    lineOk: false,           // the guide line is green (both hands on / behind it)
+    offFor: 0,               // how long the hands have been off a green line
 
-    /** full = redo the reach part even if a goal is saved. */
-    open(full) {
+    open() {
       this.active = true;
-      const c = TR.Store.data.calib;
-      this.full = !!full || !(c && c.dir);
       WM.CamPanel.calibrating();
-      if (WM.Hands.running) this.go('hands');
-      else this.go('start');
+      this.go(WM.Hands.running ? 'max' : 'start');
     },
 
     go(step) {
       this.step = step;
       this.t = 0;
       this.stepStart = performance.now();
-      this.saidSlow = false;
-      if (step === 'rest') this.samples = { left: [], right: [] };
-      if (step === 'reach') { this.reps = []; this.out = false; this.peak = null; this.best = 0.3; }
+      this.samples = { left: [], right: [] };
+      this.sensor = [];
+      this.lineOk = false;
+      this.offFor = 0;
       this.render();
       const say = {
         start: `Hi, I'm ${WM.PIP.name}! I need to see your hands to play. Ask a grown-up to turn on the camera! 📷`,
-        hands: 'Put your hands flat on the table, fingers pointing at the screen, inside the outlines at the top! 🖐️🖐️',
-        rest: 'Now keep your hands still and comfy… 😌',
-        reach: `Keep your hands on the table and slide them toward the camera as far as feels comfy, then come back. Let's do it ${REPS} times! 🙌`,
-        done: 'All set! Your reach goal is ready! 🎯',
+        max: 'Press both hands against the laptop. Tilt the screen down until the tops of your hands touch the red line! 🖐️🖐️',
+        space: 'Now push the laptop forward so you have room to stretch comfortably. Then tap Next! 💻',
+        home: 'Pull both hands back behind the start line and keep them still. 😌',
+        done: 'All set! Push both hands toward the laptop to open the chest! 🎯',
       }[step];
       if (say) WM.Buddy.say(say, 0);
     },
@@ -97,9 +101,8 @@ window.TR = window.TR || {};
       WM.Sound.ensure();
       try {
         await WM.Hands.start(WM.CamPanel.video, { onStatus: m => { if (status) status.textContent = m; } });
-        TR.Store.data.inputMode = 'camera'; TR.Store.save();
         WM.CamPanel.cameraOn(true);
-        this.go('hands');
+        this.go('max');
       } catch (e) {
         if (btn) btn.disabled = false;
         const denied = e && (e.name === 'NotAllowedError' || e.name === 'SecurityError');
@@ -119,115 +122,148 @@ window.TR = window.TR || {};
     },
 
     finish() {
-      if (this.reps.length) {
-        // reach direction = average of the child's reaches; goal = median distance along it
-        const sum = [0, 0, 0];
-        this.reps.forEach(v => { const m = Math.hypot(...v) || 1; sum[0] += v[0] / m; sum[1] += v[1] / m; sum[2] += v[2] / m; });
-        const n = Math.hypot(...sum) || 1;
-        const dir = sum.map(c => c / n);
-        const proj = this.reps.map(v => v[0] * dir[0] + v[1] * dir[1] + v[2] * dir[2]);
-        TR.Store.data.calib = { dir, goal: Math.max(MIN_PEAK, median(proj)), reps: proj.map(p => +p.toFixed(3)), at: Date.now() };
-        TR.Store.save();
-      }
       this.go('done');
       WM.Sound.fanfare(1);
       setTimeout(() => { this.active = false; TR.Game.afterCalibration(); }, 1700);
     },
 
+    /** The guide line turns green (with one chime) when both hands are on / behind it.
+        It only turns red again after the hands have been off it for LINE_GRACE_S, so
+        tracking jitter at the edge doesn't make it flicker. */
+    setLine(ok, dt) {
+      if (ok) {
+        this.offFor = 0;
+        if (!this.lineOk) { this.lineOk = true; WM.Sound.chime(); }
+      } else if (this.lineOk) {
+        this.offFor += dt;
+        if (this.offFor >= LINE_GRACE_S) this.lineOk = false;
+      }
+      return this.lineOk;
+    },
+
+    /** Start line height (fraction of the picture), from the max-forward line just recorded. */
+    startLineY() {
+      const c = this.pending;
+      return Math.max(0.1, Math.min(c.maxY.left, c.maxY.right) - START_GAP);
+    },
+
+    /** Both wrists seen and still for about a second? */
+    steady(L) {
+      let ok = true;
+      ['left', 'right'].forEach(s => {
+        const r = this.recent[s];
+        const w = wrist(L[s]);
+        if (w) { r.push(w.y); if (r.length > 30) r.shift(); } else r.length = 0;
+        if (r.length < 15 || Math.max(...r) - Math.min(...r) > STEADY) ok = false;
+      });
+      return ok;
+    },
+
     update(dt) {
       if (!this.active) return;
       const L = WM.Hands.latest;
-      const present = ['left', 'right'].filter(s => L[s]);
-      const now = performance.now();
+      const both = !!(L.left && L.right);
+      const still = this.steady(L);
+      const d = TR.sensorMm();
 
-      if (this.step === 'hands') {
-        const inside = present.filter(s => inGuide(s, L[s]));
-        this.t = present.length ? this.t + dt : Math.max(0, this.t - dt * 0.5);
-        this.setBar(this.t / HANDS_S);
-        const low = present.some(s => L[s].y > TOO_LOW_Y);
-        this.setLive(low ? 'Move the laptop back a little (or sit back) so your hands are at the top of the picture 📐'
-          : inside.length === 2 ? 'Both hands in place! 🙌'
-          : present.length === 2 ? 'I see both hands! Slide them into the outlines if you can.'
-          : present.length ? 'I see one hand… show me the other one too!' : 'Looking for hands… 👀');
-        if (this.t >= HANDS_S) this.go('rest');
-      }
-
-      else if (this.step === 'rest') {
-        if (present.length) {
+      if (this.step === 'max') {
+        const ys = both ? [wrist(L.left).y, wrist(L.right).y] : [];
+        const band = this.lineOk ? MAX_LINE.keep : MAX_LINE.touch;   // easier to stay on than to get on
+        const tooHigh = ys.some(y => y < MAX_LINE.y - band);
+        const tooLow = ys.some(y => y > MAX_LINE.y + band);
+        const onLine = this.setLine(both && !tooHigh && !tooLow, dt);
+        const ok = onLine && still;
+        if (ok) {
           this.t += dt;
-          present.forEach(s => this.samples[s].push(feature(L[s])));
-        }
-        this.setBar(this.t / REST_S);
-        this.setLive(present.length ? `Stay still… ${Math.max(1, Math.ceil(REST_S - this.t))}` : 'Where did your hands go? 👀');
-        if (this.t >= REST_S) {
-          ['left', 'right'].forEach(s => {
-            const S = this.samples[s];
-            TR.rest[s] = S.length >= 8 ? [0, 1, 2].map(k => median(S.map(f => f[k]))) : null;
-          });
-          WM.Sound.chime();
-          if (!this.full) this.finish();
-          else this.go('reach');
+          ['left', 'right'].forEach(s => this.samples[s].push(wrist(L[s]).y));
+          if (d != null) this.sensor.push(d);
+        } else if (!onLine) this.t = Math.max(0, this.t - dt);   // a little wobble on the line only pauses the bar
+        this.setBar(this.t / MAX_S);
+        this.setLive(!both ? (L.left || L.right ? 'I see one hand… press the other one against the laptop too!' : 'Press both hands against the laptop 🖐️🖐️')
+          : tooHigh ? 'Tilt the screen down until the tops of your hands touch the line ⬇️'
+          : tooLow ? 'Tilt the screen up a little, so the tops of your hands are on the line ⬆️'
+          : !still ? 'Both hands on the line! Now hold still… 😌'
+          : `Perfect! Hold it there…${d != null ? ` (sensor: ${Math.round(d)} mm)` : ''}`);
+        if (this.t >= MAX_S) {
+          const c = { v: 2, maxY: {}, homeY: {}, touchMm: null, at: Date.now() };
+          ['left', 'right'].forEach(s => { c.maxY[s] = median(this.samples[s]); });
+          if (this.sensor.length >= 5) c.touchMm = median(this.sensor);
+          this.pending = c;
+          this.go('space');
         }
       }
 
-      else if (this.step === 'reach') {
-        let best = null;
-        present.forEach(s => { const o = TR.offset(s, L[s]); if (o && (!best || o.mag > best.mag)) best = o; });
-        const g = best ? best.mag : 0;
-        if (!this.out && g > OUT_AT) { this.out = true; this.peak = best; }
-        if (this.out) {
-          if (best && best.mag > this.peak.mag) this.peak = best;
-          this.best = Math.max(this.best, this.peak.mag * 1.15);
-          if (g < BACK_AT) {
-            this.out = false;
-            if (this.peak.mag >= MIN_PEAK) {
-              this.reps.push(this.peak.vec);
-              WM.Sound.tick(this.reps.length + 1);
-              if (this.reps.length >= REPS) { this.finish(); return; }
-              WM.Buddy.say(`Great reach! ${REPS - this.reps.length} more! 🙌`, 0);
-              this.renderReps();
-            }
-          }
-        }
-        this.setBar(g / this.best);
-        this.setLive(this.out ? 'Reaching… now slide back! 🔁' : 'Keep your hands on the table and slide them toward the camera 🙌');
-        if (!this.saidSlow && now - this.stepStart > 25000 && this.reps.length < REPS) {
-          this.saidSlow = true;
-          WM.Buddy.say('Any comfy reach is great, even a small one! Reach toward me, then come back. 💛', 0);
+      else if (this.step === 'home') {
+        const c = this.pending;
+        const line = this.startLineY();
+        const limit = this.lineOk ? line + START_KEEP : line;   // easier to stay behind than to get behind
+        const behind = this.setLine(both && ['left', 'right'].every(s => wrist(L[s]).y <= limit), dt);
+        const ok = behind && still;
+        if (ok) {
+          this.t += dt;
+          ['left', 'right'].forEach(s => this.samples[s].push(wrist(L[s]).y));
+        } else if (!behind) this.t = Math.max(0, this.t - dt);   // a little wobble behind the line only pauses the bar
+        this.setBar(this.t / HOME_S);
+        this.setLive(!both ? 'Keep both hands where I can see them 👀'
+          : !behind ? 'Pull both hands back behind the start line, toward you 🙌'
+          : !still ? 'Both hands behind the line! Now hold still… 😌'
+          : `Stay comfy… ${Math.max(1, Math.ceil(HOME_S - this.t))}`);
+        if (this.t >= HOME_S) {
+          ['left', 'right'].forEach(s => { c.homeY[s] = median(this.samples[s]); });
+          TR.Store.data.calib = c;
+          TR.Store.save();
+          this.finish();
         }
       }
     },
 
-    /** Hand outlines on the camera view while setting up. */
+    /** Guide lines on the camera view while setting up. */
     drawExtra(ctx, w, h) {
-      if (!this.active || !['hands', 'rest'].includes(this.step)) return;
+      if (!this.active || (this.step !== 'max' && this.step !== 'home')) return;
       const L = WM.Hands.latest;
-      ['left', 'right'].forEach(side => {
-        const gx = (0.5 + (side === 'left' ? -1 : 1) * GUIDE.dx) * w;
-        WM.CamPanel.drawHandGuide(ctx, gx, GUIDE.y * h, GUIDE.size * w, { side, ok: inGuide(side, L[side]), color: WM.Hands.COLORS[side], upsideDown: GUIDE.upsideDown });
+      const font = `700 ${Math.max(12, w / 40)}px Fredoka, sans-serif`;
+      const line = (y, color, label, width) => {
+        ctx.setLineDash([10, 8]);
+        ctx.lineWidth = width;
+        ctx.strokeStyle = color;
+        ctx.beginPath(); ctx.moveTo(w * 0.06, y); ctx.lineTo(w * 0.94, y); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = color;
+        ctx.font = font;
+        ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+        ctx.fillText(label, w * 0.07, y - 6);
+      };
+      ctx.save();
+      if (this.step === 'max') {
+        line(MAX_LINE.y * h, this.lineOk ? GREEN : RED, this.lineOk ? 'both hands on the line ✔' : 'tops of your hands on this line', this.lineOk ? 6 : 4);
+      } else {
+        line(this.startLineY() * h, this.lineOk ? GREEN : RED, this.lineOk ? 'both hands behind the start line ✔' : 'start line: pull back behind it', this.lineOk ? 6 : 4);
+      }
+      ['left', 'right'].forEach(s => {
+        const p = wrist(L[s]);
+        if (!p) return;
+        ctx.fillStyle = WM.Hands.COLORS[s];
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(p.x * w, p.y * h, Math.max(7, w / 60), 0, Math.PI * 2); ctx.fill(); ctx.stroke();
       });
+      ctx.restore();
     },
 
     setBar(f) { const b = $('#calBar'); if (b) b.style.width = Math.max(0, Math.min(1, f)) * 100 + '%'; },
     setLive(text) { const l = $('#calLive'); if (l && l.textContent !== text) l.textContent = text; },
-    renderReps() {
-      const r = $('#calReps');
-      if (r) r.innerHTML = Array.from({ length: REPS }, (_, i) => `<i class="${i < this.reps.length ? 'on' : ''}"></i>`).join('');
-      const d = $('#calDone');
-      if (d) d.hidden = this.reps.length === 0;
-    },
 
     render() {
       const el = WM.CamPanel.body;
-      const steps = ['hands', 'rest', 'reach'];
+      const steps = ['max', 'space', 'home'];
       const idx = steps.indexOf(this.step);
-      const stepper = `<ol class="wm-stepper">${['Hands', 'Rest', 'Reach'].map((n, i) => `<li class="${i < idx || this.step === 'done' ? 'done' : i === idx ? 'on' : ''}"><b>${i + 1}</b>${n}</li>`).join('')}</ol>`;
+      const stepper = `<ol class="wm-stepper">${['Tilt down', 'Make space', 'Start spot'].map((n, i) => `<li class="${i < idx || this.step === 'done' ? 'done' : i === idx ? 'on' : ''}"><b>${i + 1}</b>${n}</li>`).join('')}</ol>`;
       const mouseLink = '<button class="wm-link" data-cal="mouse">🖱️ Play with a mouse instead</button>';
+      const saved = TR.Store.data.calib && TR.Store.data.calib.v === 2;
 
       if (this.step === 'start') {
         el.innerHTML = `
           <h2>Let's set up the camera!</h2>
-          <p>Sit in front of the computer with your hands resting on the table. Move the laptop back a little and tilt the screen so your hands show at the top of the picture, with plenty of table in front of them to reach across.</p>
+          <p>Sit at the table with the laptop in front of you. Pip will help you point the camera at your hands.</p>
           <div class="wm-calib-actions">
             <button class="wm-btn primary" id="calStart" data-cal="start">📷 Turn on camera</button>
             ${mouseLink}
@@ -235,21 +271,27 @@ window.TR = window.TR || {};
           <p class="wm-calib-status" id="calStatus"></p>
           <p class="wm-calib-privacy">🔒 The video stays on this device. It is never saved or sent anywhere.</p>`;
       } else if (this.step === 'done') {
-        el.innerHTML = `${stepper}<h2>🎯 All set!</h2><p>Your reach goal is ready. Let's find some treasure!</p>`;
+        el.innerHTML = `${stepper}<h2>🎯 All set!</h2><p>Push both hands toward the laptop to open the chest!</p>`;
+      } else if (this.step === 'space') {
+        el.innerHTML = `
+          ${stepper}
+          <h2>Push the device forward 💻</h2>
+          <p>Push until there's enough space to stretch your arms comfortably.</p>
+          <div class="wm-calib-actions">
+            <button class="wm-btn primary" data-cal="next">Next ➜</button>
+            ${mouseLink}
+          </div>`;
       } else {
-        const title = { hands: 'Hands flat on the table, at the top 🖐️🖐️', rest: 'Keep your hands still 😌', reach: 'Slide your hands toward the camera 🙌' }[this.step];
+        const title = { max: 'Tilt the camera down till the line hits your hand', home: 'Move your hands back to the start 😌' }[this.step];
         el.innerHTML = `
           ${stepper}
           <h2>${title}</h2>
           <div class="wm-calib-meter"><i id="calBar"></i></div>
           <p class="wm-calib-live" id="calLive"></p>
-          ${this.step === 'reach' ? `<div class="rep-dots" id="calReps"></div>` : ''}
           <div class="wm-calib-actions">
-            ${this.step === 'reach' ? '<button class="wm-btn small" id="calDone" data-cal="done" hidden>✔ Use these reaches</button>' : ''}
-            ${this.step === 'reach' && TR.Store.data.calib && TR.Store.data.calib.dir ? '<button class="wm-btn small" data-cal="saved">↩ Use my last goal</button>' : ''}
+            ${this.step === 'max' && saved ? '<button class="wm-btn small" data-cal="saved">↩ Use my last setup</button>' : ''}
             ${mouseLink}
           </div>`;
-        if (this.step === 'reach') this.renderReps();
       }
     },
   };
@@ -261,7 +303,7 @@ window.TR = window.TR || {};
     const act = b.dataset.cal;
     if (act === 'start') Calib.startCamera();
     else if (act === 'mouse') { Calib.active = false; TR.Game.useMouse(); }
-    else if (act === 'done') Calib.finish();
-    else if (act === 'saved') { Calib.reps = []; Calib.finish(); }
+    else if (act === 'next') Calib.go('home');
+    else if (act === 'saved') Calib.finish();
   });
 })();

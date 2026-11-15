@@ -2,14 +2,19 @@
    Bubble Pop: camera setup + calibration (same flow and look as Treasure Reach).
      1. frame — centre head & shoulders in the picture (body-pose model)
      2. hands — both hands in view
-     3. range — wave hands around as far as is comfy; that area is stretched
+     3. range — stretch the left hand toward a handprint in the bottom-left corner and
+                the right hand toward one in the top-right, as far as is comfy; that area is stretched
                 to fill the whole play area, so every bubble is reachable
    ========================================================================== */
 window.BP = window.BP || {};
 
 (function () {
   const $ = s => document.querySelector(s);
-  const FRAME_S = 1.5, HANDS_S = 1.2, RANGE_S = 6, RANGE_MAX_S = 14, MIN_SPAN = 0.22;
+  const FRAME_S = 1.5, HANDS_S = 1.2, STRETCH_HOLD_S = 1.5, MIN_SPAN = 0.22;
+  /** Handprints for the Stretch step (camera picture fractions): left hand bottom-left, right hand top-right. */
+  const PRINTS = { left: { x: 0.17, y: 0.78 }, right: { x: 0.83, y: 0.22 }, size: 0.13, near: 0.13 };
+  const STEADY = 0.03; // hand moving less than this over ~1 s = still
+  const GREEN = '#3DDC84';
   const pct = (a, q) => { const b = [...a].sort((x, y) => x - y); return b[Math.min(b.length - 1, Math.max(0, Math.round(q * (b.length - 1))))]; };
 
   /** Where the target head-and-shoulders outline sits in the camera picture. */
@@ -18,7 +23,8 @@ window.BP = window.BP || {};
   const Calib = BP.Calib = {
     active: false, step: 'start', t: 0, stepStart: 0,
     frame: { ok: false, msg: '' },
-    pts: { x: [], y: [] },
+    ext: null,                 // furthest stretch: left hand {x min, y max}, right hand {x max, y min}
+    recent: { left: [], right: [] }, near: { left: false, right: false },
     poseFailed: false,
 
     open() {
@@ -41,7 +47,7 @@ window.BP = window.BP || {};
       this.step = step;
       this.t = 0;
       this.stepStart = performance.now();
-      if (step === 'range') this.pts = { x: [], y: [] };
+      if (step === 'range') { this.ext = { lx: null, ly: null, rx: null, ry: null }; this.recent = { left: [], right: [] }; this.near = { left: false, right: false }; }
       if (step === 'frame') {
         if (this.poseFailed) { this.go('hands'); return; }
         WM.Pose.start(WM.CamPanel.video).catch(e => {
@@ -57,7 +63,7 @@ window.BP = window.BP || {};
         start: `Hi, I'm ${WM.PIP.name}! Let's go under the sea! Ask a grown-up to turn on the camera. 📷`,
         frame: 'Sit so your head and shoulders are in the middle of the picture! 🙂',
         hands: 'Now hold up your hands so I can see them! 👋',
-        range: 'Wave your hands around: up high, down low, out wide, as far as feels comfy! 🌊',
+        range: 'Stretch your left hand toward the bottom handprint and your right hand toward the top one, as far as feels comfy. Then hold still! 🖐️',
         done: 'All set! Let\'s pop some bubbles! 🫧',
       }[step];
       if (say) WM.Buddy.say(say, 0);
@@ -106,8 +112,8 @@ window.BP = window.BP || {};
     },
 
     finishRange() {
-      const xs = this.pts.x, ys = this.pts.y;
-      let x0 = pct(xs, 0.05), x1 = pct(xs, 0.95), y0 = pct(ys, 0.05), y1 = pct(ys, 0.95);
+      const e = this.ext;
+      let x0 = e.lx, x1 = e.rx, y0 = e.ry, y1 = e.ly;
       const grow = (a, b) => {
         const pad = (b - a) * 0.08;
         a -= pad; b += pad;
@@ -119,6 +125,19 @@ window.BP = window.BP || {};
       BP.Store.data.range = { x0, x1, y0, y1, at: Date.now() };
       BP.Store.save();
       this.finish();
+    },
+
+    /** Both hands seen and still for about a second? */
+    steady(L) {
+      let ok = true;
+      ['left', 'right'].forEach(s => {
+        const r = this.recent[s];
+        if (L[s]) { r.push([L[s].x, L[s].y]); if (r.length > 30) r.shift(); } else r.length = 0;
+        if (r.length < 15) { ok = false; return; }
+        const xs = r.map(p => p[0]), ys = r.map(p => p[1]);
+        if (Math.max(...xs) - Math.min(...xs) > STEADY || Math.max(...ys) - Math.min(...ys) > STEADY) ok = false;
+      });
+      return ok;
     },
 
     finish() {
@@ -150,14 +169,24 @@ window.BP = window.BP || {};
       }
 
       else if (this.step === 'range') {
-        if (present.length) {
-          this.t += dt;
-          present.forEach(s => { this.pts.x.push(L[s].x); this.pts.y.push(L[s].y); });
-        }
-        const span = this.pts.x.length > 10 ? Math.min(pct(this.pts.x, 0.95) - pct(this.pts.x, 0.05), pct(this.pts.y, 0.95) - pct(this.pts.y, 0.05)) : 0;
-        this.setBar(this.t / RANGE_S);
-        this.setLive(!present.length ? 'Where did your hands go? 👀' : span < MIN_SPAN * 0.8 ? 'Bigger waves! Up high and out wide! 🌊' : 'Great waving! Keep going… 🙌');
-        if ((this.t >= RANGE_S && span >= MIN_SPAN * 0.8) || this.t >= RANGE_MAX_S) this.finishRange();
+        const e = this.ext, Lh = L.left, Rh = L.right;
+        if (Lh) { e.lx = e.lx == null ? Lh.x : Math.min(e.lx, Lh.x); e.ly = e.ly == null ? Lh.y : Math.max(e.ly, Lh.y); }
+        if (Rh) { e.rx = e.rx == null ? Rh.x : Math.max(e.rx, Rh.x); e.ry = e.ry == null ? Rh.y : Math.min(e.ry, Rh.y); }
+        // a handprint turns green when its hand gets close to it (a chime when both are there)
+        const near = side => !!(L[side] && Math.hypot(L[side].x - PRINTS[side].x, L[side].y - PRINTS[side].y) <= PRINTS.near);
+        const nl = near('left'), nr = near('right');
+        if (nl && nr && !(this.near.left && this.near.right)) WM.Sound.chime();
+        this.near = { left: nl, right: nr };
+        const both = !!(Lh && Rh);
+        const spanOk = e.lx != null && e.rx != null && e.rx - e.lx >= MIN_SPAN && e.ly - e.ry >= MIN_SPAN;
+        const still = this.steady(L);
+        this.t = both && spanOk && still ? this.t + dt : Math.max(0, this.t - dt);
+        this.setBar(this.t / STRETCH_HOLD_S);
+        this.setLive(!both ? 'Show me both hands 👀'
+          : !spanOk ? 'Stretch farther toward the handprints, as far as is comfy 🖐️'
+          : !still ? (nl && nr ? 'You reached both handprints! Now hold still… 🌟' : 'Great stretch! Now hold still… 😌')
+          : 'Hold it right there…');
+        if (this.t >= STRETCH_HOLD_S) this.finishRange();
       }
     },
 
@@ -190,15 +219,24 @@ window.BP = window.BP || {};
           }
         }
         ctx.restore();
-      } else if (this.step === 'range' && this.pts.x.length > 10) {
-        const x0 = pct(this.pts.x, 0.05), x1 = pct(this.pts.x, 0.95), y0 = pct(this.pts.y, 0.05), y1 = pct(this.pts.y, 0.95);
+      } else if (this.step === 'range') {
+        const e = this.ext;
         ctx.save();
-        ctx.fillStyle = 'rgba(123,224,164,0.18)';
-        ctx.strokeStyle = '#7BE0A4';
-        ctx.lineWidth = 3;
-        ctx.setLineDash([8, 6]);
-        ctx.fillRect(x0 * w, y0 * h, (x1 - x0) * w, (y1 - y0) * h);
-        ctx.strokeRect(x0 * w, y0 * h, (x1 - x0) * w, (y1 - y0) * h);
+        // the window stretched so far
+        if (e.lx != null && e.rx != null) {
+          ctx.fillStyle = 'rgba(61,220,132,0.14)';
+          ctx.strokeStyle = GREEN;
+          ctx.lineWidth = 3;
+          ctx.setLineDash([8, 6]);
+          ctx.fillRect(e.lx * w, e.ry * h, (e.rx - e.lx) * w, (e.ly - e.ry) * h);
+          ctx.strokeRect(e.lx * w, e.ry * h, (e.rx - e.lx) * w, (e.ly - e.ry) * h);
+          ctx.setLineDash([]);
+        }
+        // handprints: left hand bottom-left, right hand top-right (green when the hand gets there)
+        ['left', 'right'].forEach(side => {
+          WM.CamPanel.drawHandGuide(ctx, PRINTS[side].x * w, PRINTS[side].y * h, PRINTS.size * w,
+            { side, ok: this.near[side], color: WM.Hands.COLORS[side] });
+        });
         ctx.restore();
       }
     },
@@ -210,7 +248,7 @@ window.BP = window.BP || {};
       const el = WM.CamPanel.body;
       const steps = ['frame', 'hands', 'range'];
       const idx = steps.indexOf(this.step);
-      const stepper = `<ol class="wm-stepper">${['Sit', 'Hands', 'Wave'].map((n, i) => `<li class="${i < idx || this.step === 'done' ? 'done' : i === idx ? 'on' : ''}"><b>${i + 1}</b>${n}</li>`).join('')}</ol>`;
+      const stepper = `<ol class="wm-stepper">${['Sit', 'Hands', 'Stretch'].map((n, i) => `<li class="${i < idx || this.step === 'done' ? 'done' : i === idx ? 'on' : ''}"><b>${i + 1}</b>${n}</li>`).join('')}</ol>`;
       const mouseLink = '<button class="wm-link" data-cal="mouse">🖱️ Play with a mouse instead</button>';
       if (this.step === 'start') {
         el.innerHTML = `
@@ -225,7 +263,7 @@ window.BP = window.BP || {};
       } else if (this.step === 'done') {
         el.innerHTML = `${stepper}<h2>🫧 All set!</h2><p>Time to dive in and pop some bubbles!</p>`;
       } else {
-        const title = { frame: 'Sit in the middle of the picture 🙂', hands: 'Show me your hands! 👋', range: 'Wave your hands as far as is comfy 🌊' }[this.step];
+        const title = { frame: 'Sit in the middle of the picture 🙂', hands: 'Show me your hands! 👋', range: 'Stretch toward the handprints 🖐️🖐️' }[this.step];
         el.innerHTML = `
           ${stepper}
           <h2>${title}</h2>

@@ -81,7 +81,7 @@ window.TR = window.TR || {};
         <span class="diff-emoji wm-emoji">${d.emoji}</span>
         <span class="diff-name">${d.name}</span>
         <span class="diff-blurb">${d.blurb}</span>
-        <span class="diff-meta">Reach ${Math.min(TR.MAX_GOAL_PCT, d.goalPct)}% · hold ${(d.holdMs / 1000).toFixed(1)} s</span>
+        <span class="diff-meta">${TR.Store.data.inputMode === 'board' ? `Within ${(d.slackMm / 10).toFixed(1).replace('.0', '')} cm of max` : `Reach ${Math.min(TR.MAX_GOAL_PCT, d.goalPct)}%`} · hold ${(d.holdMs / 1000).toFixed(1)} s</span>
         <span class="diff-loot">Best loot: ${TR.RARITIES[d.weights.reduce((m, w, i) => (w > 0 ? i : m), 0)].icon} ${TR.RARITIES[d.weights.reduce((m, w, i) => (w > 0 ? i : m), 0)].name}</span>
       </button>`).join('');
     openLayer('#levelModal');
@@ -94,14 +94,14 @@ window.TR = window.TR || {};
     close() { closeLayer('#drawer'); $('#drawerBackdrop').classList.remove('open'); },
     render() {
       const d = TR.Store.data, s = TR.Store.s;
-      $$('#inputToggle [data-input]').forEach(b => b.classList.toggle('active', b.dataset.input === d.inputMode));
-      $('#recalBtn').hidden = d.inputMode !== 'camera';
-      $$('#handsToggle [data-hands]').forEach(b => b.classList.toggle('active', b.dataset.hands === s.hands));
+      const cam = d.inputMode !== 'mouse'; // 'board' = camera + Distance sensor
+      $$('#inputToggle [data-input]').forEach(b => b.classList.toggle('active', b.dataset.input === (cam ? 'camera' : 'mouse')));
+      $('#recalBtn').hidden = !cam;
       $$('#setToggle [data-set]').forEach(b => b.classList.toggle('active', +b.dataset.set === s.setSize));
       const c = d.calib;
-      $('#calibInfo').textContent = c && c.dir
-        ? `Reach setup saved ${new Date(c.at).toLocaleDateString()} (${c.reps.length} reaches).`
-        : 'No reach setup yet.';
+      $('#calibInfo').textContent = c && c.v === 2
+        ? `Camera setup saved ${new Date(c.at).toLocaleDateString()}${c.touchMm != null ? ` · sensor at max forward: ${Math.round(c.touchMm)} mm` : ''}.${d.inputMode === 'board' ? ' Playing with the Distance sensor.' : ''}`
+        : 'No camera setup yet.';
       const log = d.log;
       if (log.length) {
         const recent = log.slice(-10);
@@ -130,8 +130,8 @@ window.TR = window.TR || {};
     const mouse = TR.Store.data.inputMode === 'mouse';
     return [
       { text: `Hi, I'm ${WM.PIP.name}! Let's open some treasure chests together! 💰`, target: null },
-      { text: mouse ? 'This chest is locked tight! Move the blue circle up to it to open it. 🖱️' : 'This chest is locked tight! Keep your hands on the table and slide them toward the camera to open it. 🙌', target: '#chest', round: true, pad: 4 },
-      { text: mouse ? 'The blue circle is your hand. Bring it all the way to the chest! 🔵' : 'Your hands are the glowing circles: red for your left hand, blue for your right. They float to the chest as you reach! 🔴🔵', target: null },
+      { text: mouse ? 'This chest is locked tight! Move the blue circle up to it to open it. 🖱️' : 'This chest is locked tight! Keep both hands on the table and push them toward the laptop to open it. 🙌', target: '#chest', round: true, pad: 4 },
+      { text: mouse ? 'The blue circle is your hand. Bring it all the way to the chest! 🔵' : 'Your hands are the glowing circles: red for your left hand, blue for your right. They slide toward the chest as you reach. Push with both hands together! 🔴🔵', target: null },
       { text: 'This bar fills up as you reach. Fill it to the star and hold it for a moment! ⭐', target: '#reachMeter' },
       { text: 'Tap here to pick Easy, Medium or Hard. Harder means a bigger reach and a longer hold! 🐢🦀🦈', target: '#levelChip', pad: 8 },
       { text: 'Then bring your hands back to rest, and a new chest appears. 🔁', target: '#setDots', pad: 12 },
@@ -211,7 +211,6 @@ window.TR = window.TR || {};
       Menu.render();
       if (key === 'setSize') TR.Game.renderDots();
     });
-    seg('#handsToggle', 'hands', 'hands', String);
     seg('#setToggle', 'set', 'setSize', Number);
 
     $('#exportLog').addEventListener('click', () => {
