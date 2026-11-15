@@ -103,22 +103,26 @@ def on_distance(mm):
         return
 
     if state["mode"] == "calib_reach":
-        # A rep = leave rest for >= 0.25 s with a peak >= 15 mm, then return.
-        # Sensor jitter around the threshold used to count as extra reps.
-        reach, now = base - d, time.time()
+        # A rep = move >= 15 mm closer than where the hand last rested, for >= 0.25 s, then
+        # come at least 60% of the way back. Measured from the LAST rest spot, because real
+        # hands drift between reaches (live test: rest went 145 -> 60-80 mm).
+        now = time.time()
+        rest = state.setdefault("rest_ref", base)
         if state["phase"] == "rest":
-            if reach > 10 and now - state.get("rest_since", 0) >= 0.3:
-                state["phase"], state["peak"], state["out_since"] = "out", reach, now
-            elif reach <= 10:
+            if rest - d > 10 and now - state.get("rest_since", 0) >= 0.3:
+                state["phase"], state["min_d"], state["out_since"] = "out", d, now
+            elif abs(rest - d) <= 10:
+                state["rest_ref"] = rest * 0.9 + d * 0.1      # follow slow drift while resting
                 state.setdefault("rest_since", now)
         elif state["phase"] == "out":
-            state["peak"] = max(state["peak"], reach)
-            if reach < RETURN_TOL_MM:
-                state["phase"], state["rest_since"] = "rest", now
-                if state["peak"] < 15 or now - state["out_since"] < 0.25:
+            state["min_d"] = min(state["min_d"], d)
+            size = rest - state["min_d"]
+            if d >= state["min_d"] + 0.6 * size:
+                state["phase"], state["rest_since"], state["rest_ref"] = "rest", now, d
+                if size < 15 or now - state["out_since"] < 0.25:
                     return  # too small or too quick: jitter, not a reach
-                state["calib"].append(state["peak"])
-                emit("calibration_rep", count=len(state["calib"]), reach_mm=state["peak"])
+                state["calib"].append(size)
+                emit("calibration_rep", count=len(state["calib"]), reach_mm=size)
                 if len(state["calib"]) >= 3:
                     profile["comfortable_mm"] = statistics.median(state["calib"])
                     PROFILE.write_text(json.dumps(profile, indent=2))
@@ -129,27 +133,51 @@ def on_distance(mm):
     if state["mode"] != "playing" or state["game"] != "reach":
         return
 
-    reach = base - d
-    if state["phase"] == "rest" and reach >= target_mm():
-        if state["hold_start"] is None:
-            state["hold_start"] = time.time()
-        elif time.time() - state["hold_start"] >= HOLD_S:
-            state["phase"], state["hold_start"] = "reached", None
-            state["layers"] = state.get("layers", 0) + 1
-            emit("reach_completed", reach_mm=round(reach), target_mm=target_mm(),
-                 layers_cleared=state["layers"], layers_total=LAYERS_PER_LEVEL)
-            if state["layers"] >= LAYERS_PER_LEVEL:
-                done = level_info()
-                profile["found"].append(done["reward"])
-                profile["level"] = min(profile["level"] + 1, max(LEVELS))
-                PROFILE.write_text(json.dumps(profile, indent=2))
-                state["layers"] = 0
-                emit("level_completed", **done, next=level_info())
-    elif state["phase"] == "rest":
-        state["hold_start"] = None
-    elif state["phase"] == "reached" and reach < RETURN_TOL_MM:
-        state["phase"] = "rest"
-        emit("returned_to_rest")
+    # Reaches are measured from where the hand last rested (follows slow drift).
+    now = time.time()
+    if state["phase"] == "settle":
+        # Start of a game: count nothing until the hand is seen resting (0.5 s steady).
+        buf = state.setdefault("settle_buf", [])
+        buf.append(d)
+        if len(buf) >= 25:
+            if max(buf[-25:]) - min(buf[-25:]) <= 15:
+                state["rest_ref"], state["phase"] = statistics.median(buf[-25:]), "rest"
+                state.pop("settle_buf", None)
+                emit("returned_to_rest")
+            else:
+                del buf[:-25]
+        return
+    rest = state["rest_ref"]
+    reach = rest - d
+    if state["phase"] == "rest":
+        if reach >= target_mm():
+            if state["hold_start"] is None:
+                state["hold_start"] = now
+            elif now - state["hold_start"] >= HOLD_S:
+                state["phase"], state["hold_start"], state["min_d"] = "reached", None, d
+                state["layers"] = state.get("layers", 0) + 1
+                emit("reach_completed", reach_mm=round(reach), target_mm=target_mm(),
+                     layers_cleared=state["layers"], layers_total=LAYERS_PER_LEVEL)
+                if state["layers"] >= LAYERS_PER_LEVEL:
+                    done = level_info()
+                    profile["found"].append(done["reward"])
+                    profile["level"] = min(profile["level"] + 1, max(LEVELS))
+                    PROFILE.write_text(json.dumps(profile, indent=2))
+                    state["layers"] = 0
+                    emit("level_completed", **done, next=level_info())
+        else:
+            state["hold_start"] = None
+            if reach < 0:
+                # Hand is farther back than the saved rest: moving away is never a reach, so
+                # follow it quickly (fixes a rest saved during a reach or behind an obstruction).
+                state["rest_ref"] = rest * 0.8 + d * 0.2
+            elif reach <= max(10, target_mm() * 0.3):
+                state["rest_ref"] = rest * 0.95 + d * 0.05   # follow slow drift while resting
+    elif state["phase"] == "reached":
+        state["min_d"] = min(state["min_d"], d)
+        if d >= state["min_d"] + 0.6 * (rest - state["min_d"]):   # came most of the way back
+            state["phase"], state["rest_ref"] = "rest", d
+            emit("returned_to_rest")
 
 
 # ---------------- Fossil Brush (IMU) ----------------
@@ -285,8 +313,9 @@ def on_start(_client, data):
         return
     # phase "reached": a reach only counts after the hand has first been seen back at rest,
     # so a hand (or object) already near the sensor at Start is never counted as a reach.
-    state.update(mode="playing", phase="reached", game=(data or {}).get("game", "reach"),
+    state.update(mode="playing", phase="settle", game=(data or {}).get("game", "reach"),
                  layers=0, hold_start=None)
+    state.pop("settle_buf", None)
     sync_camera()
     emit("session_started", game=state["game"], **level_info())
 
@@ -300,6 +329,7 @@ def on_pause(_client, _data):
 def on_calibrate(_client, _data):
     state.update(mode="calib_baseline", phase="rest", calib=[], calib_t0=time.time(),
                  rest_since=0)
+    state.pop("rest_ref", None)
     sync_camera()
     emit("calibration_step", step="baseline")
 
