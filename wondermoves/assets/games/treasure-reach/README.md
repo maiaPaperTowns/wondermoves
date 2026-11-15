@@ -1,3 +1,5 @@
+> **reach-test branch:** Treasure Reach runs as a **Distance-sensor test**. The camera is not used; the chest opens purely when the sensor reads at or under the threshold (default 60 mm, adjustable with − / + in the panel), held for the level's hold time. The panel on the left shows the live reading, readings per second, the age of the last reading, min/max, a 10-second graph, the chip's ok/noisy/weak/error counts and raw reading from the board, and the board's "sensor sees its own window" warning. Code: `js/sensortest.js` (`TR.SensorTest.enabled = false` turns the normal game back on).
+
 # Treasure Reach 💰
 
 Reach toward the screen to open a treasure chest. The game uses the webcam and on-device hand tracking (MediaPipe Hand Landmarker). Video never leaves the device and is never saved.

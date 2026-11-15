@@ -75,7 +75,7 @@
 
     nudge(force) {
       if (this.state !== 'rest' && !force) return;
-      WM.Buddy.say(pick(this.mode === 'mouse' ? TR.LINES.mouse : TR.LINES.rest), 3600);
+      WM.Buddy.say(this.mode === 'sensor' ? 'Move your hand toward the sensor to open the chest! 📏' : pick(this.mode === 'mouse' ? TR.LINES.mouse : TR.LINES.rest), 3600);
     },
 
     resetRep() {
@@ -87,6 +87,7 @@
        Returns { p: {left, right} per-circle progress, bar, ok (chest condition met), back (hands at start) } */
     measure() {
       const S = TR.SENSE;
+      if (this.mode === 'sensor') return TR.SensorTest.measure();   // reach-test branch: Distance sensor only
       if (this.mode === 'mouse') {
         if (!this.mouse.active) return { p: { left: null, right: null }, bar: 0, ok: false, back: true };
         const far = Math.max(180, Math.hypot(W * 0.15, H - chestC.y) * 0.95);
@@ -144,7 +145,7 @@
       if (!this.armed && m.back) this.armed = true;
 
       // hands not seen / not level (camera + board)
-      if (this.mode !== 'mouse' && (this.state === 'rest' || this.state === 'holding')) {
+      if ((this.mode === 'camera' || this.mode === 'board') && (this.state === 'rest' || this.state === 'holding')) {
         const mm = this.m || {};
         const anyHand = mm.cam && (mm.cam.left != null || mm.cam.right != null);
         if (!anyHand) {
@@ -184,6 +185,10 @@
     },
 
     openChest() {
+      if (this.mode === 'sensor' && WM.Board.available) {
+        const d = TR.SensorTest.reading();
+        WM.Board.send('reach_rep', { sensor_mm: d == null ? null : Math.round(d), goal_mm: TR.SensorTest.thresholdMm, level: TR.level().id, hold_ms: TR.level().holdMs, test: true });
+      }
       if (this.mode === 'board') {
         // Log the rep on the board (caregiver session log / parent website).
         WM.Board.send('reach_rep', { sensor_mm: this.minMm == null ? null : Math.round(this.minMm), goal_mm: Math.round(TR.sensorGoalMm()),
@@ -461,6 +466,7 @@
       renderMeter();
       drawFx(dt);
       drawCamOverlay();
+      if (TR.SensorTest && TR.SensorTest.enabled) TR.SensorTest.render();
     } catch (e) {
       console.error('[Treasure Reach] frame error', e);
     }
@@ -477,6 +483,8 @@
      own in-tunnel calibration is not used: the camera setup above covers it. */
   WM.bridge.onVisibility(v => { if (v && Game.mode === 'board' && Game.state !== 'idle') WM.Board.send('start', { game: 'reach_ui' }); });
   WM.Board.ready(() => {
+    // reach-test branch: no camera; the chest opens purely from the Distance sensor.
+    if (TR.SensorTest && TR.SensorTest.enabled) { TR.SensorTest.start(); return; }
     // Every launch starts with the camera setup (Mouse lasts until reload).
     TR.Store.data.inputMode = TR.hasSensor() ? 'board' : 'camera';
     TR.Calib.open(false);
