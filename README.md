@@ -1,136 +1,175 @@
-# WonderMoves — MadHacks 2026 (Qualcomm / Infer-X track)
+# WonderMoves · MadHacks 2026 · Databricks track
 
-Theme: **Let's Dig In.**
+**Therapy movements turned into play for children with cerebral palsy, with Databricks turning every session into progress that parents, caregivers and therapists can see.**
 
-A playful physical gaming platform on the **Arduino UNO Q** (Qualcomm QRB2210 Linux side + STM32 MCU)
-that helps children aged 6–12 with unilateral cerebral palsy take part in personalised upper-limb
-movement activities: reaching, controlled positioning and repeated movement sequences.
+Children with cerebral palsy (CP) improve their arm and hand use through practice: the same movement, many times, at home, week after week. But home programmes are hard to keep up. The exercises feel like homework, and nobody can see what happened between therapy visits.
 
-> WonderMoves is **not** a medical device and does not replace occupational or physical therapy.
-> Reach targets never auto-increase past the range a caregiver or therapist approves.
+WonderMoves fixes both halves:
 
-## Try it
+1. **At home, on the table:** three short games on an Arduino UNO Q, with a distance sensor and a webcam. Each game is built on one movement therapists already prescribe.
+2. **In Databricks:** each finished session goes into Delta tables. Databricks builds a progress history for each child and game, and an AI model writes a short note in plain language. The note is checked against safety rules before a parent sees it on the dashboard.
+
+> WonderMoves is **not** a medical device and does not replace occupational or physical therapy. Reach targets never go past the range a caregiver or therapist approves.
+
+**Try it:** [public demo](https://maiapapertowns.github.io/wondermoves/) (games with the webcam or a mouse) · [Databricks notebook](databricks/notebooks/parent_progress.py) · [parent helper](parents/server.py) · [evidence brief](docs/evidence-brief.html)
+
+---
+
+## How Databricks fits in
+
+```
+ child plays on the table
+        │  distance sensor + webcam (video processed on the board, never saved or sent)
+        ▼
+ Arduino UNO Q ── event log: reach_completed, brush_stroke, bubble pops, breaks …
+        │  USB (adb)
+        ▼
+ laptop helper (parents/server.py)
+   • groups events into sessions (a session ends on a break, or after 3 quiet minutes)
+   • uploads finished sessions to a Unity Catalog volume
+   • runs the notebook as a Databricks job (`databricks jobs submit`)
+        │
+        ▼
+ ┌──────────────────────── Databricks ────────────────────────┐
+ │ /Volumes/workspace/wondermoves/raw/parents/sessions.jsonl   │
+ │        │                                                    │
+ │        ▼  notebook: databricks/notebooks/parent_progress.py │
+ │  Delta  workspace.wondermoves.parent_sessions  (typed)      │
+ │  Delta  workspace.wondermoves.parent_daily     (per day)    │
+ │  Delta  workspace.wondermoves.parent_notes     (AI notes)   │
+ │        │  Llama 3.3 70B on Databricks Model Serving         │
+ │        │  → safety check → fallback template if it fails    │
+ │        ▼                                                    │
+ │  exports/parent_insights.json                               │
+ └─────────────────────────────────────────────────────────────┘
+        │
+        ▼
+ parent and caregiver dashboard (behind a PIN): sessions, movements per day,
+ reach progress, "N this time · M last time", and the note for each session
+```
+
+### What the notebook does
+
+| Step | What happens | Output |
+|---|---|---|
+| **Ingest** | Reads the finished sessions from the volume and drops empty visits (a game opened, then left without any movement). | — |
+| **Store** | Saves every session as a **Delta table with fixed, typed columns**, so a field that's empty in every session, or a new field from the board, can't break the schema. | `parent_sessions` |
+| **Aggregate** | Movements, minutes and sessions per child, per game, per day. Days follow the family's own calendar (`local_day` from the laptop), not UTC. | `parent_daily` |
+| **Compare with last time** | For each child and game, works out the previous session's movements and how many sessions so far. These are stated as plain numbers, never as a score. | columns in `parent_sessions` |
+| **Explain** | Llama 3.3 70B (`databricks-meta-llama-3-3-70b-instruct`) writes a 2–3 sentence note about each new session, using only facts the notebook passes in (game, movements, minutes, average reach in cm, what was found, last time). | `parent_notes` |
+| **Check** | Every note must pass `note_ok()`: 420 characters or less, 3 sentences at most, and none of the blocked words. If a note fails, or the model is unavailable, a plain template sentence is used instead. `note_source` records which one was used. | `parent_notes.note_source` |
+| **Export** | Writes notes, changes since last time and daily totals as JSON. The helper shows them on the dashboard and copies them to the board. | `exports/parent_insights.json` |
+
+Notes are incremental: only new sessions get a note (40 at most per run, settable), and `NOTE_VERSION` rewrites older notes when the prompt or the rules change.
+
+### Safety rules for the AI notes
+
+The notes are read by parents of disabled children, so the rules are strict and enforced in code, not only in the prompt:
+
+- no diagnosis, no "better / worse / improved / decline", no scores or percentages;
+- no comparisons with other children, and no telling the family what to do;
+- no body-side wording, and no he/she guessed from a name (first name or "they" only);
+- facts only, with the exact numbers given.
+
+### Privacy by design
+
+- **Video never leaves the board.** Frames are processed in memory and never saved or streamed.
+- **Databricks gets movement data only:** counts, minutes, reach lengths and sensor quality, plus a display label (default "Your child").
+- **The child's profile stays on the board.** Nickname, age, interests and the hand to practise are never sent to Databricks.
+- **The dashboard is behind a 4-digit parent PIN.** The board stores only a salted hash. The laptop helper only listens on `127.0.0.1`.
+- **No transcripts and no recordings.**
+
+## Run the Databricks part yourself
+
+Works on the free **Databricks Free Edition**.
+
+1. Make a free account at databricks.com and open the workspace once in the browser.
+2. Install the Databricks CLI:
+   - Mac: `curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh`
+   - Windows: `winget install Databricks.DatabricksCLI`
+3. Sign in: `databricks auth login --host https://<your-workspace>.cloud.databricks.com`
+4. Run the helper:
+
+   ```bash
+   python3 parents/server.py --demo        # no board needed: simulated board log
+   python3 parents/simulate_board.py play brush   # in another terminal: a child "plays"
+   ```
+
+5. Open http://localhost:8090. When the session closes, the helper:
+   - creates `workspace.wondermoves` and the `raw` volume;
+   - uploads the notebook to `/Users/<you>/wondermoves/parent_progress`;
+   - submits the job.
+
+   The note appears on the session card about 1–2 minutes later. The job's runs, the three Delta tables and the notes are all visible in the workspace.
+
+With a real board plugged in over USB, run `python3 parents/server.py` without `--demo`. More details: [parents/README.md](parents/README.md).
+
+## The three games
+
+Each game uses one upper-body movement, chosen from the research on therapy for children with CP:
+
+| Game | Movement | Based on | Input |
+|---|---|---|---|
+| **Treasure Reach** (first game) | Reach forward to the sensor, hold, come back. Each reach opens a treasure chest. | Goal-directed training | Modulino Distance (VL53L4CD time-of-flight sensor); webcam for the hint |
+| **Fossil Brush** | Pip shows a shape, then the child traces it in the air to brush sand off a fossil. | Action observation (watch, then do) | Webcam, tracking the index finger |
+| **Bubble Pop** | Lift a hand to pop a bubble. Paired bubbles need both hands together. No timer; the child taps "I'm done". | Bimanual (two-handed) training | Webcam, tracking both hands |
+
+Rules for every game:
+- one movement;
+- completion, not speed (a slow reach counts the same);
+- no timers and no fail states;
+- never beyond the range a grown-up approved during calibration;
+- gentle break reminders.
+
+Accessibility: Calm mode (no flashing, softer sounds), one-button play for children who can't use a camera or mouse, and a choice of hand to practise.
+
+Evidence and sources: [docs/evidence-brief.html](docs/evidence-brief.html). The main source is Burgess et al., *Developmental Medicine & Child Neurology* (2025), a network meta-analysis of 48 randomised trials with children with CP. The UP-CAT trial (Sgandurra et al., 2013) is the evidence for action observation.
+
+## Hardware and on-device AI
+
+| Part | Used for |
+|---|---|
+| Arduino UNO Q (Qualcomm QRB2210 running Linux + STM32U585 microcontroller) | Runs the games, the sensors, hand tracking and the event log on the board |
+| Modulino Distance (VL53L4CD) | Treasure Reach: how far each reach goes |
+| Logitech Brio webcam | Hand tracking on the board for Fossil Brush and Bubble Pop |
+
+```
+ Modulino sensors ──I2C── STM32 (wondermoves/sketch) reads sensors, sends samples over the RPC Bridge
+                               ▼
+                    Linux side (wondermoves/python)  calibration, reach detection, event log, parent PIN
+                               ▼  WebUI brick (FastAPI + Socket.IO)
+                    Browser (wondermoves/assets)     game shell, 3 games, Settings, parent dashboard
+```
+
+## Links
 
 | Where | Link | What works |
 |---|---|---|
-| **Public demo** | https://maiapapertowns.github.io/wondermoves/ | Home, all three games with the webcam or a mouse. No sensors, play log or parent data (those need the board). |
-| **On the board** (USB) | http://localhost:7070/ after `adb forward tcp:7070 tcp:7000` | Everything: sensors, games, play log. |
-| Parent page on the board | http://localhost:7070/parents/ | Child profile, game log, chart. |
-| Settings on the board | http://localhost:7070/grownups.html?settings | Hand, range, breaks, About your child, Calibrate, sensors. |
-| Parent page + Databricks notes (laptop) | http://localhost:8090/ after `python3 parents/server.py` | The same page, plus Databricks notes. |
+| Public demo | https://maiapapertowns.github.io/wondermoves/ | Home and all three games with the webcam or a mouse. No sensors and no parent data. |
+| On the board (USB) | http://localhost:7070/ after `adb forward tcp:7070 tcp:7000` | Everything: sensors, games, the play log. |
+| Parent dashboard on the board | http://localhost:7070/parents/ | Child profile, game log, chart, reach progress. |
+| Parent dashboard and Databricks notes (laptop) | http://localhost:8090/ after `python3 parents/server.py` | The same page, plus the Databricks notes. |
 
-The public site redeploys automatically from `main` (`.github/workflows/pages.yml`).
+## Repo layout
 
-## Hardware we have (confirmed from photos, 3 kits: boards #21, #23, …)
+| Path | What's in it |
+|---|---|
+| `databricks/notebooks/parent_progress.py` | The Databricks notebook: Delta tables, daily progress, AI notes, export |
+| `parents/` | Laptop helper that sends sessions to Databricks and runs the job, plus a board simulator |
+| `wondermoves/python/` | Board app: sensors, sessions (`parent_sessions.py`), PIN, profile |
+| `wondermoves/assets/` | Game shell, the three games, Settings, parent dashboard |
+| `wondermoves/sketch/` | STM32 sketch (sensors) |
+| `board/` | Sketch build notes and library zips |
+| `docs/` | Evidence brief, hardware notes, Devpost scripts |
 
-| Item | Part | Used for |
-|---|---|---|
-| Arduino UNO Q | Qualcomm Dragonwing QRB2210 MPU + STM32U585 MCU, 4 GB RAM, 32 GB eMMC, Wi-Fi/BLE | Runs everything on-device |
-| Modulino Distance | ABX00102 (ToF, Qwiic/I2C) | Treasure Reach: hand-to-sensor distance |
-| Modulino Movement | ABX00101 (6-axis IMU) | Fossil Brush: brushing gesture on a hand/forearm mount |
-| Modulino Thermo | ABX00103 (temp + humidity) | Room comfort check: suggests a break when the room is warm. Not a body or fatigue measurement. |
-| Logitech Brio 105 | 1080p USB webcam | On-device hand/pose vision (see below) |
-| StarTech USB-C multiport adapter | 100 W PD, 4K60 HDMI, GbE, USB 5 Gbps | Powers the UNO Q and connects the camera, monitor, keyboard and mouse |
-| Power brick + braided USB-C cable | — | Feed the 100 W PD port of the adapter, then connect the adapter to the board |
+## Board quirks we hit
 
-**Keep all packaging**, including the anti-static bags and the boxes with the numbers written on them. The lab checks for it when the kits are returned.
-
-### Why the camera matters (Qualcomm edge-AI story)
-The QRB2210 can run a small hand/pose model on the Brio feed locally. Nothing leaves the board.
-- **Bubble Lift:** the camera tracks both hands. A bubble sits directly above each resting hand; lifting that hand pops it, and blue pairs need both hands up together (bimanual training).
-- **Fossil Brush mirror:** Digger demonstrates a stroke and the camera shows the child's own movement beside it (action observation).
-- **Sensor fusion:** the camera confirms what the ToF/IMU detect, which cuts false triggers. The game emits `gesture_uncertain` instead of guessing.
-- **Privacy:** process frames in memory only. Never save or stream video, and show a visible "camera on" indicator in the child portal.
-
-### Using 3 kits
-- **Board A (main):** Treasure Reach + Fossil Brush, the web portal and Digger.
-- **Board B:** Bubble Lift station (camera).
-- **Board C:** spare / dev board, so teammates can develop in parallel and a dead board doesn't kill the demo.
-
-## Architecture
-
-```
- Modulino sensors ──I2C── STM32 MCU (sketch/)        ← reads sensors at ~50 Hz, sends raw samples
-                              │  RPC Bridge
-                              ▼
-                   Qualcomm Linux side (python/)      ← calibration, reach/gesture detection (edge inference),
-                              │                          game state, session log
-                              │  WebUI brick (socket.io)
-                              ▼
-                   Browser (assets/)                  ← Child Game Portal + Parent Portal, Pip subtitles
-```
-
-Digger, the AI companion, receives only structured events: `reach_completed`, `gesture_uncertain`,
-`break_requested`, `level_completed`. It explains, celebrates and offers breaks. It never prescribes
-distances, diagnoses anything or pushes the child to keep going.
-
-## Games
-
-| Game | One movement | Approach (evidence level) | Sensor | Status |
-|---|---|---|---|---|
-| Treasure Reach | Reach forward from rest, then back | Goal-directed training (moderate) | Modulino Distance | ✅ tested on the board |
-| Fossil Brush | One back-and-forth stroke; counted on completion, not speed | Action observation (emerging) | Modulino Movement | Stroke counter tested with simulated gyro; game on the board |
-| Bubble Pop (Andrew's game, lift mode) | Lift the hand straight up; pairs = both hands together | Bimanual training (strong) | Brio camera (browser or on-device pose) | Lift mode tested on the board with simulated hands; the earlier Bubble Lift page passed a real-hands test |
-
-Every game follows the same rules: one movement, completion not speed, no timers, and the child's approved range is never exceeded.
-Evidence and sources: [docs/evidence-brief.html](docs/evidence-brief.html).
-
-**Thermo** isn't tied to one game: it watches room comfort and suggests breaks. With 3 kits, each game can run on its own board,
-so each person can own one station.
-
-**UI:** Andrew's game shell (`wondermoves/assets/index.html`, `shell.js`, `shared/`, `games/`) is the main screen on the
-board: tabs for Fossil Brush, Treasure Reach, Bubble Pop and Grown-ups. `shared/wm-board.js` connects any game to the
-board (sensors, calibration, caregiver limits, session log); opened standalone, the games fall back to camera or mouse.
-His Bubble Pop is the bubble tab in its **lift mode** (default): no timer, bubbles wait above each resting hand, pairs need both hands. His original timed mode is still there with `lift: false` in `games/bubble-pop/js/data.js`. The older standalone Bubble Lift page (`assets/bubbles/`) is kept as a fallback.
-
-See [docs/PLAN.md](docs/PLAN.md) for the build plan and task split, and [docs/HARDWARE.md](docs/HARDWARE.md) for building the physical game stations.
-
-## Board quirks we hit (UNO Q at MadHacks)
-
-- **Wrong clock:** the board boots thinking it's 9 Sep 2025, and UWNet blocks NTP. HTTPS downloads (sketch libraries, pip) then fail with "certificate not valid yet". Fix: join a phone hotspot so NTP works, or set the clock by hand with `adb shell -t "sudo date -u -s '<UTC time>'"`.
-- **Sketch build fixes:** see [board/README.md](board/README.md) for TMPDIR, pre-staged library zips and the `Arduino_Modulino` rename.
-- **Port 7000 clash:** port 7000 on the Mac is taken by AirPlay Receiver. Forward to 7070: `adb forward tcp:7070 tcp:7000`, then open http://127.0.0.1:7070.
-- **Camera device:** `/dev/video0` and `/dev/video1` are the Qualcomm video codec, not cameras. `vision.py` finds the Brio by name. App Lab only passes in cameras that are plugged in when the app starts, so plug the Brio in first, then (re)start the app.
-- **Python packages:** the board's Python is 3.13 with OpenCV 4.12 and numpy. MediaPipe isn't installed, so vision uses the OpenCV motion fallback.
+- **Wrong clock:** the board boots thinking it's September 2025, so HTTPS downloads fail. Join a phone hotspot so the clock syncs, or set it with `adb shell -t "sudo date -u -s '<UTC time>'"`. The dashboard corrects session times to the laptop's clock.
+- **Port 7000 is taken on a Mac** (AirPlay Receiver). Forward to 7070 instead: `adb forward tcp:7070 tcp:7000`.
+- **Camera:** `/dev/video0` and `/dev/video1` are the Qualcomm video codec, not cameras, so the code finds the Brio by name. Plug in the Brio before starting the app.
+- **The distance sensor's protective film** made it read about 27 mm all the time. Peel it off.
+- **Sketch build fixes:** see [board/README.md](board/README.md).
 
 ## Team
 
-Maia Le (@maiaPaperTowns) · Joy Hong (@schae4999) · Andrew Kim (@Minulion) · @ArneshXCode
-
-## Bubble Lift with the camera on a laptop (dev setup)
-
-While the Brio is plugged into the Mac instead of the board, the Mac does the hand tracking (MediaPipe) and the board runs the game:
-
-```bash
-uv venv -p 3.12 --managed-python .venv && uv pip install -p .venv/bin/python opencv-python numpy "mediapipe==0.10.21" "python-socketio[client]"
-adb forward tcp:7070 tcp:7000
-.venv/bin/python tools/mac_camera.py      # camera 0 = Brio on our Mac (check with --preview; try --camera 1 if you see the built-in camera)
-```
-
-macOS must allow camera access for the app that runs it (System Settings → Privacy & Security → Camera).
-
-## Camera / vision quick test (laptop, before the board)
-
-```bash
-cd wondermoves/python
-python3 test_vision.py                       # detector logic, no camera needed
-pip install mediapipe opencv-python numpy    # then, with a webcam:
-python3 vision.py --preview                  # green = left hand, orange = right; q quits
-```
-
-On the board, `main.py` turns the camera on only during Bubble Lift, and the portal shows a 🔴 badge while it's on.
-If MediaPipe won't install on the UNO Q, `vision.py` falls back to OpenCV motion detection on its own. Check the `backend`
-and `fps` values in the `hands` messages to see which one is running.
-
-## Board setup (from the lab's guide)
-
-1. Install **Arduino App Lab** (not Arduino IDE): https://www.arduino.cc/en/software/
-2. Power: power brick → StarTech adapter's **PD input** → adapter → UNO Q. Plug the Brio into the adapter's USB port and a monitor into HDMI if you want to run it standalone. Ordinary USB-A hubs often can't power the board.
-3. Select the board in App Lab, finish the first-time setup and let updates complete.
-4. Use the board credentials from the lab's email. They aren't stored in this repo.
-5. Skip Wi-Fi if App Lab offers a Skip option. Run the **Blink** example to confirm the board works.
-6. Copy `wondermoves/` into App Lab's apps folder (or create a new app and paste in the files), then run it.
-
-Docs: [UNO Q user manual](https://docs.arduino.cc/tutorials/uno-q/user-manual/) ·
-[App Lab quickstart](https://docs.arduino.cc/software/app-lab/getting-started/quickstart) ·
-[Hardware](https://docs.arduino.cc/hardware/uno-q/)
+Maia Le (@maiaPaperTowns) · Joy Hong (@schae4999) · Andrew Kim (@Minulion) · Arnesh (@ArneshXCode)
