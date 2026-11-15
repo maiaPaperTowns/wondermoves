@@ -1,249 +1,33 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>WonderMoves</title>
-<!-- Prefer a local copy (board may be offline); falls back to CDN. -->
-<script src="libs/socket.io.min.js"></script>
-<script>window.io || document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"><\/script>')</script>
-<style>
-  :root { --soil:#7a4b2a; --sand:#f3d9a4; --sky:#bfe3ff; --ink:#2b1a0e; --ok:#3aa35a; }
-  * { box-sizing:border-box; }
-  body { margin:0; font-family: system-ui, sans-serif; background:var(--sky); color:var(--ink); }
-  header { display:flex; gap:8px; padding:12px 16px; align-items:center; }
-  header h1 { margin:0 auto 0 0; font-size:1.4rem; }
-  button { font-size:1.4rem; padding:18px 28px; border-radius:18px; border:0; cursor:pointer; background:#fff; }
-  button.big { background:var(--ok); color:#fff; min-width:180px; }
-  .tab { font-size:1rem; padding:10px 16px; }
-  main { padding:0 16px 24px; max-width:900px; margin:0 auto; }
-  #dig { position:relative; height:320px; border-radius:24px; overflow:hidden; background:var(--sand); }
-  #treasure { position:absolute; inset:0; display:grid; place-items:center; font-size:96px; }
-  #soil { position:absolute; left:0; right:0; top:0; background:var(--soil); transition:height .6s ease; }
-  #meter { height:24px; background:#fff; border-radius:12px; margin:12px 0; overflow:hidden; }
-  #meter div { height:100%; width:0; background:var(--ok); transition:width .1s; }
-  #subtitle { min-height:3em; font-size:1.5rem; background:#fffc; border-radius:16px; padding:12px 16px; }
-  .controls { display:flex; gap:12px; flex-wrap:wrap; margin:12px 0; }
-  .hidden { display:none; }
-  table { width:100%; border-collapse:collapse; background:#fff; border-radius:12px; }
-  td, th { padding:8px; border-bottom:1px solid #eee; text-align:left; }
-  label { display:block; margin:8px 0; font-size:1.1rem; }
-  #cam { display:inline-block; padding:6px 12px; border-radius:999px; background:#fff; font-size:.95rem; }
-  #cam.on { background:#ffe1e1; color:#a01818; font-weight:600; }
-  #hands { width:100%; height:120px; background:#fff8; border-radius:16px; margin-top:12px; }
-  .games { display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:12px; margin:8px 0 24px; }
-  .game { background:#fff; border-radius:14px; padding:14px 16px; display:grid; gap:6px; font-size:.95rem; }
-  .game h3 { margin:0; font-size:1.1rem; }
-  .game ol { margin:0; padding-left:20px; }
-  .lvl { display:inline-block; font-size:.8rem; font-weight:700; padding:2px 10px; border-radius:999px; }
-  .lvl.strong { background:#dff3e3; color:#1e6b2c; } .lvl.moderate { background:#e2eefb; color:#1b4f8a; } .lvl.emerging { background:#fbefd6; color:#8a5a00; }
-  .game small { color:#555; }
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#2B2350">
+  <title>WonderMoves</title>
+  <link rel="icon" href="shared/assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="shared/wm-base.css">
+  <link rel="stylesheet" href="shell.css">
 </head>
 <body>
-<header>
-  <h1>🦴 WonderMoves</h1>
-  <button class="tab" onclick="show('child')">Play</button>
-  <button class="tab" onclick="show('parent')">Grown-ups</button>
-</header>
+  <!-- Each game is its own page, loaded into an iframe inside this stage. -->
+  <main class="stage" id="stage" aria-live="polite"></main>
 
-<main id="child">
-  <div class="controls">
-    <button class="big" onclick="start('reach')">▶ Treasure Reach</button>
-    <button class="big" onclick="location.href = 'fossil-brush/index.html'">🖌 Fossil Brush</button>
-    <button class="big" onclick="location.href = 'bubbles/index.html'">🫧 Bubble Lift</button>
-    <button onclick="send('pause')">⏸ Break</button>
-    <span id="cam" aria-live="polite">📷 Camera off</span>
-  </div>
-  <div id="dig"><div id="treasure">🪙</div><div id="soil" style="height:100%"></div></div>
-  <div id="meter"><div></div></div>
-  <div id="subtitle" aria-live="polite">Hi! I'm Digger. Press a big button when you're ready.</div>
-</main>
+  <nav class="tabbar" aria-label="Games">
+    <div class="brand" aria-hidden="true">
+      <span class="brand-mark">✨</span>
+      <span class="brand-name">Wonder<b>Moves</b></span>
+    </div>
+    <div class="tabs" id="tabs" role="tablist"></div>
+    <!-- Placeholder: becomes the camera / finger-tracking status once the camera panel exists. -->
+    <div class="input-status" id="inputStatus" title="Camera tracking is coming soon. For now, play with a mouse or touch.">
+      <span class="dot"></span><span class="label">Touch &amp; mouse</span>
+    </div>
+  </nav>
 
-<main id="parent" class="hidden">
-  <h2>How to play (and why)</h2>
-  <p><small>Every game uses <b>one</b> movement, counts a movement when it is completed (never how fast), has no timer,
-  and stays within the range you approve below. Evidence levels describe the therapy approach each game is built on, not WonderMoves itself.</small></p>
-  <div class="games">
-    <section class="game">
-      <h3>⛏️ Treasure Reach</h3>
-      <div><b>One movement:</b> reach forward from the hand rest, then come back.</div>
-      <ol><li>Rest the forearm on the towel, hand facing the Distance sensor.</li>
-        <li>Reach toward the sensor until the meter fills, hold for a moment.</li>
-        <li>Come back to rest. Each reach clears a layer; 4 reveal the treasure.</li></ol>
-      <div><b>Approach:</b> goal-directed training. <span class="lvl moderate">Evidence: moderate</span></div>
-      <small>Hand function +3.8 AHA, goal achievement +2.3 COPM vs control (Burgess et al. 2025, network meta-analysis of 48 RCTs). Rated effective in Novak et al. 2020.</small>
-    </section>
-    <section class="game">
-      <h3>🖌 Fossil Brush</h3>
-      <div><b>One movement:</b> one back-and-forth brushing stroke.</div>
-      <ol><li>Hold the brush with the Movement sensor (or wear the soft cuff).</li>
-        <li>Watch Digger's stroke, then copy it: swing one way, then back.</li>
-        <li>Each completed stroke clears the same amount of sand, slow or fast.</li></ol>
-      <div><b>Approach:</b> action observation (watch, then do). <span class="lvl emerging">Evidence: emerging</span></div>
-      <small>Hand function +4.9 AHA in unilateral CP (Burgess et al. 2025) but no self-care effect, and a 2023 meta-analysis found a smaller, uncertain effect. UP-CAT trial (Sgandurra et al. 2013) improved daily arm use.</small>
-    </section>
-    <section class="game">
-      <h3>🫧 Bubble Lift</h3>
-      <div><b>One movement:</b> lift the hand straight up from rest.</div>
-      <ol><li>Rest both hands on the table, in view of the camera.</li>
-        <li>A bubble appears above one hand: lift that hand to pop it, then rest.</li>
-        <li>Blue pairs: lift both hands together (hold as long as you need).</li></ol>
-      <div><b>Approach:</b> bimanual training (both hands). <span class="lvl strong">Evidence: strong</span></div>
-      <small>The most consistently effective approach: hand function +4.6 AHA, goals +3.3 COPM, self-care SMD 0.39 (Burgess et al. 2025). Rated effective in Novak et al. 2020.</small>
-    </section>
-  </div>
-  <p><small>Levels: <b>strong</b> = effective for hand function, goals and self-care; <b>moderate</b> = effective for hand function and goals;
-  <b>emerging</b> = effective for hand function only, with mixed results across reviews. Full sources: docs/evidence-brief.html.</small></p>
-  <h2>Calibration & limits</h2>
-  <p>Seat the child comfortably and press <b>Calibrate</b>. Rest the hand for 1 second, then make 3 small, comfortable reaches.</p>
-  <div class="controls"><button onclick="send('calibrate')">Calibrate</button></div>
-  <label>Approved maximum reach (mm, set by caregiver/therapist)
-    <input id="approved" type="number" min="5" max="200" value="50"></label>
-  <label>Level <select id="level">
-    <option value="1">1 · First Dig (coin)</option><option value="2">2 · Hidden Gems (gemstone)</option>
-    <option value="3">3 · Fossil Hunt (fossil)</option><option value="4">4 · Deep Explorer (cave)</option>
-    <option value="5">5 · Treasure Master (chest)</option></select></label>
-  <p><small>Levels unlock new treasures. The reach target is never above the approved maximum or the child's calibrated comfortable reach.</small></p>
-  <p id="found">Treasures found: none yet</p>
-  <label>Bubble Lift height (how far the hand lifts; it never grows by itself)
-    <select id="liftHeight"><option value="0.10">Small</option><option value="0.16">Medium</option>
-      <option value="0.22">Large</option><option value="0.28">Extra large</option></select></label>
-  <p><small>The camera turns on only during Bubble Lift. Video is processed on the device and never saved or sent anywhere. Only hand positions reach the game.</small></p>
-  <button onclick="saveLimits()">Save limits</button>
-  <p id="profile"></p>
-  <p id="sensors">Sensors: waiting for the board…</p>
-  <p id="room"></p>
-  <h2>This session</h2>
-  <table><thead><tr><th>Time</th><th>Event</th><th>Detail</th></tr></thead><tbody id="log"></tbody></table>
-  <p><small>WonderMoves is not a medical device. It shows activity only: no scores, no diagnosis and no comparisons with other children.</small></p>
-</main>
-
-<script>
-const socket = io(`http://${window.location.host}`);
-const send = (ev, data = {}) => socket.emit(ev, data);
-const $ = (id) => document.getElementById(id);
-const TREASURES = ['🪙','💎','🦴','🕳️','🧰'];
-let layers = 4, profile = {}, voiceOn = true;
-
-function show(id){ ['child','parent'].forEach(x => $(x).classList.toggle('hidden', x !== id)); }
-function start(game){
-  layers = 4; $('soil').style.height = '100%';
-  send('start', { game });
-}
-function saveLimits(){ send('set_limits', { approved_max_mm: +$('approved').value, level: +$('level').value, lift_height: +$('liftHeight').value }); }
-
-// Digger: templated, event-driven lines only. Never prescribes distances or pressures the child.
-const LINES = {
-  session_started: (d) => ({
-    brush: "Let's brush! Watch me first, then try a gentle brush.",
-  })[d.game] || "Let's dig! Reach out whenever you're ready.",
-  reach_completed: () => pick(["Great reach! Some soil is gone!", "You found more dirt to move!", "Nice and steady!"]),
-  brush_stroke:    () => pick(["Swish! Sand brushed away!", "Lovely brushing!"]),
-  gesture_uncertain: (d) => d.hint === 'steady_helper_hand'
-    ? "Let your helper hand rest on the chest while the other hand turns the key."
-    : "Hmm, I couldn't quite tell. Try one more gentle brush when you like.",
-  two_hand_action: () => pick(["Click! Both hands worked together!", "Teamwork hands! The lock moved!"]),
-  break_requested: () => "Break time! Your treasure will wait for you.",
-  break_suggested: () => "It's a bit warm in here. Want to take a little break?",
-  level_completed: () => "You uncovered the treasure! Amazing digging!",
-  calibration_step: (d) => d.step === 'baseline' ? "Rest your hand still for me." : "Now make a small, comfy reach, then come back.",
-  calibration_rep: (d) => `Got it, ${d.count}!`,
-  calibration_done: () => "All set up. Thanks!",
-};
-const pick = (a) => a[Math.floor(Math.random() * a.length)];
-function say(text){
-  $('subtitle').textContent = text;
-  if (voiceOn && 'speechSynthesis' in window) {
-    speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text); u.rate = 0.95; u.pitch = 1.2;
-    speechSynthesis.speak(u);
-  }
-}
-function log(ev, d){
-  const tr = document.createElement('tr');
-  tr.innerHTML = `<td>${new Date().toLocaleTimeString()}</td><td>${ev}</td><td>${JSON.stringify(d).slice(0,80)}</td>`;
-  $('log').prepend(tr);
-}
-function dig(d){
-  // Treasure Reach: the board counts layers. Other games: count locally.
-  if (d && d.layers_total) layers = d.layers_total - d.layers_cleared;
-  else layers = Math.max(0, layers - 1);
-  $('soil').style.height = `${layers * 25}%`;
-  if (layers === 0 && !(d && d.layers_total)) say("You uncovered the treasure! Amazing digging!");
-}
-
-Object.keys(LINES).forEach(ev => socket.on(ev, (d) => {
-  log(ev, d);
-  if (ev === 'reach_completed' || ev === 'brush_stroke' || ev === 'two_hand_action') dig(d);
-  if (ev === 'level_completed') return;
-  if (ev === 'reach_completed' && d.layers_cleared >= d.layers_total) return;  // level_completed speaks
-  say(LINES[ev](d || {}));
-}));
-
-// Treasure Reach level finished: celebrate the reward, then set up the next dig.
-socket.on('level_completed', (d) => {
-  log('level_completed', d);
-  $('soil').style.height = '0%';
-  say(`You found a ${d.reward}! ${d.icon} Amazing digging!`);
-  profile.found = [...(profile.found || []), d.reward];
-  showFound();
-  setTimeout(() => {
-    layers = 4; $('soil').style.height = '100%';
-    $('treasure').textContent = d.next.icon;
-    profile = { ...profile, ...d.next };
-    say(`Next dig: ${d.next.level_name}! Rest your hand, then reach when you're ready.`);
-  }, 4000);
-});
-function showFound(){
-  $('found').textContent = (profile.found && profile.found.length)
-    ? `Treasures found: ${profile.found.join(', ')}` : 'Treasures found: none yet';
-}
-// Treasure Reach: warn when the Distance sensor loses the hand (its beam is narrow).
-let lastDistanceAt = 0, warnedLost = 0;
-setInterval(() => {
-  const playingReach = $('child') && !$('child').classList.contains('hidden');
-  if (playingReach && lastDistanceAt && performance.now() - lastDistanceAt > 1500 && performance.now() - warnedLost > 8000) {
-    warnedLost = performance.now();
-    say("I can't see your hand. Keep it straight in front of the sensor.");
-  }
-}, 500);
-socket.on('hand_not_seen', () => say("I can't see your hand. Rest it on the towel, straight in front of the sensor."));
-socket.on('calibration_busy', () => say('Let\'s finish setting up first: rest, then 3 small reaches.'));
-socket.on('distance', (d) => {
-  lastDistanceAt = performance.now();
-  if (!profile.baseline_mm || !profile.target_mm) return;
-  const pct = Math.max(0, Math.min(1, (profile.baseline_mm - d.mm) / profile.target_mm));
-  document.querySelector('#meter div').style.width = `${pct * 100}%`;
-});
-['profile','calibration_done','limits_updated','session_started'].forEach(ev => socket.on(ev, (d) => {
-  if (d) profile = { ...profile, ...d };
-  $('profile').textContent = `Rest: ${profile.baseline_mm ?? '—'} mm · Comfortable reach: ${profile.comfortable_mm ?? '—'} mm · ` +
-    `Level ${profile.level ?? 1} (${profile.level_name ?? 'First Dig'}) target: ${profile.target_mm ?? '—'} mm` +
-    (profile.capped ? ' (capped at the approved range)' : '');
-  $('treasure').textContent = profile.icon || TREASURES[(profile.level || 1) - 1] || '🧰';
-  if (profile.level) $('level').value = String(profile.level);
-  if (profile.approved_max_mm) $('approved').value = profile.approved_max_mm;
-  showFound();
-}));
-socket.on('room', (d) => $('room').textContent = `Room: ${d.temp_c.toFixed(1)} °C, ${d.humidity.toFixed(0)}% humidity`);
-socket.on('sensors', (s) => {
-  const mark = (ok) => ok ? '✅' : '❌ not found (check the Qwiic plug)';
-  const dist = !s.distance ? mark(false)
-    : s.distance_hz > 0 ? `✅ ${s.last_distance_mm} mm (${s.distance_hz}/s)`
-    : '✅ connected, nothing in range (point it at the hand)';
-  $('sensors').innerHTML = `Distance: ${dist}<br>Movement: ${s.movement ? `✅ (${s.imu_hz}/s)` : mark(false)}<br>Thermo: ${mark(s.thermo)}`;
-});
-socket.on('i2c_scan', (d) => {
-  $('sensors').innerHTML += `<br><small>I2C bus answers: ${d.found || 'nothing'} (Thermo 0x44, Distance 0x29, Movement 0x6a/0x6b)</small>`;
-});
-socket.on('camera_status', (d) => {
-  const on = !!(d && d.on);
-  $('cam').classList.toggle('on', on);
-  $('cam').textContent = d && d.ok === false ? '📷 Camera not found' : on ? '🔴 Camera on' : '📷 Camera off';
-});
-socket.on('profile', (d) => { if (d && d.lift_height) $('liftHeight').value = d.lift_height.toFixed(2); });
-socket.on('connect', () => send('get_state'));
-</script>
+  <script src="shell.js"></script>
 </body>
 </html>

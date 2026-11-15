@@ -35,7 +35,7 @@
   <button class="go" id="startBtn">▶ Start</button>
   <button id="breakBtn">⏸ Break</button>
   <button id="viewBtn" title="Shows the camera behind the bubbles. The video stays in this browser and is never sent or saved.">📷 Show camera</button>
-  <a class="btn" href="../index.html">⬅ WonderMoves</a>
+  <a class="btn" id="backLink" href="../index.html">⬅ WonderMoves</a>
 </div>
 <div id="subtitle" aria-live="polite">Hi! I'm Digger. Rest your hands on the table, then press Start.</div>
 
@@ -51,6 +51,7 @@
    - The lift height is set by the caregiver (Grown-ups tab) and never increases on its own.
    The camera sends hand positions only (normalised, mirrored); no video reaches this page. */
 const $ = (id) => document.getElementById(id);
+if (window.parent !== window) $('backLink').hidden = true;   // inside the WonderMoves shell: tabs do the navigation
 const canvas = $('c'), g = canvas.getContext('2d');
 const socket = window.io ? io(`http://${location.host}`) : null;
 const send = (ev, d = {}) => socket && socket.emit(ev, d);

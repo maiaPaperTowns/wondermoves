@@ -18,7 +18,7 @@ window.FB = window.FB || {};
   /* ---------------- layer bookkeeping ---------------- */
   const UI = FB.UI = {
     open: new Set(),
-    blocking() { return this.open.size > 0; },
+    blocking() { return this.open.size > 0 || !!(FB.Cam && FB.Cam.active); },
   };
   function openLayer(sel) { $(sel).classList.add('open'); $(sel).setAttribute('aria-hidden', 'false'); UI.open.add(sel); }
   function closeLayer(sel) { $(sel).classList.remove('open'); $(sel).setAttribute('aria-hidden', 'true'); UI.open.delete(sel); }
@@ -72,11 +72,11 @@ window.FB = window.FB || {};
     timer: null,
     say(text, ms = 3400) {
       const b = $('#buddy');
-      $('#buddyBubble').textContent = text;
+      $('#buddyBubble').textContent = String(text).replace(/\s+(\S+)\s*$/, '\u00A0$1'); // keep a trailing emoji with its word
       b.classList.remove('talk'); void b.offsetWidth;
       b.classList.add('show', 'talk');
       clearTimeout(this.timer);
-      this.timer = setTimeout(() => b.classList.remove('show'), ms);
+      if (ms > 0) this.timer = setTimeout(() => b.classList.remove('show'), ms); // ms = 0: stay until the next line
     },
     hide() { clearTimeout(this.timer); $('#buddy').classList.remove('show'); },
   };
@@ -96,7 +96,7 @@ window.FB = window.FB || {};
     scene.style.backgroundImage = lv.background ? `url("${lv.background}")` : '';
     scene.dataset.level = lv.id;
     $('#decor').innerHTML = (lv.background ? [] : lv.decor).map((d, i) =>
-      `<span style="left:${d.x}%;top:${d.y}%;font-size:${d.s}vmin;animation-delay:${-i * 1.3}s">${d.e}</span>`).join('');
+      `<span style="left:${d.x}%;${d.b != null ? `bottom:${d.b}%` : `top:${d.y}%`};font-size:${d.s}vmin;animation-delay:${-i * 1.3}s">${d.e}</span>`).join('');
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.content = th.skyTop;
   };
@@ -105,7 +105,8 @@ window.FB = window.FB || {};
     $('#levelPill').innerHTML = `
       <span class="lp-emoji">${lv.emoji}</span>
       <span class="lp-name">${esc(lv.name)}</span>
-      <span class="diff-chip diff-${lv.diffLevel}">${lv.difficulty}</span>`;
+      <button class="wm-level-chip lv-${lv.diffLevel}" id="levelChip" aria-label="Change dig site"><span>${lv.difficulty}</span><span class="caret">▾</span></button>
+      <span class="mode-chip">${FB.Game && FB.Game.mode === 'free' ? '🖌️ Free Play' : '✏️ Copy Pip'}</span>`;
   };
 
   /* ---------------- Menu drawer ---------------- */
@@ -132,7 +133,25 @@ window.FB = window.FB || {};
         </button>`;
       }).join('');
     },
-    open() { this.render(); openLayer('#drawer'); $('#drawerBackdrop').classList.add('open'); },
+    renderSettings() {
+      const mode = FB.Game.mode;
+      $$('#modeToggle [data-mode]').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+      $('#modeHint').textContent = mode === 'trace'
+        ? 'Copy the shapes Pip draws to dig. Rarer treasures need more shapes!'
+        : 'Brush the sand any way you like.';
+      $$('#tolToggle [data-tol]').forEach(b => b.classList.toggle('active', b.dataset.tol === FB.Store.data.tolerance));
+      $$('#inputToggle [data-input]').forEach(b => b.classList.toggle('active', b.dataset.input === (FB.Store.data.input || 'touch')));
+      $('#camRecal').hidden = FB.Store.data.input !== 'camera';
+      const log = FB.Store.data.traceLog;
+      if (log.length) {
+        const recent = log.slice(-20);
+        const acc = Math.round(recent.reduce((a, r) => a + r.accuracy, 0) / recent.length * 100);
+        $('#practiceStats').textContent = `${log.length} shapes traced so far · recent accuracy ${acc}%`;
+      } else {
+        $('#practiceStats').textContent = 'No shapes traced yet.';
+      }
+    },
+    open() { this.render(); this.renderSettings(); openLayer('#drawer'); $('#drawerBackdrop').classList.add('open'); },
     close() { closeLayer('#drawer'); $('#drawerBackdrop').classList.remove('open'); },
   };
 
@@ -204,7 +223,7 @@ window.FB = window.FB || {};
 
   /* ---------------- Found card ---------------- */
   const Found = FB.Found = {
-    show(item, depth, isNew) {
+    show(item, depth, isNew, extra) {
       const r = FB.rarityById(item.rarity);
       const panel = $('#foundModal .found-panel');
       panel.style.setProperty('--rc', r.color);
@@ -217,6 +236,10 @@ window.FB = window.FB || {};
       $('#foundStars').textContent = starStr(r.stars);
       $('#foundDepth').textContent = `Found ${Math.round(depth)} m deep!`;
       $('#foundFact').textContent = item.fact;
+      $('#foundTrace').hidden = !extra;
+      if (extra) {
+        $('#foundTrace').innerHTML = `✏️ ${extra.shapes} shape${extra.shapes === 1 ? '' : 's'} traced · <span class="trace-stars">${'★'.repeat(extra.stars)}${'☆'.repeat(3 - extra.stars)}</span> ${extra.msg}`;
+      }
       openLayer('#foundModal');
       setTimeout(() => $('#foundAgain').focus(), 300);
     },
@@ -227,7 +250,7 @@ window.FB = window.FB || {};
   const Tutorial = FB.Tutorial = {
     i: 0,
     typing: null,
-    steps: [
+    FREE_STEPS: [
       { text: `Hi there, explorer! I'm ${FB.MASCOT.name} the Dig-Dino! Let's dig up some amazing treasures together! 🦕`, target: null },
       { text: 'See that big pile of sand? Press and drag on it to brush the sand away. Swish, swish! 🖌️', target: '#digArea', round: true, hand: true },
       { text: 'This is the Depth Meter. The deeper you dig, the rarer the treasure! Common… Rare… Epic… maybe even LEGENDARY! 🌟', target: '#depthMeter' },
@@ -235,7 +258,23 @@ window.FB = window.FB || {};
       { text: 'Every treasure you find goes into your Collection book. Peek inside to see what\'s still hiding! 📖', target: '#catalogBtn' },
       { text: 'Need help? Tap the ? button and I\'ll come right back. Happy digging! 🎉', target: '#helpBtn' },
     ],
+    TRACE_STEPS: [
+      { text: `Hi there, explorer! I'm ${FB.MASCOT.name} the Dig-Dino! Let's dig up some amazing treasures together! 🦕`, target: null },
+      { text: 'I\'ll draw a shape on the sand pile with my brush. Watch closely! 👀', target: '#digArea', round: true },
+      { text: 'Then it\'s your turn! Put your finger on the glowing dot and follow the path. Wobbly is OK! ✏️', target: '#digArea', round: true, hand: true },
+      { text: 'These show how many shapes are left. Tap "Show me" if you want me to draw it again! 👀', target: '#traceHud' },
+      { text: 'Every shape digs deeper. Rare treasures are buried deep, so they need more shapes to reach! 🌟', target: '#depthMeter' },
+      { text: 'Tap the Menu to visit new dig sites, or switch to Free Play brushing. 🗺️', target: '#menuBtn' },
+      { text: 'Every treasure you find goes into your Collection book. Can you find them all? 📖', target: '#catalogBtn' },
+      { text: 'Need help? Tap the ? button and I\'ll come right back. Happy digging! 🎉', target: '#helpBtn' },
+    ],
+    steps: [],
     open() {
+      this.steps = FB.Game && FB.Game.mode === 'free' ? this.FREE_STEPS : this.TRACE_STEPS;
+      if (this.steps === this.TRACE_STEPS) {
+        document.body.classList.add('show-hud');
+        if (!FB.Trace.active) FB.Trace.renderSample();
+      }
       this.i = 0;
       Buddy.hide();
       document.body.classList.add('tut-open');
@@ -245,10 +284,11 @@ window.FB = window.FB || {};
     },
     close() {
       clearInterval(this.typing);
-      document.body.classList.remove('tut-open');
+      document.body.classList.remove('tut-open', 'show-hud');
       closeLayer('#tutorial');
       if (!FB.Store.data.tutorialDone) { FB.Store.data.tutorialDone = true; FB.Store.save(); }
-      if (FB.Game && FB.Game.state === 'digging') Buddy.say('Your turn! Brush the sand! 🖌️');
+      if (FB.Game && FB.Game.state === 'digging' && FB.Game.mode === 'free') Buddy.say('Your turn! Brush the sand! 🖌️');
+      else if (FB.Game && FB.Game.state === 'digging') FB.Trace.replay();
     },
     next() {
       if (this.finishTyping()) return;
@@ -328,6 +368,7 @@ window.FB = window.FB || {};
     });
 
     $('#menuBtn').addEventListener('click', () => Menu.open());
+    $('#levelPill').addEventListener('click', e => { if (e.target.closest('#levelChip')) Menu.open(); });
     $('#drawerClose').addEventListener('click', () => Menu.close());
     $('#drawerBackdrop').addEventListener('click', () => Menu.close());
     $('#levelList').addEventListener('click', e => {
@@ -345,6 +386,37 @@ window.FB = window.FB || {};
         Buddy.say('Fresh start! Let\'s find them all again! ✨');
       }
     });
+
+    $('#modeToggle').addEventListener('click', e => {
+      const b = e.target.closest('[data-mode]');
+      if (!b || b.dataset.mode === FB.Game.mode) return;
+      Menu.close();
+      FB.Game.setMode(b.dataset.mode);
+    });
+    $('#tolToggle').addEventListener('click', e => {
+      const b = e.target.closest('[data-tol]');
+      if (!b) return;
+      FB.Store.data.tolerance = b.dataset.tol; FB.Store.save();
+      FB.Trace.relayout();
+      Menu.renderSettings();
+    });
+    $('#inputToggle').addEventListener('click', e => {
+      const b = e.target.closest('[data-input]');
+      if (!b || b.dataset.input === (FB.Store.data.input || 'touch')) return;
+      Menu.close();
+      if (b.dataset.input === 'camera') FB.Cam.open(); else FB.Cam.off();
+    });
+    $('#camRecal').addEventListener('click', () => { Menu.close(); FB.Cam.open(); });
+    $('#exportLog').addEventListener('click', () => {
+      const blob = new Blob([JSON.stringify(FB.Store.data.traceLog, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'fossil-brush-practice-log.json';
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    });
+
+    $('#traceReplay').addEventListener('click', () => FB.Trace.replay());
 
     $('#catalogBtn').addEventListener('click', () => Catalog.open());
     $('#catClose').addEventListener('click', () => Catalog.close());

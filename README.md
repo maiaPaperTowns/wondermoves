@@ -66,6 +66,11 @@ Evidence and sources: [docs/evidence-brief.html](docs/evidence-brief.html).
 **Thermo** isn't tied to one game: it watches room comfort and suggests breaks. With 3 kits, each game can run on its own board,
 so each person can own one station.
 
+**UI:** Andrew's game shell (`wondermoves/assets/index.html`, `shell.js`, `shared/`, `games/`) is the main screen on the
+board: tabs for Fossil Brush, Treasure Reach, Bubble Lift and Grown-ups. `shared/wm-board.js` connects any game to the
+board (sensors, calibration, caregiver limits, session log); opened standalone, the games fall back to camera or mouse.
+His timed Bubble Pop prototype stays in `games/bubble-pop/` but is not a tab (it breaks the no-timer, one-movement rules).
+
 See [docs/PLAN.md](docs/PLAN.md) for the build plan and task split, and [docs/HARDWARE.md](docs/HARDWARE.md) for building the physical game stations.
 
 ## Board quirks we hit (UNO Q at MadHacks)

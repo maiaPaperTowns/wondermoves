@@ -130,6 +130,10 @@ def on_distance(mm):
                     emit("calibration_done", **profile, target_mm=target_mm())
         return
 
+    if state["mode"] == "playing" and state["game"] == "reach_ui":
+        track_reach_for_ui(d)
+        return
+
     if state["mode"] != "playing" or state["game"] != "reach":
         return
 
@@ -178,6 +182,43 @@ def on_distance(mm):
         if d >= state["min_d"] + 0.6 * (rest - state["min_d"]):   # came most of the way back
             state["phase"], state["rest_ref"] = "rest", d
             emit("returned_to_rest")
+
+
+def track_reach_for_ui(d):
+    """Treasure Reach in the shell UI (games/treasure-reach): the browser game decides when a
+    chest opens; the board only tracks where the hand rests and streams how far it has reached.
+    Same rest rules as the board game: settle first, follow slow drift, follow quickly back."""
+    now = time.time()
+    rest = state.get("rest_ref")
+    if rest is None:
+        buf = state.setdefault("settle_buf", [])
+        buf.append(d)
+        if len(buf) >= 25:
+            if max(buf[-25:]) - min(buf[-25:]) <= 15:
+                state["rest_ref"] = statistics.median(buf[-25:])
+                state.pop("settle_buf", None)
+            else:
+                del buf[:-25]
+        return
+    reach = rest - d
+    hist = state.setdefault("ui_hist", deque(maxlen=100))   # ~2 s of samples
+    hist.append(d)
+    if reach < 0:
+        state["rest_ref"] = rest * 0.8 + d * 0.2          # moved back: never a reach
+    elif reach <= 10:
+        state["rest_ref"] = rest * 0.95 + d * 0.05        # slow drift while resting
+    elif len(hist) == hist.maxlen and max(hist) - min(hist) <= 10:
+        state["rest_ref"] = statistics.median(hist)       # parked somewhere new for 2 s: new rest
+    if now - state.get("ui_sent", 0) >= 0.05:             # ~20 Hz to the game
+        state["ui_sent"] = now
+        ui.send_message("reach_progress", {"reach_mm": round(max(0.0, state["rest_ref"] - d), 1)})
+
+
+def on_reach_rep(_client, data):
+    """A chest opened in the shell's Treasure Reach: log it like the board game's reaches."""
+    data = data or {}
+    emit("reach_completed", reach_mm=data.get("reach_mm"), target_mm=data.get("goal_mm"),
+         level=data.get("level"), source="treasure-reach-ui")
 
 
 # ---------------- Fossil Brush (IMU) ----------------
@@ -299,7 +340,7 @@ def on_sensor_status(has_d, has_m, has_t, distance_hz, imu_hz, last_mm):
     # Tell the caregiver right away when the Distance sensor can't see the hand during
     # calibration or Treasure Reach (its beam is narrow), instead of waiting silently.
     needs_hand = state["mode"] in ("calib_baseline", "calib_reach") or (
-        state["mode"] == "playing" and state["game"] == "reach")
+        state["mode"] == "playing" and state["game"] in ("reach", "reach_ui"))
     if needs_hand and distance_hz == 0 and time.time() - state.get("hand_warned", 0) > 6:
         state["hand_warned"] = time.time()
         emit("hand_not_seen")
@@ -315,7 +356,8 @@ def on_start(_client, data):
     # so a hand (or object) already near the sensor at Start is never counted as a reach.
     state.update(mode="playing", phase="settle", game=(data or {}).get("game", "reach"),
                  layers=0, hold_start=None)
-    state.pop("settle_buf", None)
+    for k in ("settle_buf", "rest_ref", "ui_hist"):   # every game starts by finding the rest again
+        state.pop(k, None)
     sync_camera()
     emit("session_started", game=state["game"], **level_info())
 
@@ -376,5 +418,6 @@ ui.on_message("vision_hello", on_vision_hello)
 ui.on_message("vision_event", on_remote_vision_event)
 ui.on_message("vision_hands", on_remote_hands)
 ui.on_message("bubble_pop", on_bubble_pop)
+ui.on_message("reach_rep", on_reach_rep)
 
 App.run()

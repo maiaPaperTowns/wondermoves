@@ -1,0 +1,114 @@
+/* WonderMoves shell: game stage + bottom tab bar */
+:root {
+  --frame: #2B2350;
+  --frame-2: #372D66;
+  --active: #FF8A3D;
+  --tabbar-h: 92px;
+}
+
+html, body { height: 100%; margin: 0; overflow: hidden; }
+body {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  height: 100dvh;
+  background:
+    radial-gradient(circle at 20% 120%, color-mix(in srgb, var(--active) 35%, transparent), transparent 45%),
+    radial-gradient(rgba(255, 255, 255, .06) 1.5px, transparent 1.5px) 0 0 / 22px 22px,
+    var(--frame);
+  transition: background .5s;
+}
+
+/* ---------- stage ---------- */
+.stage {
+  position: relative;
+  margin: 10px 10px 0;
+  border-radius: 28px;
+  overflow: hidden;
+  background: #FFF3DD;
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, .08), 0 18px 40px rgba(0, 0, 0, .35);
+  min-height: 0;
+}
+.game-frame {
+  position: absolute; inset: 0;
+  visibility: hidden; opacity: 0;
+  transition: opacity .3s, visibility 0s .3s;
+}
+.game-frame.active { visibility: visible; opacity: 1; transition: opacity .3s; }
+.game-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; }
+.loading {
+  position: absolute; inset: 0; z-index: 1;
+  display: grid; place-content: center; justify-items: center; gap: 12px;
+  background: #FFF8EA; color: var(--ink);
+  font-size: 20px; font-weight: 600;
+  transition: opacity .3s;
+}
+.loading-icon { font-size: 64px; animation: wm-bob 1s ease-in-out infinite; }
+.game-frame.loaded .loading { opacity: 0; pointer-events: none; }
+
+/* ---------- tab bar ---------- */
+.tabbar {
+  height: var(--tabbar-h);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 12px;
+  padding: 0 18px env(safe-area-inset-bottom);
+  color: #EDE8FF;
+}
+.brand { display: flex; align-items: center; gap: 8px; font-size: 22px; font-weight: 500; letter-spacing: .01em; }
+.brand-name b { font-weight: 700; color: #FFD34D; }
+.brand-mark { font-size: 24px; }
+
+.tabs { display: flex; gap: 12px; }
+.tab {
+  display: flex; align-items: center; gap: 10px;
+  height: 66px; padding: 0 22px 0 9px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, .08);
+  border: 3px solid rgba(255, 255, 255, .1);
+  color: #EDE8FF; font-size: 19px; font-weight: 700;
+  transition: transform .25s cubic-bezier(.3, 1.6, .5, 1), background .2s, box-shadow .2s, border-color .2s;
+}
+.tab:hover { background: rgba(255, 255, 255, .14); transform: translateY(-2px); }
+.tab-icon {
+  width: 46px; height: 46px; border-radius: 16px;
+  display: grid; place-items: center;
+  font-size: 28px; line-height: 1;
+  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+  background: color-mix(in srgb, var(--c) 35%, transparent);
+  transition: background .2s;
+}
+.tab.active {
+  background: var(--paper); color: var(--ink);
+  border-color: var(--c);
+  box-shadow: 0 6px 0 var(--cd), 0 12px 24px rgba(0, 0, 0, .3);
+  transform: translateY(-6px);
+}
+.tab.active .tab-icon { background: var(--c); animation: wm-bob 2.4s ease-in-out infinite; }
+.tab:focus-visible { outline: 4px solid #fff; outline-offset: 3px; }
+
+.input-status {
+  justify-self: end;
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px; border-radius: 999px;
+  background: rgba(255, 255, 255, .08);
+  font-size: 14px; font-weight: 600; color: #CFC7F2;
+}
+.input-status .dot { width: 10px; height: 10px; border-radius: 50%; background: #7BE0A4; box-shadow: 0 0 0 4px rgba(123, 224, 164, .2); }
+
+@media (max-width: 900px) {
+  .tabbar { grid-template-columns: 1fr; padding: 0 8px env(safe-area-inset-bottom); }
+  .brand, .input-status { display: none; }
+  .tabs { justify-content: center; }
+}
+@media (max-width: 640px) {
+  :root { --tabbar-h: 84px; }
+  .stage { margin: 6px 6px 0; border-radius: 22px; }
+  .tabs { gap: 6px; width: 100%; }
+  .tab {
+    flex: 1; flex-direction: column; justify-content: center; gap: 2px;
+    height: 70px; padding: 4px; border-radius: 20px; font-size: 12px;
+  }
+  .tab-icon { width: 36px; height: 36px; font-size: 22px; border-radius: 12px; }
+  .tab.active { transform: translateY(-4px); }
+}
