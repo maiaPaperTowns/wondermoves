@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <!-- PLACEHOLDER MASCOT: "Pip the Dig-Dino". Replace this file with your own art. -->
+  <g stroke="#2E6B35" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+    <!-- tail -->
+    <path d="M62 150 Q22 162 12 126 Q36 142 66 130 Z" fill="#5CC46B"/>
+    <!-- back spikes -->
+    <path d="M58 120 L50 104 L66 110 L66 92 L80 102 L86 86 L96 100" fill="#FFB547"/>
+    <!-- body -->
+    <ellipse cx="100" cy="142" rx="46" ry="40" fill="#6FD27D"/>
+    <!-- feet -->
+    <ellipse cx="78" cy="180" rx="17" ry="9" fill="#5CC46B"/>
+    <ellipse cx="124" cy="180" rx="17" ry="9" fill="#5CC46B"/>
+  </g>
+  <!-- belly -->
+  <ellipse cx="106" cy="150" rx="27" ry="25" fill="#FFF1C9"/>
+  <path d="M90 140 Q106 136 122 140 M88 152 Q106 148 124 152 M92 164 Q106 160 120 164" stroke="#F2D99A" stroke-width="3" fill="none" stroke-linecap="round"/>
+
+  <!-- arm holding a brush -->
+  <g stroke-linejoin="round" stroke-linecap="round">
+    <path d="M140 132 L172 92" stroke="#8A5A22" stroke-width="8"/>
+    <path d="M166 84 L182 96 L176 102 L160 90 Z" fill="#C9CED6" stroke="#5a3a1a" stroke-width="3"/>
+    <path d="M168 76 Q186 70 192 86 L180 98 Q176 84 162 86 Z" fill="#F2D49B" stroke="#5a3a1a" stroke-width="3"/>
+    <ellipse cx="142" cy="132" rx="11" ry="9" fill="#6FD27D" stroke="#2E6B35" stroke-width="4"/>
+  </g>
+
+  <!-- head -->
+  <ellipse cx="106" cy="84" rx="48" ry="41" fill="#6FD27D" stroke="#2E6B35" stroke-width="4"/>
+  <!-- cheeks -->
+  <ellipse cx="78" cy="98" rx="8" ry="5.5" fill="#FF9AA2" opacity=".75"/>
+  <ellipse cx="136" cy="98" rx="8" ry="5.5" fill="#FF9AA2" opacity=".75"/>
+  <!-- eyes -->
+  <ellipse cx="90" cy="82" rx="9" ry="11" fill="#2B1B10"/>
+  <ellipse cx="124" cy="82" rx="9" ry="11" fill="#2B1B10"/>
+  <circle cx="93" cy="77" r="3.6" fill="#fff"/>
+  <circle cx="127" cy="77" r="3.6" fill="#fff"/>
+  <circle cx="88" cy="87" r="1.6" fill="#fff"/>
+  <circle cx="122" cy="87" r="1.6" fill="#fff"/>
+  <!-- smile -->
+  <path d="M96 100 Q107 111 118 100" stroke="#2B1B10" stroke-width="4" fill="#E86B6B" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- nostrils -->
+  <circle cx="102" cy="94" r="1.6" fill="#2E6B35"/>
+  <circle cx="112" cy="94" r="1.6" fill="#2E6B35"/>
+
+  <!-- explorer hat -->
+  <g stroke="#8A5A22" stroke-width="4" stroke-linejoin="round">
+    <path d="M74 58 Q76 20 106 18 Q136 20 138 58 Z" fill="#F2CC85"/>
+    <path d="M75 50 Q106 42 137 50 L138 58 Q106 50 74 58 Z" fill="#E5484D" stroke="none"/>
+    <path d="M52 60 Q106 40 160 60 Q150 70 106 66 Q62 70 52 60 Z" fill="#E8B96A"/>
+  </g>
+  <path d="M92 30 Q100 24 110 26" stroke="#FFF3D6" stroke-width="4" fill="none" stroke-linecap="round" opacity=".8"/>
+</svg>

@@ -8,3 +8,4 @@ __pycache__/
 
 # Parent website: local play data, Databricks results, simulated logs
 parents/data/
+docs/devpost/cover.png

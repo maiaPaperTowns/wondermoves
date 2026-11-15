@@ -1,0 +1,56 @@
+<!doctype html><html><head><meta charset="utf-8"><title>WonderMoves cover</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#4A2C17;--soft:#85634A;--paper:#FFFBF2;--line:#EED6AE;--orange:#FF8A3D;--orange-d:#D9621A;--teal:#22B4A3;--teal-d:#157F73}
+*{box-sizing:border-box;margin:0}
+html,body{width:1500px;height:1000px;overflow:hidden}
+body{font-family:Fredoka,ui-rounded,sans-serif;color:var(--ink);background:var(--paper);display:grid;grid-template-columns:720px 780px}
+.l{padding:78px 40px 0 88px;position:relative}
+.brand{display:flex;align-items:center;gap:16px;font-size:44px;font-weight:700;letter-spacing:-.5px}
+.brand img{width:76px}
+.brand .w{color:var(--orange)} .brand .m{color:var(--teal)}
+h1{font-size:66px;line-height:1.08;font-weight:700;margin-top:50px;letter-spacing:-1.5px}
+.hl{white-space:nowrap;background:linear-gradient(transparent 52%,#FFC56E 52%,#FFC56E 92%,transparent 92%);padding:0 6px;margin:0 -6px;color:var(--orange-d)}
+.sub{font-size:27px;line-height:1.35;margin-top:28px;color:var(--soft);font-weight:500;max-width:560px}
+.games{margin-top:46px;border-top:3px solid var(--line)}
+.row{display:grid;grid-template-columns:200px 225px 1fr;padding:15px 0;border-bottom:3px solid var(--line);font-size:23px;align-items:baseline}
+.row b{font-weight:700}
+.row span{color:var(--soft);font-weight:500}
+.row i{font-style:normal;color:var(--teal-d);font-weight:600}
+.r{position:relative;background:#2a1a0e}
+.hero{position:absolute;left:0;top:0;width:780px;height:640px;background:url(unoq.jpg) 40% 42%/108% auto no-repeat}
+.hero:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 60%,rgba(20,10,4,.75))}
+.tagq{position:absolute;left:32px;top:548px;z-index:2;color:#fff}
+.tagq b{display:block;font-size:34px;font-weight:700}
+.tagq span{font-size:22px;opacity:.9}
+.sensors{position:absolute;left:0;top:640px;width:780px;height:360px;display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:var(--paper);padding-top:4px}
+.s{position:relative;background-repeat:no-repeat}
+.s:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 50%,rgba(20,10,4,.78))}
+.s div{position:absolute;left:18px;bottom:16px;z-index:2;color:#fff}
+.s b{display:block;font-size:25px;font-weight:700}
+.s span{font-size:19px;opacity:.92}
+.d{background-image:url(distance.jpg);background-size:230% auto;background-position:24% 80%}
+.mv{background-image:url(movement.jpg);background-size:230% auto;background-position:72% 70%}
+.th{background-image:url(thermo.jpg);background-size:190% auto;background-position:60% 76%}
+.foot{position:absolute;left:88px;bottom:44px;font-size:21px;color:var(--soft);font-weight:500}
+</style></head><body>
+<div class="l">
+  <div class="brand"><img src="mascot.svg" alt=""><span><span class="w">Wonder</span><span class="m">Moves</span></span></div>
+  <h1>Hand-therapy games for kids with <span class="hl">cerebral palsy</span></h1>
+  <p class="sub">One therapy movement per game. No timers, no fail screens. Every completed movement counts, never speed.</p>
+  <div class="games">
+    <div class="row"><b>Treasure Reach</b><span>reach forward</span><i>Distance sensor</i></div>
+    <div class="row"><b>Fossil Brush</b><span>brush back &amp; forth</span><i>Movement sensor</i></div>
+    <div class="row"><b>Bubble Pop</b><span>lift a hand</span><i>Camera + AI</i></div>
+  </div>
+</div>
+<div class="r">
+  <div class="hero"></div>
+  <div class="tagq"><b>Arduino UNO Q</b><span>Qualcomm QRB2210 runs the games, sensors and pose AI offline</span></div>
+  <div class="sensors">
+    <div class="s d"><div><b>Distance</b><span>counts each reach</span></div></div>
+    <div class="s mv"><div><b>Movement</b><span>counts brush strokes</span></div></div>
+    <div class="s th"><div><b>Thermo</b><span>suggests breaks</span></div></div>
+  </div>
+</div>
+</body></html>
