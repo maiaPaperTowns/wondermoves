@@ -3,140 +3,292 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>WonderMoves Grown-ups</title>
+<meta name="theme-color" content="#2B2350">
+<title>Settings · WonderMoves</title>
 <!-- Prefer a local copy (board may be offline); falls back to CDN. -->
 <script src="libs/socket.io.min.js"></script>
+<script src="shared/wm-lock.js"></script>
 <script>window.io || document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"><\/script>')</script>
+<link rel="icon" href="shared/assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  :root { --soil:#7a4b2a; --sand:#f3d9a4; --sky:#bfe3ff; --ink:#2b1a0e; --ok:#3aa35a; }
-  * { box-sizing:border-box; }
-  body { margin:0; font-family: system-ui, sans-serif; background:var(--sky); color:var(--ink); }
-  header { display:flex; gap:8px; padding:12px 16px; align-items:center; }
-  header h1 { margin:0 auto 0 0; font-size:1.4rem; }
-  button { font-size:1.4rem; padding:18px 28px; border-radius:18px; border:0; cursor:pointer; background:#fff; }
-  button.big { background:var(--ok); color:#fff; min-width:180px; }
-  .tab { font-size:1rem; padding:10px 16px; }
-  main { padding:0 16px 24px; max-width:900px; margin:0 auto; }
-  #dig { position:relative; height:320px; border-radius:24px; overflow:hidden; background:var(--sand); }
-  #treasure { position:absolute; inset:0; display:grid; place-items:center; font-size:96px; }
-  #soil { position:absolute; left:0; right:0; top:0; background:var(--soil); transition:height .6s ease; }
-  #meter { height:24px; background:#fff; border-radius:12px; margin:12px 0; overflow:hidden; }
-  #meter div { height:100%; width:0; background:var(--ok); transition:width .1s; }
-  #subtitle { min-height:3em; font-size:1.5rem; background:#fffc; border-radius:16px; padding:12px 16px; }
-  .controls { display:flex; gap:12px; flex-wrap:wrap; margin:12px 0; }
-  .hidden { display:none; }
-  table { width:100%; border-collapse:collapse; background:#fff; border-radius:12px; }
-  td, th { padding:8px; border-bottom:1px solid #eee; text-align:left; }
-  label { display:block; margin:8px 0; font-size:1.1rem; }
-  #cam { display:inline-block; padding:6px 12px; border-radius:999px; background:#fff; font-size:.95rem; }
-  #cam.on { background:#ffe1e1; color:#a01818; font-weight:600; }
-  #hands { width:100%; height:120px; background:#fff8; border-radius:16px; margin-top:12px; }
-  .games { display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:12px; margin:8px 0 24px; }
-  .game { background:#fff; border-radius:14px; padding:14px 16px; display:grid; gap:6px; font-size:.95rem; }
-  .game h3 { margin:0; font-size:1.1rem; }
-  .game ol { margin:0; padding-left:20px; }
-  .lvl { display:inline-block; font-size:.8rem; font-weight:700; padding:2px 10px; border-radius:999px; }
-  .lvl.strong { background:#dff3e3; color:#1e6b2c; } .lvl.moderate { background:#e2eefb; color:#1b4f8a; } .lvl.emerging { background:#fbefd6; color:#8a5a00; }
-  .game small { color:#555; }
+/* Same look as the parent page (parents/index.html) and the games (shared/wm-base.css). */
+:root {
+  --frame: #2B2350;
+  --bg: #FFF3DD; --card: #FFFBF2; --ink: #4A2C17; --muted: #85634A; --line: #EED6AE; --line-d: #D5B07A;
+  --accent: #FF8A3D; --accent-d: #D9621A; --ok: #1F8F63; --warn-soft: #FFF0C7;
+  --reach: #22B4A3; --brush: #FF8A3D; --bubbles: #5BA8F8;
+  --shadow: 0 4px 0 var(--line), 0 10px 24px rgba(60, 32, 12, .08);
+  --font: 'Fredoka', ui-rounded, 'Arial Rounded MT Bold', 'Trebuchet MS', system-ui, sans-serif;
+  --emoji: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+  --soil: #7a4b2a; --sand: #f3d9a4;   /* legacy child view */
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1E1934; --card: #2B2448; --ink: #F3EEFF; --muted: #B9AEDB; --line: #3F3668; --line-d: #5A4F8C;
+    --accent: #FF9C59; --ok: #6BD6A4; --warn-soft: #4A3D1E;
+    --shadow: 0 4px 0 #191430, 0 10px 24px rgba(0, 0, 0, .3);
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 17px/1.5 var(--font); background: var(--bg); color: var(--ink); }
+.emoji { font-family: var(--emoji); line-height: 1; }
+small, .small { color: var(--muted); font-size: 14px; }
+:focus-visible { outline: 3px solid #3D6FC2; outline-offset: 2px; }
+
+.topbar { background: radial-gradient(rgba(255,255,255,.06) 1.5px, transparent 1.5px) 0 0 / 22px 22px, var(--frame); color: #EDE8FF; }
+.topbar-in { max-width: 1080px; margin: 0 auto; padding: 14px 16px; display: flex; flex-wrap: wrap; gap: 10px 12px; align-items: center; }
+.brand { display: flex; align-items: center; gap: 8px; font-size: 22px; font-weight: 500; margin-right: auto; }
+.brand b { color: #FFD34D; font-weight: 700; }
+.brand small { font-size: 15px; color: #CFC7F2; font-weight: 500; margin-left: 4px; }
+.top-btn { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 18px; border-radius: 999px;
+  background: rgba(255,255,255,.1); color: #EDE8FF; text-decoration: none; font: 600 16px var(--font);
+  border: 2px solid rgba(255,255,255,.12); cursor: pointer; }
+.top-btn:hover, .top-btn:focus-visible { background: rgba(255,255,255,.2); outline: none; }
+.top-btn.primary { background: #FFD34D; color: #3B2A00; border-color: #FFD34D; }
+.top-btn[aria-pressed="true"] { background: #FFFBF2; color: #4A2C17; }
+[hidden] { display: none !important; }
+
+main { max-width: 1080px; margin: 0 auto; padding: 22px 16px 56px; }
+.hidden { display: none !important; }
+h2 { font-size: 21px; margin: 30px 0 12px; }
+.card { background: var(--card); border-radius: 22px; padding: 18px 20px; box-shadow: var(--shadow); border: 2px solid var(--line); }
+.card h3 { margin: 0 0 4px; font-size: 19px; display: flex; align-items: center; gap: 8px; }
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.stack { display: grid; gap: 16px; align-content: start; }
+
+.field { display: grid; gap: 4px; margin: 14px 0 0; font-size: 16px; font-weight: 600; }
+.field .hint { font-weight: 400; font-size: 14px; color: var(--muted); }
+input, select { font: 500 17px var(--font); color: var(--ink); background: var(--bg); border: 2px solid var(--line);
+  border-radius: 14px; padding: 10px 12px; min-height: 48px; width: 100%; }
+input:focus, select:focus { border-color: var(--accent); outline: none; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 52px; padding: 0 24px;
+  border-radius: 999px; border: 0; font: 700 18px var(--font); cursor: pointer; background: var(--accent); color: #fff;
+  box-shadow: 0 5px 0 var(--accent-d); }
+.btn:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--accent-d); }
+.btn.quiet { background: var(--bg); color: var(--ink); border: 2px solid var(--line-d); box-shadow: none; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 18px; }
+.saved { color: var(--ok); font-weight: 700; opacity: 0; transition: opacity .3s; }
+.saved.on { opacity: 1; }
+.status-list { background: var(--bg); border-radius: 14px; padding: 10px 14px; margin-top: 10px; }
+.check { display: flex; gap: 10px; align-items: flex-start; font-weight: 400; font-size: 16px; margin: 6px 0; cursor: pointer; }
+.check input { width: 22px; height: 22px; min-height: 0; margin: 2px 0 0; flex: none; accent-color: var(--accent); }
+.consent { background: var(--bg); border-radius: 14px; padding: 12px 14px; margin-top: 18px; }
+.tip { background: var(--warn-soft); border-radius: 14px; padding: 10px 14px; margin-top: 10px; }
+
+.games { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.game { display: grid; gap: 8px; align-content: start; border-top: 6px solid var(--c); font-size: 15px; }
+.game ol { margin: 0; padding-left: 20px; }
+.lvl { display: inline-block; font-size: 13px; font-weight: 700; padding: 2px 10px; border-radius: 999px; }
+.lvl.strong { background: #dff3e3; color: #1e6b2c; } .lvl.moderate { background: #e2eefb; color: #1b4f8a; } .lvl.emerging { background: #fbefd6; color: #8a5a00; }
+details.card summary { cursor: pointer; font-weight: 700; font-size: 18px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 10px; }
+td, th { padding: 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+td:last-child { word-break: break-all; color: var(--muted); }
+
+/* legacy child view (only when this page is opened on its own, without ?settings) */
+#child button { font: 700 20px var(--font); padding: 16px 26px; border-radius: 18px; border: 0; cursor: pointer; background: var(--card); color: var(--ink); }
+#child button.big { background: var(--ok); color: #fff; min-width: 180px; }
+#dig { position: relative; height: 320px; border-radius: 24px; overflow: hidden; background: var(--sand); }
+#treasure { position: absolute; inset: 0; display: grid; place-items: center; font-size: 96px; }
+#soil { position: absolute; left: 0; right: 0; top: 0; background: var(--soil); transition: height .6s ease; }
+#meter { height: 24px; background: var(--card); border-radius: 12px; margin: 12px 0; overflow: hidden; }
+#meter div { height: 100%; width: 0; background: var(--ok); transition: width .1s; }
+#subtitle { min-height: 3em; font-size: 1.5rem; background: var(--card); border-radius: 16px; padding: 12px 16px; }
+.controls { display: flex; gap: 12px; flex-wrap: wrap; margin: 12px 0; align-items: center; }
+#cam { display: inline-block; padding: 6px 12px; border-radius: 999px; background: var(--card); font-size: .95rem; }
+#cam.on { background: #ffe1e1; color: #a01818; font-weight: 600; }
+
+@media (max-width: 860px) { .grid, .games { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
-<header>
-  <h1>🦴 WonderMoves</h1>
-  <button class="tab" onclick="show('child')">Play</button>
-  <button class="tab" onclick="show('parent')">Grown-ups</button>
+<header class="topbar">
+  <div class="topbar-in">
+    <div class="brand"><img src="shared/assets/logo-mark.svg" alt="" width="34" height="34" style="display:block"><span>Wonder<b>Moves</b></span><small>settings</small></div>
+    <button class="top-btn" id="tabPlay" onclick="show('child')">Play</button>
+    <button class="top-btn" id="tabParent" onclick="show('parent')">Grown-ups</button>
+    <a class="top-btn" id="linkProgress" href="parents/" hidden><span class="emoji">📈</span> Progress</a>
+    <a class="top-btn primary" id="linkGames" href="./" hidden><span class="emoji">🎮</span> Back to games</a>
+  </div>
 </header>
 
 <main id="child">
   <div class="controls">
     <button class="big" onclick="start('reach')">▶ Treasure Reach</button>
     <button class="big" onclick="location.href = 'games/fossil-brush/index.html'">🖌 Fossil Brush</button>
-    <button class="big" onclick="location.href = 'bubbles/index.html'">🫧 Bubble Lift</button>
+    <button class="big" onclick="location.href = 'bubbles/index.html'">🫧 Bubble Pop</button>
     <button onclick="send('pause')">⏸ Break</button>
     <span id="cam" aria-live="polite">📷 Camera off</span>
   </div>
   <div id="dig"><div id="treasure">🪙</div><div id="soil" style="height:100%"></div></div>
   <div id="meter"><div></div></div>
-  <div id="subtitle" aria-live="polite">Hi! I'm Digger. Press a big button when you're ready.</div>
+  <div id="subtitle" aria-live="polite">Hi! I'm Pip. Press a big button when you're ready.</div>
 </main>
 
 <main id="parent" class="hidden">
-  <h2>How to play (and why)</h2>
-  <p><small>Every game uses <b>one</b> movement, counts a movement when it is completed (never how fast), has no timer,
-  and stays within the range you approve below. Evidence levels describe the therapy approach each game is built on, not WonderMoves itself.</small></p>
+  <div class="grid">
+    <section class="card" aria-labelledby="limitsTitle">
+      <h3 id="limitsTitle"><span class="emoji">🧒</span> Your child's settings</h3>
+      <p class="small" style="margin:0">Set by a parent, carer or therapist. The games never change these by themselves.</p>
+      <label class="field">Hand to practise most
+        <select id="assistHand"><option value="left">Left</option><option value="right">Right</option></select>
+        <span class="hint">Bubble Pop gives this hand 2 of every 3 single bubbles.</span></label>
+      <label class="field">Approved maximum reach (mm)
+        <input id="approved" type="number" min="5" max="200" value="50" inputmode="numeric">
+        <span class="hint">Treasure Reach never asks for more than this, or more than the comfortable reach from Calibrate.</span></label>
+      <label class="field">Treasure Reach level
+        <select id="level">
+          <option value="1">1 · First Dig (coin)</option><option value="2">2 · Hidden Gems (gemstone)</option>
+          <option value="3">3 · Fossil Hunt (fossil)</option><option value="4">4 · Deep Explorer (cave)</option>
+          <option value="5">5 · Treasure Master (chest)</option></select>
+        <span class="hint">Levels unlock new treasures, never a longer reach.</span></label>
+      <label class="field">Bubble Pop lift height
+        <select id="liftHeight"><option value="0.10">Small</option><option value="0.16">Medium</option>
+          <option value="0.22">Large</option><option value="0.28">Extra large</option></select>
+        <span class="hint">How far the hand lifts. It never grows by itself.</span></label>
+      <label class="field">Suggest a break after
+        <select id="breakMin"><option value="0">Never</option><option value="5">5 minutes</option><option value="10">10 minutes</option>
+          <option value="15">15 minutes</option><option value="20">20 minutes</option></select>
+        <span class="hint">A gentle suggestion. Your child can always keep going or stop.</span></label>
+      <div class="actions">
+        <button class="btn" onclick="saveLimits()">Save settings</button>
+        <span class="saved" id="savedMsg" role="status">✓ Saved on the game board</span>
+      </div>
+    </section>
+
+    <div class="stack">
+      <section class="card" aria-labelledby="calTitle">
+        <h3 id="calTitle"><span class="emoji">📏</span> Calibrate Treasure Reach</h3>
+        <p style="margin:4px 0 0">Seat your child comfortably, then press Calibrate. Rest the hand for 1 second, then make 3 small, comfortable reaches.</p>
+        <div class="actions" style="margin-top:12px"><button class="btn quiet" onclick="send('calibrate')">Calibrate</button></div>
+        <p id="profile" class="small" style="margin:10px 0 0"></p>
+        <p id="found" style="margin:6px 0 0">Treasures found: none yet</p>
+      </section>
+
+      <section class="card" aria-labelledby="todayTitle">
+        <h3 id="todayTitle"><span class="emoji">⭐</span> Today</h3>
+        <p id="practice" style="font-weight:600;margin:4px 0">No practice yet today.</p>
+        <p class="small" style="margin:0">Counts completed movements only, never speed. Short, frequent sessions are fine: progress comes from many repetitions over weeks.</p>
+        <p id="room" class="small" style="margin:6px 0 0"></p>
+      </section>
+
+      <section class="card" aria-labelledby="sensTitle">
+        <h3 id="sensTitle"><span class="emoji">🔌</span> Game board and sensors</h3>
+        <div class="status-list" id="sensors">Sensors: waiting for the board…</div>
+        <p id="sensorHint" class="tip" style="display:none"><b>The Distance sensor sees only its own window.</b>
+          Peel off any clear film, wipe the small black window with a soft cloth, and keep 5 cm in front of it clear (no tape, cable or towel edge).</p>
+        <p class="small" style="margin:10px 0 0">The camera is used only while a camera game is open. Video is processed on the device and never saved or sent anywhere.</p>
+      </section>
+    </div>
+  </div>
+
+  <section class="card" aria-labelledby="childTitle" style="margin-top:16px">
+    <h3 id="childTitle"><span class="emoji">💬</span> About your child (for Pip's voice)</h3>
+    <p class="small" style="margin:0">Pip uses this to talk in a way that suits your child. Everything is optional, kept only on this game board,
+      and never added to the play log or sent to Databricks. Please don't enter full names, birthdays, school or medical details.</p>
+    <div class="grid" style="margin-top:4px">
+      <div>
+        <label class="field">What should Pip call your child?
+          <input id="cNick" maxlength="20" placeholder="A first name or nickname" autocomplete="off"></label>
+        <label class="field">Age
+          <select id="cAge"><option value="">Not set</option><option value="6-8">6 to 8</option><option value="9-12">9 to 12</option></select>
+          <span class="hint">Sets how long Pip's sentences are and which words it uses.</span></label>
+        <label class="field">Language Pip speaks
+          <select id="cLang"><option value="en">English</option><option value="es">Español</option><option value="vi">Tiếng Việt</option>
+            <option value="zh">中文</option><option value="fr">Français</option><option value="ar">العربية</option><option value="hi">हिन्दी</option></select></label>
+        <div class="field">Favourite things (up to 3)
+          <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
+            <input class="cInt" maxlength="24" placeholder="e.g. dinosaurs" aria-label="Favourite thing 1">
+            <input class="cInt" maxlength="24" placeholder="e.g. the ocean" aria-label="Favourite thing 2">
+            <input class="cInt" maxlength="24" placeholder="e.g. football" aria-label="Favourite thing 3"></div>
+          <span class="hint">Pip can mention these when it cheers your child on.</span></div>
+      </div>
+      <div>
+        <fieldset class="field" style="border:0;padding:0;margin:14px 0 0">
+          <legend style="font-weight:600;padding:0">How your child communicates best</legend>
+          <label class="check"><input type="checkbox" class="cNeed" value="tap_answers"> Answers by tapping buttons rather than speaking</label>
+          <label class="check"><input type="checkbox" class="cNeed" value="short_sentences"> Short, simple sentences</label>
+          <label class="check"><input type="checkbox" class="cNeed" value="extra_time"> Extra time to answer</label>
+          <label class="check"><input type="checkbox" class="cNeed" value="read_aloud"> Read every message aloud</label>
+          <label class="check"><input type="checkbox" class="cNeed" value="quiet_sounds"> Quieter sounds</label>
+        </fieldset>
+        <label class="field">Anything Pip should avoid?
+          <input id="cAvoid" maxlength="120" placeholder="e.g. loud noises, talking about spiders"></label>
+        <label class="field">Pronouns for notes to grown-ups (optional)
+          <select id="cPron"><option value="">Not set (use the name)</option><option value="they">they / them</option>
+            <option value="she">she / her</option><option value="he">he / him</option></select>
+          <span class="hint">Pip talks to your child as "you", so it doesn't need these.</span></label>
+      </div>
+    </div>
+    <label class="check consent"><input type="checkbox" id="cVoice">
+      <span><b>Let Pip talk with my child by voice.</b> Speech is turned into text on this device; no recordings are kept.
+      Only the text and the details above are used to write Pip's replies.</span></label>
+    <div class="actions">
+      <button class="btn" onclick="saveChild()">Save</button>
+      <button class="btn quiet" onclick="forgetChild()">Forget these details</button>
+      <span class="saved" id="childSaved" role="status">✓ Saved on the game board</span>
+    </div>
+  </section>
+
+  <h2>How each game works (and why)</h2>
+  <p class="small" style="margin-top:-6px">Every game counts a movement when it is completed (never how fast) and stays within the range you approve.
+    Evidence levels describe the therapy approach each game is built on, not WonderMoves itself.</p>
   <div class="games">
-    <section class="game">
-      <h3>⛏️ Treasure Reach</h3>
+    <section class="card game" style="--c:var(--reach)">
+      <h3><span class="emoji">💰</span> Treasure Reach</h3>
       <div><b>One movement:</b> reach forward from the hand rest, then come back.</div>
-      <ol><li>Rest the forearm on the towel, hand facing the Distance sensor.</li>
-        <li>Reach toward the sensor until the meter fills, hold for a moment.</li>
-        <li>Come back to rest. Each reach clears a layer; 4 reveal the treasure.</li></ol>
+      <ol><li>Rest the forearm on the table, hand about 15 cm in front of the Distance sensor.</li>
+        <li>Slide the hand toward the sensor until the bar reaches the star, and hold for a moment.</li>
+        <li>Come back to rest and a new chest appears. The distance is never more than the approved maximum above.</li></ol>
       <div><b>Approach:</b> goal-directed training. <span class="lvl moderate">Evidence: moderate</span></div>
       <small>Hand function +3.8 AHA, goal achievement +2.3 COPM vs control (Burgess et al. 2025, network meta-analysis of 48 RCTs). Rated effective in Novak et al. 2020.</small>
     </section>
-    <section class="game">
-      <h3>🖌 Fossil Brush</h3>
-      <div><b>One movement:</b> one back-and-forth brushing stroke.</div>
-      <ol><li>Hold the brush with the Movement sensor (or wear the soft cuff).</li>
-        <li>Watch Pip's stroke first (a short demo before each dig), then copy it: swing one way, then back.</li>
-        <li>Each completed stroke clears the same amount of sand, slow or fast.</li></ol>
+    <section class="card game" style="--c:var(--brush)">
+      <h3><span class="emoji">🦴</span> Fossil Brush</h3>
+      <div><b>Movement:</b> tracing a shape in the air with a pointing finger.</div>
+      <ol><li>Sit facing the camera and hold up one hand, pointing a finger.</li>
+        <li>Watch Pip draw the shape first, then trace it to brush the sand away.</li>
+        <li>Each shape traced uncovers more of the fossil, slow or fast.</li></ol>
       <div><b>Approach:</b> action observation (watch, then do). <span class="lvl emerging">Evidence: emerging</span></div>
+      <small>The shapes use several directions, so this game only partly follows the one-movement rule.</small>
       <small>Hand function +4.9 AHA in unilateral CP (Burgess et al. 2025) but no self-care effect, and a 2023 meta-analysis found a smaller, uncertain effect. UP-CAT trial (Sgandurra et al. 2013) improved daily arm use.</small>
     </section>
-    <section class="game">
-      <h3>🫧 Bubble Pop</h3>
-      <div><b>One movement:</b> lift the hand straight up from rest.</div>
-      <ol><li>Rest both hands on the table, in view of the camera.</li>
-        <li>A bubble appears above one hand: lift that hand to pop it, then rest.</li>
-        <li>Blue pairs: lift both hands together (hold as long as you need).</li></ol>
-      <div><b>Approach:</b> bimanual training (both hands). <span class="lvl strong">Evidence: strong</span></div>
-      <small>The most consistently effective approach: hand function +4.6 AHA, goals +3.3 COPM, self-care SMD 0.39 (Burgess et al. 2025). Rated effective in Novak et al. 2020.</small>
+    <section class="card game" style="--c:var(--bubbles)">
+      <h3><span class="emoji">🫧</span> Bubble Pop</h3>
+      <div><b>Movement:</b> moving a hand onto bubbles as they float up.</div>
+      <ol><li>Sit facing the camera with your hands in view.</li>
+        <li>Move a hand onto a bubble to pop it. Pop as many as you can before the air tank runs out (60 s; 30 or 90 s in the Menu).</li>
+        <li>Bigger bubbles and the Easy level make it gentler (Menu).</li></ol>
+      <div><b>Approach:</b> goal-directed reaching to targets. <span class="lvl moderate">Evidence: moderate</span></div>
+      <small>Bubbles appear in different places, so this game only partly follows the one-movement rule. A both-hands lift mode (bimanual training, strong evidence) is written but switched off.</small>
     </section>
   </div>
-  <p><small>Levels: <b>strong</b> = effective for hand function, goals and self-care; <b>moderate</b> = effective for hand function and goals;
-  <b>emerging</b> = effective for hand function only, with mixed results across reviews. Full sources: docs/evidence-brief.html.</small></p>
-  <h2>Calibration & limits</h2>
-  <p>Seat the child comfortably and press <b>Calibrate</b>. Rest the hand for 1 second, then make 3 small, comfortable reaches.</p>
-  <div class="controls"><button onclick="send('calibrate')">Calibrate</button></div>
-  <label>Approved maximum reach (mm, set by caregiver/therapist)
-    <input id="approved" type="number" min="5" max="200" value="50"></label>
-  <label>Level <select id="level">
-    <option value="1">1 · First Dig (coin)</option><option value="2">2 · Hidden Gems (gemstone)</option>
-    <option value="3">3 · Fossil Hunt (fossil)</option><option value="4">4 · Deep Explorer (cave)</option>
-    <option value="5">5 · Treasure Master (chest)</option></select></label>
-  <p><small>Levels unlock new treasures. The reach target is never above the approved maximum or the child's calibrated comfortable reach.</small></p>
-  <p id="found">Treasures found: none yet</p>
-  <label>Bubble Pop lift height (how far the hand lifts; it never grows by itself)
-    <select id="liftHeight"><option value="0.10">Small</option><option value="0.16">Medium</option>
-      <option value="0.22">Large</option><option value="0.28">Extra large</option></select></label>
-  <p><small>The camera turns on only during Bubble Pop. Video is processed on the device and never saved or sent anywhere. Only hand positions reach the game.</small></p>
-  <label>Affected hand (the hand to practise most; Bubble Pop gives it 2 of every 3 single bubbles)
-    <select id="assistHand"><option value="left">Left</option><option value="right">Right</option></select></label>
-  <label>Suggest a break after (minutes of play; the child can always keep going or stop)
-    <select id="breakMin"><option value="0">Never</option><option value="5">5</option><option value="10">10</option>
-      <option value="15">15</option><option value="20">20</option></select></label>
-  <button onclick="saveLimits()">Save limits</button>
-  <p id="profile"></p>
-  <p id="sensors">Sensors: waiting for the board…</p>
-  <p id="sensorHint" style="display:none;background:#fff3cd;border-radius:10px;padding:10px"><b>Distance sensor sees only its own window.</b>
-    Peel off any clear film, wipe the small black window with a soft cloth, and keep 5 cm in front of it clear (no tape, cable or towel edge).</p>
-  <h2>Today</h2>
-  <p id="practice">No practice yet today.</p>
-  <p><small>Counts completed movements only, never speed. Home practice works through many repetitions over weeks (dose), so short, frequent sessions are fine.</small></p>
-  <p id="room"></p>
-  <h2>This session</h2>
-  <table><thead><tr><th>Time</th><th>Event</th><th>Detail</th></tr></thead><tbody id="log"></tbody></table>
-  <p><small>WonderMoves is not a medical device. It shows activity only: no scores, no diagnosis and no comparisons with other children.</small></p>
+  <p class="small">Levels: <b>strong</b> = effective for hand function, goals and self-care; <b>moderate</b> = effective for hand function and goals;
+    <b>emerging</b> = effective for hand function only, with mixed results across reviews. Full sources: docs/evidence-brief.html.</p>
+
+  <details class="card" style="margin-top:20px">
+    <summary>Event log (this visit)</summary>
+    <table><thead><tr><th>Time</th><th>Event</th><th>Detail</th></tr></thead><tbody id="log"></tbody></table>
+  </details>
+  <p class="small" style="margin-top:20px">WonderMoves is not a medical device. It shows activity only: no scores, no diagnosis and no comparisons with other children.</p>
 </main>
 
 <script>
 const socket = io(`http://${window.location.host}`);
-const send = (ev, data = {}) => socket.emit(ev, data);
+// Settings messages carry the parent PIN token (see shared/wm-lock.js); the board ignores them without it.
+const PROTECTED = ['set_limits', 'set_child', 'forget_child', 'calibrate'];
+const send = (ev, data = {}) => socket.emit(ev, PROTECTED.includes(ev) && window.WM && WM.Lock ? { ...data, token: WM.Lock.token } : data);
 const $ = (id) => document.getElementById(id);
 const TREASURES = ['🪙','💎','🦴','🕳️','🧰'];
-let layers = 4, profile = {}, voiceOn = true;
+let layers = 4, profile = {};
 
-function show(id){ ['child','parent'].forEach(x => $(x).classList.toggle('hidden', x !== id)); }
+function show(id){
+  ['child','parent'].forEach(x => $(x).classList.toggle('hidden', x !== id));
+  $('tabPlay').setAttribute('aria-pressed', String(id === 'child')); $('tabParent').setAttribute('aria-pressed', String(id === 'parent'));
+}
 function start(game){
   layers = 4; $('soil').style.height = '100%';
   send('start', { game });
@@ -144,7 +296,7 @@ function start(game){
 function saveLimits(){ send('set_limits', { approved_max_mm: +$('approved').value, level: +$('level').value, lift_height: +$('liftHeight').value,
   assist_hand: $('assistHand').value, break_minutes: +$('breakMin').value }); }
 
-// Digger: templated, event-driven lines only. Never prescribes distances or pressures the child.
+// Pip: templated, event-driven lines only. Never prescribes distances or pressures the child.
 const LINES = {
   session_started: (d) => ({
     brush: "Let's brush! Watch me first, then try a gentle brush.",
@@ -163,13 +315,9 @@ const LINES = {
   calibration_done: () => "All set up. Thanks!",
 };
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
+// Subtitles only: the browser's built-in voice was removed (Pip's voice will come from the voice agent).
 function say(text){
   $('subtitle').textContent = text;
-  if (voiceOn && 'speechSynthesis' in window) {
-    speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text); u.rate = 0.95; u.pitch = 1.2;
-    speechSynthesis.speak(u);
-  }
 }
 function log(ev, d){
   const tr = document.createElement('tr');
@@ -243,16 +391,17 @@ socket.on('sensors', (s) => {
   const dist = !s.distance ? mark(false)
     : s.distance_hz > 0 ? `✅ ${s.last_distance_mm} mm (${s.distance_hz}/s)`
     : '✅ connected, nothing in range (point it at the hand)';
-  $('sensors').innerHTML = `Distance: ${dist}<br>Movement: ${s.movement ? `✅ (${s.imu_hz}/s)` : mark(false)}<br>Thermo: ${mark(s.thermo)}`;
+  $('sensors').innerHTML = `Distance: ${dist}<br>Movement: ${s.movement ? `✅ (${s.imu_hz}/s)` : mark(false)}`;
 });
 socket.on('i2c_scan', (d) => {
-  $('sensors').innerHTML += `<br><small>I2C bus answers: ${d.found || 'nothing'} (Thermo 0x44, Distance 0x29, Movement 0x6a/0x6b)</small>`;
+  $('sensors').innerHTML += `<br><small>I2C bus answers: ${d.found || 'nothing'} (Distance 0x29, Movement 0x6a/0x6b)</small>`;
 });
 socket.on('camera_status', (d) => {
   const on = !!(d && d.on);
   $('cam').classList.toggle('on', on);
   $('cam').textContent = d && d.ok === false ? '📷 Camera not found' : on ? '🔴 Camera on' : '📷 Camera off';
 });
+socket.on('limits_updated', () => { $('savedMsg').classList.add('on'); clearTimeout(window._savedT); window._savedT = setTimeout(() => $('savedMsg').classList.remove('on'), 2500); });
 ['profile', 'limits_updated'].forEach(ev => socket.on(ev, (d) => {
   if (!d) return;
   if (d.lift_height) $('liftHeight').value = d.lift_height.toFixed(2);
@@ -266,12 +415,49 @@ socket.on('practice', (d) => {
   $('practice').textContent = parts.length ? `${parts.join(' · ')} · ${min} min of play` : 'No practice yet today.';
 });
 socket.on('sensor_hint', (d) => { $('sensorHint').style.display = d.distance_window_blocked ? 'block' : 'none'; });
+
+// About your child (for Pip's voice): saved on the board only.
+function saveChild(){
+  send('set_child', { nickname: $('cNick').value, age_band: $('cAge').value, language: $('cLang').value,
+    interests: [...document.querySelectorAll('.cInt')].map(i => i.value),
+    needs: [...document.querySelectorAll('.cNeed:checked')].map(i => i.value),
+    avoid: $('cAvoid').value, pronouns: $('cPron').value, voice_ok: $('cVoice').checked });
+}
+function forgetChild(){ if (confirm('Forget the details about your child on this game board?')) send('forget_child'); }
+function fillChild(c){
+  if (!c) return;
+  $('cNick').value = c.nickname || ''; $('cAge').value = c.age_band || ''; $('cLang').value = c.language || 'en';
+  document.querySelectorAll('.cInt').forEach((el, i) => el.value = (c.interests || [])[i] || '');
+  document.querySelectorAll('.cNeed').forEach(el => el.checked = (c.needs || []).includes(el.value));
+  $('cAvoid').value = c.avoid || ''; $('cPron').value = c.pronouns || ''; $('cVoice').checked = !!c.voice_ok;
+}
+// The child's details come only with the PIN (the socket 'profile' message has the public part).
+async function loadChild(){
+  try {
+    const st = await (await fetch('/api/state', { cache: 'no-store', headers: WM.Lock.headers() })).json();
+    if (st.locked) return WM.Lock.relock();
+    fillChild(st.profile && st.profile.child);
+  } catch (e) { /* no board */ }
+}
+socket.on('locked', () => WM.Lock.relock());
+socket.on('child_updated', c => { fillChild(c); $('childSaved').classList.add('on'); clearTimeout(window._childT); window._childT = setTimeout(() => $('childSaved').classList.remove('on'), 2500); });
 socket.on('connect', () => send('get_state'));
 // Inside the WonderMoves shell this page is the Grown-ups tab: open the caregiver view, hide the old child buttons.
-if (window.parent !== window) {
+// Opened from the parent page (grownups.html?settings): same, with links back to progress and the games.
+const fromParents = new URLSearchParams(location.search).has('settings');
+if (window.parent !== window || fromParents) {
   show('parent');
-  document.querySelectorAll('header button').forEach(b => b.hidden = true);
+  $('tabPlay').hidden = $('tabParent').hidden = true;
 }
+if (fromParents) {
+  document.title = 'Settings · WonderMoves';
+  $('linkProgress').hidden = $('linkGames').hidden = false;
+}
+// The grown-ups view needs the parent PIN.
+let unlocked = false;
+const unlock = () => WM.Lock.ensure(() => { unlocked = true; loadChild(); }, './');
+if (window.parent !== window || fromParents) unlock();
+$('tabParent').addEventListener('click', () => { if (!unlocked) unlock(); });
 </script>
 </body>
 </html>

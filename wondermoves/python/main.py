@@ -3,7 +3,9 @@
 Receives raw sensor samples from the MCU, runs calibration + movement detection
 on-device, and pushes structured game events to the browser through the WebUI brick.
 """
+import hashlib
 import json
+import secrets
 import math
 import statistics
 import time
@@ -11,8 +13,10 @@ from collections import deque
 from pathlib import Path
 
 from arduino.app_bricks.web_ui import WebUI
+from fastapi import Body, Request
 from arduino.app_utils import App, Bridge
 
+from parent_sessions import sessionize
 from strokes import StrokeCounter
 from vision import Vision
 
@@ -40,6 +44,128 @@ profile.setdefault("found", [])  # rewards the child has uncovered (shown in the
 profile.setdefault("lift_height", 0.16)  # Bubble Lift: caregiver-set lift (fraction of camera height)
 profile.setdefault("break_minutes", 10)  # gentle break suggestion after this much continuous play (0 = off)
 profile.pop("bubble_area", None)
+
+# About the child, for Pip's voice. Entered by a grown-up in Settings, kept only in data/profile.json on
+# this board. Never written to the play log (sessions.jsonl), so it never goes to Databricks.
+CHILD_DEFAULTS = {"nickname": "", "age_band": "", "language": "en", "interests": [], "needs": [],
+                  "avoid": "", "pronouns": "", "voice_ok": False}
+CHILD_NEEDS = {"tap_answers", "short_sentences", "extra_time", "quiet_sounds", "read_aloud"}
+CHILD_LANGS = {"en", "es", "vi", "zh", "fr", "ar", "hi"}
+profile["child"] = {**CHILD_DEFAULTS, **(profile.get("child") or {})}
+
+
+def clean_child(data):
+    """Keep only short, expected values. Free text is trimmed and stripped of control characters."""
+    def text(v, n):
+        return "".join(ch for ch in str(v or "") if ch.isprintable()).strip()[:n]
+    c = dict(profile["child"])
+    if "nickname" in data:
+        c["nickname"] = text(data["nickname"], 20)
+    if data.get("age_band") in ("", "6-8", "9-12"):
+        c["age_band"] = data["age_band"]
+    if data.get("language") in CHILD_LANGS:
+        c["language"] = data["language"]
+    if isinstance(data.get("interests"), list):
+        c["interests"] = [t for t in (text(x, 24) for x in data["interests"]) if t][:3]
+    if isinstance(data.get("needs"), list):
+        c["needs"] = [x for x in data["needs"] if x in CHILD_NEEDS]
+    if "avoid" in data:
+        c["avoid"] = text(data["avoid"], 120)
+    if data.get("pronouns") in ("", "they", "she", "he"):
+        c["pronouns"] = data["pronouns"]
+    if "voice_ok" in data:
+        c["voice_ok"] = bool(data["voice_ok"])
+    return c
+
+
+# ---------------- parent PIN ----------------
+# Progress and Settings need a 4-digit parent PIN. Only a salted hash is kept, in its own file
+# (never in profile.json or the play log). Forgot it? Delete data/parent_pin.json on the board.
+PIN_FILE = DATA / "parent_pin.json"
+TOKEN_S = 12 * 3600
+tokens = {}                       # token -> expiry time (kept in memory: a restart asks for the PIN again)
+pin_tries = {"n": 0, "until": 0.0}
+
+
+def _pin_hash(pin, salt):
+    return hashlib.sha256((salt + pin).encode()).hexdigest()
+
+
+def _pin_ok(pin):
+    try:
+        d = json.loads(PIN_FILE.read_text())
+    except (FileNotFoundError, ValueError):
+        return False
+    return secrets.compare_digest(_pin_hash(pin, d["salt"]), d["hash"])
+
+
+def _save_pin(pin):
+    salt = secrets.token_hex(8)
+    PIN_FILE.write_text(json.dumps({"salt": salt, "hash": _pin_hash(pin, salt)}))
+
+
+def _new_token():
+    now = time.time()
+    for t in [t for t, exp in tokens.items() if exp < now]:
+        tokens.pop(t, None)
+    t = secrets.token_urlsafe(24)
+    tokens[t] = now + TOKEN_S
+    return t
+
+
+def authorized(token):
+    return bool(token) and tokens.get(str(token), 0) > time.time()
+
+
+def api_pin_status():
+    return {"set": PIN_FILE.exists()}
+
+
+def api_pin(body: dict = Body(default={})):
+    """Create the PIN (first time) or unlock with it. Returns a token for this browser tab."""
+    pin, new = str(body.get("pin") or ""), str(body.get("new_pin") or "")
+    now = time.time()
+    if now < pin_tries["until"]:
+        return {"ok": False, "error": "wait", "wait_s": round(pin_tries["until"] - now)}
+    valid = lambda x: x.isdigit() and len(x) == 4
+    if not PIN_FILE.exists():
+        if not valid(new):
+            return {"ok": False, "error": "pin_format"}
+        _save_pin(new)
+        return {"ok": True, "token": _new_token()}
+    if not _pin_ok(pin):
+        pin_tries["n"] += 1
+        if pin_tries["n"] >= 5:
+            pin_tries.update(n=0, until=now + 30)
+        return {"ok": False, "error": "wrong_pin"}
+    pin_tries["n"] = 0
+    if new:                                   # change the PIN
+        if not valid(new):
+            return {"ok": False, "error": "pin_format"}
+        _save_pin(new)
+        tokens.clear()
+    return {"ok": True, "token": _new_token()}
+
+
+def needs_pin(client, data):
+    """True (and tells that page) when a settings message comes without a valid PIN token."""
+    if authorized((data or {}).get("token")):
+        return False
+    ui.send_message("locked", {}, room=client)
+    return True
+
+
+def logged_profile():
+    """The profile without the child's personal details, for events that go into the play log."""
+    return {k: v for k, v in profile.items() if k != "child"}
+
+
+def public_profile():
+    """What any page may see. The child's details stay private unless a grown-up allowed Pip's voice,
+    which needs them; the nickname is always shown so Home can say hello."""
+    child = profile["child"]
+    shared = dict(child) if child.get("voice_ok") else {"nickname": child.get("nickname", "")}
+    return {**logged_profile(), "child": shared}
 
 # Illustrative game settings, not prescribed distances. Level 5 uses the child's own range.
 LEVELS = {
@@ -138,7 +264,7 @@ def on_distance(mm):
                     profile["comfortable_mm"] = statistics.median(state["calib"])
                     PROFILE.write_text(json.dumps(profile, indent=2))
                     state["mode"] = "idle"
-                    emit("calibration_done", **profile, target_mm=target_mm())
+                    emit("calibration_done", **logged_profile(), target_mm=target_mm())
         return
 
     if state["mode"] == "playing" and state["game"] == "reach_ui":
@@ -228,8 +354,15 @@ def track_reach_for_ui(d):
 def on_reach_rep(_client, data):
     """A chest opened in the shell's Treasure Reach: log it like the board game's reaches."""
     data = data or {}
-    emit("reach_completed", reach_mm=data.get("reach_mm"), target_mm=data.get("goal_mm"),
-         level=data.get("level"), source="treasure-reach-ui")
+
+    def num(k):
+        v = data.get(k)
+        return round(float(v)) if isinstance(v, (int, float)) and 0 <= v < 100000 else None
+    closest, start = num("sensor_mm"), num("start_mm")
+    # reach_mm: how far the hand moved toward the sensor in this rep (start - closest), when known.
+    reach = start - closest if start is not None and closest is not None and start > closest else None
+    emit("reach_completed", reach_mm=reach, closest_mm=closest, start_mm=start, rep_ms=num("rep_ms"),
+         target_mm=num("target_mm") or num("goal_mm"), level=data.get("level"), source="treasure-reach-ui")
 
 
 # ---------------- Fossil Brush (IMU) ----------------
@@ -370,6 +503,7 @@ def on_sensor_status(has_d, has_m, has_t, distance_hz, imu_hz, last_mm):
 
 # ---------------- Browser -> board messages ----------------
 def on_start(_client, data):
+    flush_quality(force=True)   # readings from the previous game belong to that game's session
     if state["mode"] in ("calib_baseline", "calib_reach"):
         # Never cancel a calibration half-way: the child's range would be saved wrong.
         emit("calibration_busy")
@@ -385,6 +519,7 @@ def on_start(_client, data):
 
 
 def on_pause(_client, _data):
+    flush_quality(force=True)
     practice["since_break"] = 0
     state["mode"] = "idle"
     sync_camera()
@@ -392,6 +527,8 @@ def on_pause(_client, _data):
 
 
 def on_calibrate(_client, _data):
+    if needs_pin(_client, _data):
+        return
     state.update(mode="calib_baseline", phase="rest", calib=[], calib_t0=time.time(),
                  rest_since=0)
     state.pop("rest_ref", None)
@@ -400,6 +537,8 @@ def on_calibrate(_client, _data):
 
 
 def on_set_limits(_client, data):
+    if needs_pin(_client, data):
+        return
     # Caregiver portal only: sets the approved maximum and level.
     profile["approved_max_mm"] = int(data.get("approved_max_mm", profile["approved_max_mm"]))
     profile["level"] = min(max(int(data.get("level", profile["level"])), 1), max(LEVELS))
@@ -411,7 +550,24 @@ def on_set_limits(_client, data):
         profile["assist_hand"] = data["assist_hand"]
         vision.set_assist_hand(profile["assist_hand"])
     PROFILE.write_text(json.dumps(profile, indent=2))
-    emit("limits_updated", **{**profile, **level_info()})
+    emit("limits_updated", **{**logged_profile(), **level_info()})
+
+
+def on_set_child(_client, data):
+    """Settings → About your child. Saved on the board only; sent back to that page, never logged."""
+    if needs_pin(_client, data):
+        return
+    profile["child"] = clean_child(data or {})
+    PROFILE.write_text(json.dumps(profile, indent=2))
+    ui.send_message("child_updated", profile["child"], room=_client)
+
+
+def on_forget_child(_client, _data):
+    if needs_pin(_client, _data):
+        return
+    profile["child"] = dict(CHILD_DEFAULTS)
+    PROFILE.write_text(json.dumps(profile, indent=2))
+    ui.send_message("child_updated", profile["child"], room=_client)
 
 
 def on_bubble_pop(_client, data):
@@ -422,7 +578,7 @@ def on_bubble_pop(_client, data):
 
 def on_get_state(client, _data):
     playing = state["game"] if state["mode"] == "playing" else None
-    ui.send_message("profile", {**profile, **level_info(), "playing": playing})
+    ui.send_message("profile", {**public_profile(), **level_info(), "playing": playing})
     ui.send_message("practice", practice)
     ui.send_message("camera_status", {"ok": True, "on": vision.enabled.is_set(),
                                       "backend": vision.backend_name})
@@ -432,7 +588,22 @@ Bridge.provide("distance", on_distance)
 Bridge.provide("imu", on_imu)
 Bridge.provide("thermo", on_thermo)
 Bridge.provide("sensor_status", on_sensor_status)
+quality = {"ok": 0, "all": 0, "since": time.time()}
+
+
+def flush_quality(force=False):
+    """Log how many distance readings were clear during Treasure Reach play (about once a minute)."""
+    if quality["all"] and (force or time.time() - quality["since"] >= 60):
+        emit("sensor_quality", ok=quality["ok"], total=quality["all"],
+             ok_pct=round(100 * quality["ok"] / quality["all"]))
+    quality.update(ok=0, all=0, since=time.time())
+
+
 def on_distance_debug(s0, s1, s2, s_err, raw_mm, raw_status):
+    if state["mode"] == "playing" and state.get("game") in ("reach", "reach_ui"):
+        quality["ok"] += s0
+        quality["all"] += s0 + s1 + s2 + s_err
+        flush_quality()
     ui.send_message("distance_debug", {"ok": s0, "noisy": s1, "weak": s2, "error": s_err,
                                        "raw_mm": raw_mm, "raw_status": raw_status})
     # Only weak readings closer than 45 mm for 5 s in a row: the chip sees its own window
@@ -444,10 +615,47 @@ def on_distance_debug(s0, s1, s2, s_err, raw_mm, raw_status):
 
 Bridge.provide("distance_debug", on_distance_debug)
 Bridge.provide("i2c_scan", lambda found: ui.send_message("i2c_scan", {"found": found}))
+
+def parents_state(request: Request):
+    """GET /api/state for the parent page at /parents/ (the same page the laptop helper serves).
+    The board has no Databricks sign-in, so notes come only from the laptop helper."""
+    events = []
+    try:
+        for line in SESSIONS.read_text().splitlines():
+            try:
+                e = json.loads(line)
+            except ValueError:
+                continue
+            if "event" in e and "t" in e:
+                e["child"] = profile["child"]["nickname"] or "Your child"
+                events.append(e)
+    except FileNotFoundError:
+        pass
+    sessions = [dict(s, insight=None) for s in sessionize(events, time.time())]
+    if not authorized(request.headers.get("x-wm-token")):
+        # Without the parent PIN: only what Home needs (movement counts per session, and the hello).
+        # The page works out "today" with its own clock (the board's clock can be wrong).
+        return {"locked": True, "pin_set": PIN_FILE.exists(), "now": time.time(),
+                "sessions": [{"game": x["game"], "start_t": x["start_t"], "movements": x["movements"]} for x in sessions],
+                "profile": {"child": public_profile()["child"]}}
+    prof = {k: profile.get(k) for k in ("assist_hand", "comfortable_mm", "baseline_mm", "approved_max_mm",
+                                         "level", "break_minutes", "found", "child")}
+    return {"children": [profile["child"]["nickname"] or "Your child"], "sessions": sessions, "daily": [], "profile": prof,
+            "board": "connected (page served by the board)",
+            "databricks": {"state": "on the laptop", "updated": None,
+                           "detail": "Notes from Databricks appear when the parent helper runs on a laptop (python3 parents/server.py)."},
+            "now": time.time()}
+
+
+ui.expose_api("GET", "/api/state", parents_state)
+ui.expose_api("GET", "/api/pin", api_pin_status)
+ui.expose_api("POST", "/api/pin", api_pin)
 ui.on_message("start", on_start)
 ui.on_message("pause", on_pause)
 ui.on_message("calibrate", on_calibrate)
 ui.on_message("set_limits", on_set_limits)
+ui.on_message("set_child", on_set_child)
+ui.on_message("forget_child", on_forget_child)
 ui.on_message("get_state", on_get_state)
 ui.on_message("vision_hello", on_vision_hello)
 ui.on_message("vision_event", on_remote_vision_event)
