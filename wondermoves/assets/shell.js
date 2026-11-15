@@ -117,7 +117,8 @@
   /* ---------- home ---------- */
   document.getElementById('homeGames').innerHTML = GAMES.map(g => `
     <button class="game-card" data-game="${g.id}" style="--c:${g.color};--cd:${g.deep}">
-      <span class="game-card-art" aria-hidden="true"><span>${g.icon}</span></span>
+      <span class="game-card-art" aria-hidden="true"><img src="shared/assets/covers/${g.id}.jpg" alt="" loading="lazy"
+        onerror="this.replaceWith(Object.assign(document.createElement('span'), { textContent: '${g.icon}' }))"></span>
       <span class="game-card-text">
         <span class="game-card-name">${g.name}</span>
         <span class="game-card-move">${g.move}</span>
