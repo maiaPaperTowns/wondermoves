@@ -13,6 +13,7 @@ from pathlib import Path
 from arduino.app_bricks.web_ui import WebUI
 from arduino.app_utils import App, Bridge
 
+from strokes import StrokeCounter
 from vision import Vision
 
 ui = WebUI()
@@ -31,12 +32,13 @@ def load_profile():
         return json.loads(PROFILE.read_text())
     # approved_max_mm and assist_hand are set by the caregiver / therapist, never by the game
     return {"baseline_mm": None, "comfortable_mm": None, "approved_max_mm": 50, "level": 1,
-            "assist_hand": "left", "bubble_area": 0.25}
+            "assist_hand": "left", "lift_height": 0.16}
 
 
 profile = load_profile()
 profile.setdefault("found", [])  # rewards the child has uncovered (shown in the Grown-ups tab)
-profile.setdefault("bubble_area", 0.25)  # caregiver-set reach area for Bubble Pop (0.15-0.45 of the view)
+profile.setdefault("lift_height", 0.16)  # Bubble Lift: caregiver-set lift (fraction of camera height)
+profile.pop("bubble_area", None)
 
 # Illustrative game settings, not prescribed distances. Level 5 uses the child's own range.
 LEVELS = {
@@ -151,15 +153,22 @@ def on_distance(mm):
 
 
 # ---------------- Fossil Brush (IMU) ----------------
-# Starter threshold detector. Replace with an on-device classifier for the edge-inference demo.
-gyro_window = deque(maxlen=25)  # ~0.5 s
-last_brush = 0.0
+# A stroke = a completed back-and-forth swing (strokes.py), counted the same at any speed.
+gyro_window = deque(maxlen=25)  # ~0.5 s, only for the on-screen brush animation
+stroke_counter = StrokeCounter(min_deg=8.0)
+last_stroke = time.time()
+last_nudge = 0.0
 
 
 def on_imu(ax, ay, az, gx, gy, gz):
-    global last_brush
+    global last_stroke, last_nudge
     if state["mode"] != "playing" or state["game"] != "brush":
         return
+    size = stroke_counter.update(gx, gy, gz)
+    now = time.time()
+    if size:
+        last_stroke = now
+        emit("brush_stroke", degrees=round(size, 1))
     energy = math.sqrt(gx * gx + gy * gy + gz * gz)
     gyro_window.append(energy)
     if len(gyro_window) % 5 == 0 or len(gyro_window) == gyro_window.maxlen:
@@ -171,12 +180,9 @@ def on_imu(ax, ay, az, gx, gy, gz):
     if len(gyro_window) < gyro_window.maxlen:
         return
     avg = sum(gyro_window) / len(gyro_window)
-    now = time.time()
-    if avg > 25 and now - last_brush > 0.8:   # gentle strokes count: CP-friendly threshold
-        last_brush = now
-        emit("brush_stroke", energy=round(avg, 1))
-    elif 8 < avg <= 15 and now - last_brush > 4.0:   # barely moving: gentle encouragement
-        last_brush = now
+    # Moving but no completed stroke for a while: one gentle hint, never a penalty.
+    if avg > 8 and now - last_stroke > 8 and now - last_nudge > 15:
+        last_nudge = now
         emit("gesture_uncertain")
 
 
@@ -188,7 +194,7 @@ def on_thermo(temp_c, humidity):
 
 
 # ---------------- Two-Hand Treasure (camera) ----------------
-CAMERA_GAMES = {"bubbles"}  # Bubble Pop Adventure (replaced Two-Hand Treasure)
+CAMERA_GAMES = {"bubbles"}  # Bubble Lift (was Bubble Pop / Two-Hand Treasure)
 
 
 def on_vision_event(event, data):
@@ -289,8 +295,8 @@ def on_set_limits(_client, data):
     # Caregiver portal only: sets the approved maximum and level.
     profile["approved_max_mm"] = int(data.get("approved_max_mm", profile["approved_max_mm"]))
     profile["level"] = min(max(int(data.get("level", profile["level"])), 1), max(LEVELS))
-    if "bubble_area" in data:
-        profile["bubble_area"] = min(max(float(data["bubble_area"]), 0.15), 0.45)
+    if "lift_height" in data:
+        profile["lift_height"] = min(max(float(data["lift_height"]), 0.08), 0.35)
     if data.get("assist_hand") in ("left", "right"):
         profile["assist_hand"] = data["assist_hand"]
         vision.set_assist_hand(profile["assist_hand"])

@@ -31,6 +31,13 @@
   #cam { display:inline-block; padding:6px 12px; border-radius:999px; background:#fff; font-size:.95rem; }
   #cam.on { background:#ffe1e1; color:#a01818; font-weight:600; }
   #hands { width:100%; height:120px; background:#fff8; border-radius:16px; margin-top:12px; }
+  .games { display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:12px; margin:8px 0 24px; }
+  .game { background:#fff; border-radius:14px; padding:14px 16px; display:grid; gap:6px; font-size:.95rem; }
+  .game h3 { margin:0; font-size:1.1rem; }
+  .game ol { margin:0; padding-left:20px; }
+  .lvl { display:inline-block; font-size:.8rem; font-weight:700; padding:2px 10px; border-radius:999px; }
+  .lvl.strong { background:#dff3e3; color:#1e6b2c; } .lvl.moderate { background:#e2eefb; color:#1b4f8a; } .lvl.emerging { background:#fbefd6; color:#8a5a00; }
+  .game small { color:#555; }
 </style>
 </head>
 <body>
@@ -44,7 +51,7 @@
   <div class="controls">
     <button class="big" onclick="start('reach')">▶ Treasure Reach</button>
     <button class="big" onclick="location.href = 'fossil-brush/index.html'">🖌 Fossil Brush</button>
-    <button class="big" onclick="location.href = 'bubbles/index.html'">🫧 Bubble Pop</button>
+    <button class="big" onclick="location.href = 'bubbles/index.html'">🫧 Bubble Lift</button>
     <button onclick="send('pause')">⏸ Break</button>
     <span id="cam" aria-live="polite">📷 Camera off</span>
   </div>
@@ -54,6 +61,40 @@
 </main>
 
 <main id="parent" class="hidden">
+  <h2>How to play (and why)</h2>
+  <p><small>Every game uses <b>one</b> movement, counts a movement when it is completed (never how fast), has no timer,
+  and stays within the range you approve below. Evidence levels describe the therapy approach each game is built on, not WonderMoves itself.</small></p>
+  <div class="games">
+    <section class="game">
+      <h3>⛏️ Treasure Reach</h3>
+      <div><b>One movement:</b> reach forward from the hand rest, then come back.</div>
+      <ol><li>Rest the forearm on the towel, hand facing the Distance sensor.</li>
+        <li>Reach toward the sensor until the meter fills, hold for a moment.</li>
+        <li>Come back to rest. Each reach clears a layer; 4 reveal the treasure.</li></ol>
+      <div><b>Approach:</b> goal-directed training. <span class="lvl moderate">Evidence: moderate</span></div>
+      <small>Hand function +3.8 AHA, goal achievement +2.3 COPM vs control (Burgess et al. 2025, network meta-analysis of 48 RCTs). Rated effective in Novak et al. 2020.</small>
+    </section>
+    <section class="game">
+      <h3>🖌 Fossil Brush</h3>
+      <div><b>One movement:</b> one back-and-forth brushing stroke.</div>
+      <ol><li>Hold the brush with the Movement sensor (or wear the soft cuff).</li>
+        <li>Watch Digger's stroke, then copy it: swing one way, then back.</li>
+        <li>Each completed stroke clears the same amount of sand, slow or fast.</li></ol>
+      <div><b>Approach:</b> action observation (watch, then do). <span class="lvl emerging">Evidence: emerging</span></div>
+      <small>Hand function +4.9 AHA in unilateral CP (Burgess et al. 2025) but no self-care effect, and a 2023 meta-analysis found a smaller, uncertain effect. UP-CAT trial (Sgandurra et al. 2013) improved daily arm use.</small>
+    </section>
+    <section class="game">
+      <h3>🫧 Bubble Lift</h3>
+      <div><b>One movement:</b> lift the hand straight up from rest.</div>
+      <ol><li>Rest both hands on the table, in view of the camera.</li>
+        <li>A bubble appears above one hand: lift that hand to pop it, then rest.</li>
+        <li>Blue pairs: lift both hands together (hold as long as you need).</li></ol>
+      <div><b>Approach:</b> bimanual training (both hands). <span class="lvl strong">Evidence: strong</span></div>
+      <small>The most consistently effective approach: hand function +4.6 AHA, goals +3.3 COPM, self-care SMD 0.39 (Burgess et al. 2025). Rated effective in Novak et al. 2020.</small>
+    </section>
+  </div>
+  <p><small>Levels: <b>strong</b> = effective for hand function, goals and self-care; <b>moderate</b> = effective for hand function and goals;
+  <b>emerging</b> = effective for hand function only, with mixed results across reviews. Full sources: docs/evidence-brief.html.</small></p>
   <h2>Calibration & limits</h2>
   <p>Seat the child comfortably and press <b>Calibrate</b>. Rest the hand for 1 second, then make 3 small, comfortable reaches.</p>
   <div class="controls"><button onclick="send('calibrate')">Calibrate</button></div>
@@ -65,10 +106,10 @@
     <option value="5">5 · Treasure Master (chest)</option></select></label>
   <p><small>Levels unlock new treasures. The reach target is never above the approved maximum or the child's calibrated comfortable reach.</small></p>
   <p id="found">Treasures found: none yet</p>
-  <label>Bubble Pop reach area (bubbles only appear inside it; it never grows by itself)
-    <select id="bubbleArea"><option value="0.15">Small</option><option value="0.25">Medium</option>
-      <option value="0.35">Large</option><option value="0.45">Extra large</option></select></label>
-  <p><small>The camera turns on only during Bubble Pop. Video is processed on the device and never saved or sent anywhere. Only hand positions reach the game.</small></p>
+  <label>Bubble Lift height (how far the hand lifts; it never grows by itself)
+    <select id="liftHeight"><option value="0.10">Small</option><option value="0.16">Medium</option>
+      <option value="0.22">Large</option><option value="0.28">Extra large</option></select></label>
+  <p><small>The camera turns on only during Bubble Lift. Video is processed on the device and never saved or sent anywhere. Only hand positions reach the game.</small></p>
   <button onclick="saveLimits()">Save limits</button>
   <p id="profile"></p>
   <p id="sensors">Sensors: waiting for the board…</p>
@@ -90,7 +131,7 @@ function start(game){
   layers = 4; $('soil').style.height = '100%';
   send('start', { game });
 }
-function saveLimits(){ send('set_limits', { approved_max_mm: +$('approved').value, level: +$('level').value, bubble_area: +$('bubbleArea').value }); }
+function saveLimits(){ send('set_limits', { approved_max_mm: +$('approved').value, level: +$('level').value, lift_height: +$('liftHeight').value }); }
 
 // Digger: templated, event-driven lines only. Never prescribes distances or pressures the child.
 const LINES = {
@@ -189,7 +230,7 @@ socket.on('camera_status', (d) => {
   $('cam').classList.toggle('on', on);
   $('cam').textContent = d && d.ok === false ? '📷 Camera not found' : on ? '🔴 Camera on' : '📷 Camera off';
 });
-socket.on('profile', (d) => { if (d && d.bubble_area) $('bubbleArea').value = String(d.bubble_area); });
+socket.on('profile', (d) => { if (d && d.lift_height) $('liftHeight').value = d.lift_height.toFixed(2); });
 socket.on('connect', () => send('get_state'));
 </script>
 </body>

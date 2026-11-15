@@ -54,7 +54,7 @@ Run the cable along the arm, not across the hand, with slack so it never pulls. 
 
 Make a "fossil" tray to brush over: a shallow box lid with a printed dinosaur bone and some sand or paper confetti.
 
-## 4. Bubble Pop Adventure (camera)
+## 4. Bubble Lift (camera)
 
 ```
    screen / monitor  ←  bubbles float here, inside the caregiver-set reach area
@@ -70,9 +70,9 @@ Make a "fossil" tray to brush over: a shallow box lid with a printed dinosaur bo
    after tilting, left 100% / right 57% / both 57%, and the first real pair pop.
 3. Use a plain background and good light from the front, not a bright window behind the child.
 4. The view is mirrored like a mirror: moving the right hand moves the orange **R** dot. The green **L** dot is the left hand.
-5. Colourful bubbles pop with either hand. **Blue pair bubbles** joined by a dotted line need both hands at the same time, one on each side.
-6. The caregiver sets the **reach area** (Small → Extra large) in the Grown-ups tab. Bubbles only appear inside it, and it never grows by itself.
-7. No timer: bubbles float gently until they're popped, and Break stops the game at any time.
+5. One movement: rest both hands on the table; a bubble appears directly above one hand, and lifting that hand straight up pops it. **Blue pairs** need both hands up together.
+6. The caregiver sets the **lift height** (Small → Extra large) in the Grown-ups tab. It never grows by itself.
+7. No timer: a bubble waits until it is popped, and the next one only counts after the hand comes back to rest.
 
 ## 5. Station checklist
 

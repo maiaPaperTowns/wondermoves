@@ -25,14 +25,14 @@ movement activities: reaching, controlled positioning and repeated movement sequ
 
 ### Why the camera matters (Qualcomm edge-AI story)
 The QRB2210 can run a small hand/pose model on the Brio feed locally. Nothing leaves the board.
-- **Bubble Pop Adventure:** the camera tracks both hands, so bubbles across the screen are popped by reaching with one or both hands. Blue pair bubbles need both hands at once, for bilateral coordination.
+- **Bubble Lift:** the camera tracks both hands. A bubble sits directly above each resting hand; lifting that hand pops it, and blue pairs need both hands up together (bimanual training).
 - **Fossil Brush mirror:** Digger demonstrates a stroke and the camera shows the child's own movement beside it (action observation).
 - **Sensor fusion:** the camera confirms what the ToF/IMU detect, which cuts false triggers. The game emits `gesture_uncertain` instead of guessing.
 - **Privacy:** process frames in memory only. Never save or stream video, and show a visible "camera on" indicator in the child portal.
 
 ### Using 3 kits
 - **Board A (main):** Treasure Reach + Fossil Brush, the web portal and Digger.
-- **Board B:** Bubble Pop station (camera).
+- **Board B:** Bubble Lift station (camera).
 - **Board C:** spare / dev board, so teammates can develop in parallel and a dead board doesn't kill the demo.
 
 ## Architecture
@@ -54,11 +54,14 @@ distances, diagnoses anything or pushes the child to keep going.
 
 ## Games
 
-| Game | Approach | Sensors needed | Where the code is | Status |
+| Game | One movement | Approach (evidence level) | Sensor | Status |
 |---|---|---|---|---|
-| Treasure Reach | Goal-directed practice | **Modulino Distance**, upright on a cardboard wall facing the hand | `python/main.py` + portal | ✅ tested on the board |
-| Fossil Brush | Action observation + execution | **Modulino Movement**, in a brush handle or wrist strap | `assets/fossil-brush/` (Andrew) + `js/sensor.js` | Game + sensor stream on the board; needs a real brushing test |
-| Bubble Pop Adventure | Bilateral reaching and coordination (shoulder control, active range of motion, both hands together) | **Brio camera**, 1–1.5 m in front of the child with both arms in view | `assets/bubbles/` + `python/vision.py` (or `tools/mac_camera.py` on a laptop) | ✅ game tested on the board with simulated hands; needs a live camera test |
+| Treasure Reach | Reach forward from rest, then back | Goal-directed training (moderate) | Modulino Distance | ✅ tested on the board |
+| Fossil Brush | One back-and-forth stroke; counted on completion, not speed | Action observation (emerging) | Modulino Movement | Stroke counter tested with simulated gyro; game on the board |
+| Bubble Lift | Lift the hand straight up; pairs = both hands together | Bimanual training (strong) | Brio camera, on-device pose | Tested on the board with simulated hands; real-camera tracking measured |
+
+Every game follows the same rules: one movement, completion not speed, no timers, and the child's approved range is never exceeded.
+Evidence and sources: [docs/evidence-brief.html](docs/evidence-brief.html).
 
 **Thermo** isn't tied to one game: it watches room comfort and suggests breaks. With 3 kits, each game can run on its own board,
 so each person can own one station.
