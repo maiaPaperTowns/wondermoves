@@ -61,6 +61,8 @@ BP.Store = {
     }, saved);
     this.data.settings = Object.assign({}, BP.DEFAULTS, this.data.settings);
     this.data.settings.lift = false; // lift mode always off (see BP.DEFAULTS), even if an older save had it on
+    // A save from the "No timer" build has seconds = 0, which would end every round at once: use the default.
+    if (!(this.data.settings.seconds > 0)) this.data.settings.seconds = BP.DEFAULTS.seconds;
   },
   save() { try { localStorage.setItem(this.key, JSON.stringify(this.data)); } catch (e) { /* ignore */ } },
   get s() { return this.data.settings; },
