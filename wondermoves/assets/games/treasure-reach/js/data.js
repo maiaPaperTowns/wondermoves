@@ -82,6 +82,7 @@ TR.LINES = {
   back: ['Now rest your hands. A new chest is coming! 🔁', 'Bring your hands back to rest 🙌'],
   lost: ['I can\'t see your hands! Put them back on the table in front of me 👋'],
   mouse: ['Move the blue circle up to the chest! 🖱️'],
+  effort: ['Great try! That was a big reach! ⭐', 'Ooh, so close! Here\'s a star for trying! ⭐', 'Nice reaching! Try again when you\'re ready ⭐'],
   switch: ['Press and hold the big button to open the chest! 🔘', 'Hold the button until the star fills! ⭐'],
   sensor: ['Reach out and touch the sensor to open the chest! 🖐️', 'Ready? Slide your hand all the way to the sensor! 💰', 'Touch the sensor with your fingers! ✨'],
 };

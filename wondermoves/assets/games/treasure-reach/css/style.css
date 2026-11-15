@@ -426,3 +426,17 @@ body { background: #7FD8E8; touch-action: none; }
 .switch-btn:focus-visible { outline: 5px solid #fff; outline-offset: 4px; }
 @media (max-width: 640px) { .switch-btn { right: calc(var(--meter-w) + 20px); min-width: 150px; min-height: 80px; font-size: 19px; padding: 8px 18px; } }
 
+/* button on the left when the child practises the left hand (above Pip, who lives bottom left) */
+.switch-btn.left { right: auto; left: 24px; bottom: 170px; }
+
+/* effort reward: a gentle star that floats up from the chest */
+.effort-pop {
+  position: absolute; left: 50%; top: 10%; transform: translate(-50%, 0);
+  padding: 8px 16px; border-radius: 999px; white-space: nowrap;
+  background: #FFFBF2; color: #4A2C17; font: 700 22px var(--font, inherit);
+  border: 3px solid #FFD34D; box-shadow: 0 4px 0 #D9A400;
+  animation: effortUp 1.8s ease-out forwards; pointer-events: none; z-index: 5;
+}
+@keyframes effortUp { 0% { opacity: 0; transform: translate(-50%, 20px) scale(.8); } 15% { opacity: 1; transform: translate(-50%, 0) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -50px); } }
+@media (prefers-reduced-motion: reduce) { .effort-pop { animation: none; } }
+

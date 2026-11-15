@@ -102,6 +102,18 @@
         : this.mode === 'switch' ? TR.LINES.switch : TR.LINES.rest), 3600);
     },
 
+    effort() {
+      TR.Store.data.totals.efforts = (TR.Store.data.totals.efforts || 0) + 1;
+      TR.Store.save();
+      WM.Sound.chime();
+      WM.Buddy.say(pick(TR.LINES.effort), 2600);
+      const el = document.createElement('div');
+      el.className = 'effort-pop';
+      el.innerHTML = '<span class="wm-emoji">⭐</span> Great try!';
+      $('#chestAnchor').appendChild(el);
+      setTimeout(() => el.remove(), 1800);
+    },
+
     resetRep() {
       this.hold = 0; this.peak = 0; this.peakReach = 0; this.peakSide = null; this.repStart = 0; this.minMm = null;
       this.startMm = null;   // sensor mode: farthest reading while resting = where the reach started
@@ -131,7 +143,7 @@
         const bar = ok ? 1 : Math.min(this.swV, 0.97);
         if (this.state === 'rest' || this.state === 'holding') this.peakReach = Math.max(this.peakReach, this.swV);
         this.m = null;
-        return { p: { left: null, right: bar }, bar, ok, back: !TR.Switch.down && this.swV < 0.15 };
+        return { p: TR.sideP(bar), bar, ok, back: !TR.Switch.down && this.swV < 0.15 };
       }
       if (this.mode === 'sensor') {
         // Distance sensor only. The chest opens when the hand has moved the child's own distance
@@ -152,7 +164,7 @@
         const bar = ok ? 1 : Math.min(v, 0.97);
         if (this.state === 'rest' || this.state === 'holding') this.peakReach = Math.max(this.peakReach, v);
         // back at rest: the hand has come most of the way back (or the sensor sees nothing)
-        return { p: { left: null, right: bar }, bar, ok, back: !ok && (d == null || moved < target * 0.35) };
+        return { p: TR.sideP(bar), bar, ok, back: !ok && (d == null || moved < target * 0.35) };
       }
       const L = WM.Hands.latest;
       const cam = { left: TR.camProgress('left', L.left), right: TR.camProgress('right', L.right) };
@@ -204,8 +216,15 @@
       }
       if (!this.armed && m.back) this.armed = true;
 
+      // A good try (bar at least 45% full) that came back without opening still earns a star:
+      // celebrate the effort, not only the success.
+      if (this.state === 'rest' && this.armed && m.back && this.peak >= 0.45) {
+        this.effort();
+        this.resetRep();
+      }
+
       // hands not seen / not level (camera + board)
-      if (this.mode !== 'mouse' && (this.state === 'rest' || this.state === 'holding')) {
+      if ((this.mode === 'camera' || this.mode === 'board') && (this.state === 'rest' || this.state === 'holding')) {
         const mm = this.m || {};
         const anyHand = mm.cam && (mm.cam.left != null || mm.cam.right != null);
         if (!anyHand) {
@@ -535,6 +554,7 @@
   let cueKey = '';
   function renderCue() {
     swBtn.hidden = Game.mode !== 'switch' || Game.state === 'idle';
+    swBtn.classList.toggle('left', TR.assistSide() === 'left');
     const show = Game.mode === 'sensor' && Game.state !== 'idle' && !TR.UI.blocking();
     cue.hidden = !show;
     if (!show) return;

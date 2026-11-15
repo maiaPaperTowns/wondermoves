@@ -46,6 +46,14 @@ window.TR = window.TR || {};
     return B.distMm > 0 && B.distMm <= TR.SENSE.trustMm ? B.distMm : null;
   };
 
+  /** The hand the child practises most (Settings → Hand to practise), 'left' or 'right'. */
+  TR.assistSide = function () {
+    const p = (window.WM && WM.Board && WM.Board.profile) || {};
+    return p.assist_hand === 'left' ? 'left' : 'right';
+  };
+  /** One-hand modes (sensor, button): draw the hand circle on the practised hand's side. */
+  TR.sideP = bar => (TR.assistSide() === 'left' ? { left: bar, right: null } : { left: null, right: bar });
+
   /** Like sensorMm, but a finger resting ON the sensor still counts as there.
       Right against the sensor window the chip only gives weak readings, which the board drops
       (sketch WARN_MIN_MM), so the readings simply stop. If the last reading before they stopped

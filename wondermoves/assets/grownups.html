@@ -8,6 +8,7 @@
 <!-- Prefer a local copy (board may be offline); falls back to CDN. -->
 <script src="libs/socket.io.min.js"></script>
 <script src="shared/wm-lock.js"></script>
+<script src="shared/wm-calm.js"></script>
 <script>window.io || document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"><\/script>')</script>
 <link rel="icon" href="shared/assets/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -184,6 +185,21 @@ td:last-child { word-break: break-all; color: var(--muted); }
       </section>
     </div>
   </div>
+
+  <section class="card" aria-labelledby="comfortTitle" style="margin-top:16px">
+    <h3 id="comfortTitle"><span class="emoji">🌙</span> Comfort</h3>
+    <p class="small" style="margin:0">For children who are sensitive to flashing, sudden sounds or busy pictures. Saved on this device.</p>
+    <label class="check consent" style="margin-top:12px"><input type="checkbox" id="calmOn">
+      <span><b>Calm mode.</b> No confetti or flashing light rays, no drifting clouds or fish, a stronger outline on
+      the target, and quieter sounds. Recommended if your child has seizures or startles easily.</span></label>
+    <label class="field">Sound volume
+      <input id="calmVol" type="range" min="0" max="100" step="5" style="min-height:0;padding:0;accent-color:var(--accent)">
+      <span class="hint" id="calmVolTxt"></span></label>
+    <div class="actions">
+      <button class="btn" onclick="saveCalm()">Save</button>
+      <span class="saved" id="calmSaved" role="status">✓ Saved. Games use it the next time they open.</span>
+    </div>
+  </section>
 
   <section class="card" aria-labelledby="childTitle" style="margin-top:16px">
     <h3 id="childTitle"><span class="emoji">💬</span> About your child (for Pip's voice)</h3>
@@ -440,6 +456,21 @@ async function loadChild(){
   } catch (e) { /* no board */ }
 }
 socket.on('locked', () => WM.Lock.relock());
+
+// Comfort (Calm mode + volume): saved on this device; the games read it when they open.
+function showCalm(){
+  $('calmOn').checked = WM.Calm.on;
+  $('calmVol').value = Math.round(WM.Calm.volume * 100);
+  $('calmVolTxt').textContent = `${$('calmVol').value}%${WM.Calm.on ? ' (Calm mode makes sounds a little quieter again)' : ''}`;
+}
+$('calmVol').addEventListener('input', () => { $('calmVolTxt').textContent = `${$('calmVol').value}%`; });
+function saveCalm(){
+  WM.Calm.on = $('calmOn').checked; WM.Calm.volume = +$('calmVol').value / 100;
+  WM.Calm.save({});
+  showCalm();
+  $('calmSaved').classList.add('on'); setTimeout(() => $('calmSaved').classList.remove('on'), 3000);
+}
+showCalm();
 socket.on('child_updated', c => { fillChild(c); $('childSaved').classList.add('on'); clearTimeout(window._childT); window._childT = setTimeout(() => $('childSaved').classList.remove('on'), 2500); });
 socket.on('connect', () => send('get_state'));
 // Inside the WonderMoves shell this page is the Grown-ups tab: open the caregiver view, hide the old child buttons.
