@@ -370,3 +370,24 @@ body { background: #7FD8E8; touch-action: none; }
   .col-head h2 { font-size: 22px; }
   .col-progress .bar { width: 80px; }
 }
+
+/* ---------------- reach-test branch: Distance-sensor test panel ---------------- */
+.sensor-test {
+  position: fixed; left: 16px; top: 96px; z-index: 20;
+  width: 300px; max-height: calc(100dvh - 230px); overflow-y: auto;
+  padding: 14px 16px; font-size: 15px;
+}
+.st-head { font-weight: 700; font-size: 17px; margin-bottom: 6px; }
+.st-big { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 4px 0 8px; }
+.st-big b { font-size: 40px; line-height: 1; }
+.st-big span { font-weight: 700; font-size: 13px; padding: 3px 10px; border-radius: 999px; background: var(--cream); color: var(--ink-soft); }
+.st-big span.in { background: #3DDC84; color: #fff; }
+.st-big span.out { background: #FFC94A; color: var(--ink); }
+.st-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 3px 0; border-bottom: 1px dashed var(--line); }
+.st-row.thr b { min-width: 64px; text-align: center; }
+.st-btn { width: 34px; height: 34px; border-radius: 50%; background: var(--cream); border: 2px solid var(--line); font-weight: 700; font-size: 18px; }
+#stGraph { width: 100%; height: auto; margin: 10px 0 6px; border-radius: 12px; display: block; }
+.st-sub { font-size: 12px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .06em; }
+.st-chips { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 10px; margin: 4px 0 6px; font-size: 14px; }
+.st-warn { margin-top: 8px; padding: 8px 10px; border-radius: 12px; background: #FFE3DD; color: #A8282C; font-weight: 600; font-size: 13px; }
+.st-actions { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
