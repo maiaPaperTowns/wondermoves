@@ -72,6 +72,9 @@ input:focus, select:focus { border-color: var(--accent); outline: none; }
 .saved { color: var(--ok); font-weight: 700; opacity: 0; transition: opacity .3s; }
 .saved.on { opacity: 1; }
 .status-list { background: var(--bg); border-radius: 14px; padding: 10px 14px; margin-top: 10px; }
+.check { display: flex; gap: 10px; align-items: flex-start; font-weight: 400; font-size: 16px; margin: 6px 0; cursor: pointer; }
+.check input { width: 22px; height: 22px; min-height: 0; margin: 2px 0 0; flex: none; accent-color: var(--accent); }
+.consent { background: var(--bg); border-radius: 14px; padding: 12px 14px; margin-top: 18px; }
 .tip { background: var(--warn-soft); border-radius: 14px; padding: 10px 14px; margin-top: 10px; }
 
 .games { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
@@ -180,6 +183,54 @@ td:last-child { word-break: break-all; color: var(--muted); }
       </section>
     </div>
   </div>
+
+  <section class="card" aria-labelledby="childTitle" style="margin-top:16px">
+    <h3 id="childTitle"><span class="emoji">💬</span> About your child (for Pip's voice)</h3>
+    <p class="small" style="margin:0">Pip uses this to talk in a way that suits your child. Everything is optional, kept only on this game board,
+      and never added to the play log or sent to Databricks. Please don't enter full names, birthdays, school or medical details.</p>
+    <div class="grid" style="margin-top:4px">
+      <div>
+        <label class="field">What should Pip call your child?
+          <input id="cNick" maxlength="20" placeholder="A first name or nickname" autocomplete="off"></label>
+        <label class="field">Age
+          <select id="cAge"><option value="">Not set</option><option value="6-8">6 to 8</option><option value="9-12">9 to 12</option></select>
+          <span class="hint">Sets how long Pip's sentences are and which words it uses.</span></label>
+        <label class="field">Language Pip speaks
+          <select id="cLang"><option value="en">English</option><option value="es">Español</option><option value="vi">Tiếng Việt</option>
+            <option value="zh">中文</option><option value="fr">Français</option><option value="ar">العربية</option><option value="hi">हिन्दी</option></select></label>
+        <div class="field">Favourite things (up to 3)
+          <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
+            <input class="cInt" maxlength="24" placeholder="e.g. dinosaurs" aria-label="Favourite thing 1">
+            <input class="cInt" maxlength="24" placeholder="e.g. the ocean" aria-label="Favourite thing 2">
+            <input class="cInt" maxlength="24" placeholder="e.g. football" aria-label="Favourite thing 3"></div>
+          <span class="hint">Pip can mention these when it cheers your child on.</span></div>
+      </div>
+      <div>
+        <fieldset class="field" style="border:0;padding:0;margin:14px 0 0">
+          <legend style="font-weight:600;padding:0">How your child communicates best</legend>
+          <label class="check"><input type="checkbox" class="cNeed" value="tap_answers"> Answers by tapping buttons rather than speaking</label>
+          <label class="check"><input type="checkbox" class="cNeed" value="short_sentences"> Short, simple sentences</label>
+          <label class="check"><input type="checkbox" class="cNeed" value="extra_time"> Extra time to answer</label>
+          <label class="check"><input type="checkbox" class="cNeed" value="read_aloud"> Read every message aloud</label>
+          <label class="check"><input type="checkbox" class="cNeed" value="quiet_sounds"> Quieter sounds</label>
+        </fieldset>
+        <label class="field">Anything Pip should avoid?
+          <input id="cAvoid" maxlength="120" placeholder="e.g. loud noises, talking about spiders"></label>
+        <label class="field">Pronouns for notes to grown-ups (optional)
+          <select id="cPron"><option value="">Not set (use the name)</option><option value="they">they / them</option>
+            <option value="she">she / her</option><option value="he">he / him</option></select>
+          <span class="hint">Pip talks to your child as "you", so it doesn't need these.</span></label>
+      </div>
+    </div>
+    <label class="check consent"><input type="checkbox" id="cVoice">
+      <span><b>Let Pip talk with my child by voice.</b> Speech is turned into text on this device; no recordings are kept.
+      Only the text and the details above are used to write Pip's replies.</span></label>
+    <div class="actions">
+      <button class="btn" onclick="saveChild()">Save</button>
+      <button class="btn quiet" onclick="forgetChild()">Forget these details</button>
+      <span class="saved" id="childSaved" role="status">✓ Saved on the game board</span>
+    </div>
+  </section>
 
   <h2>How each game works (and why)</h2>
   <p class="small" style="margin-top:-6px">Every game uses <b>one</b> movement, counts a movement when it is completed (never how fast), and stays within the range you approve.
@@ -364,6 +415,24 @@ socket.on('practice', (d) => {
   $('practice').textContent = parts.length ? `${parts.join(' · ')} · ${min} min of play` : 'No practice yet today.';
 });
 socket.on('sensor_hint', (d) => { $('sensorHint').style.display = d.distance_window_blocked ? 'block' : 'none'; });
+
+// About your child (for Pip's voice): saved on the board only.
+function saveChild(){
+  send('set_child', { nickname: $('cNick').value, age_band: $('cAge').value, language: $('cLang').value,
+    interests: [...document.querySelectorAll('.cInt')].map(i => i.value),
+    needs: [...document.querySelectorAll('.cNeed:checked')].map(i => i.value),
+    avoid: $('cAvoid').value, pronouns: $('cPron').value, voice_ok: $('cVoice').checked });
+}
+function forgetChild(){ if (confirm('Forget the details about your child on this game board?')) send('forget_child'); }
+function fillChild(c){
+  if (!c) return;
+  $('cNick').value = c.nickname || ''; $('cAge').value = c.age_band || ''; $('cLang').value = c.language || 'en';
+  document.querySelectorAll('.cInt').forEach((el, i) => el.value = (c.interests || [])[i] || '');
+  document.querySelectorAll('.cNeed').forEach(el => el.checked = (c.needs || []).includes(el.value));
+  $('cAvoid').value = c.avoid || ''; $('cPron').value = c.pronouns || ''; $('cVoice').checked = !!c.voice_ok;
+}
+socket.on('profile', d => d && fillChild(d.child));
+socket.on('child_updated', c => { fillChild(c); $('childSaved').classList.add('on'); clearTimeout(window._childT); window._childT = setTimeout(() => $('childSaved').classList.remove('on'), 2500); });
 socket.on('connect', () => send('get_state'));
 // Inside the WonderMoves shell this page is the Grown-ups tab: open the caregiver view, hide the old child buttons.
 // Opened from the parent page (grownups.html?settings): same, with links back to progress and the games.

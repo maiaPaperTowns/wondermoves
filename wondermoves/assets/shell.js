@@ -136,6 +136,10 @@
       const r = await fetch('/api/state', { cache: 'no-store' });
       if (!r.ok) return;
       const st = await r.json();
+      const nick = st.profile && st.profile.child && st.profile.child.nickname;
+      document.getElementById('homeTitle').textContent = nick ? `Hi, ${nick}! Pick a game.` : 'Hi, explorer! Pick a game.';
+      // For add-ons such as the voice agent: the grown-up-entered profile (nickname, age, language, interests, needs).
+      window.WM_CHILD = (st.profile && st.profile.child) || null;
       const off = Date.now() / 1000 - st.now;               // the board clock can be wrong
       const midnight = new Date(); midnight.setHours(0, 0, 0, 0);
       const today = st.sessions.filter(s => (s.start_t + off) * 1000 >= midnight.getTime());

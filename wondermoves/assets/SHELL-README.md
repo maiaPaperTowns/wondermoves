@@ -94,6 +94,28 @@ The shell has two hooks so a voice agent can be added without touching the games
 
 - **Opening a game by voice:** call `location.hash = '#treasure-reach'` (or `'#home'`).
 
+- **Who Pip is talking to:** a grown-up fills in *About your child* in Settings. The shell puts it in
+  `window.WM_CHILD` once Home loads, and `GET /api/state` returns it as `profile.child`:
+
+  ```js
+  { nickname: 'Mia', age_band: '6-8' | '9-12' | '', language: 'en' | 'es' | 'vi' | 'zh' | 'fr' | 'ar' | 'hi',
+    interests: ['dinosaurs'],              // up to 3
+    needs: ['tap_answers', 'short_sentences', 'extra_time', 'read_aloud', 'quiet_sounds'],
+    avoid: 'loud noises', pronouns: '' | 'they' | 'she' | 'he', voice_ok: false }
+  ```
+
+  **Only listen to the microphone when `voice_ok` is true.** Without it, Pip can still speak, and the
+  child answers with buttons. With `tap_answers`, always show answer buttons as well. With `extra_time`,
+  wait longer before Pip speaks again. Talk to the child as "you"; `pronouns` is only for notes to grown-ups.
+
+Privacy rules for the agent (the child is under 13):
+- Turn speech into text on the device. Don't keep or upload audio, and don't keep transcripts.
+- Send the language model only the child's words plus `nickname`, `age_band`, `language`, `interests`,
+  `needs` and `avoid`. Nothing else from the board.
+- Don't learn or store new personal facts from what the child says. Only a grown-up adds details, in Settings.
+- Pip only talks about the games, moving and resting. It says it's a game helper, not a person, and for
+  anything off-topic or worrying it says "let's ask your grown-up".
+
 Load the agent with one `<script>` tag at the end of `index.html`. Keep the project rules: no timers, no
 scores or comparisons, a slow movement counts like a fast one, and nothing recorded or sent without a
 grown-up's say-so.

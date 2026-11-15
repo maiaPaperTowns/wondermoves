@@ -156,7 +156,7 @@ h2 .sub { font-size: 14px; color: var(--muted); font-weight: 500; }
         </div>
       </div>
       <dl class="facts" id="facts"></dl>
-      <a class="link-btn" href="../grownups.html?settings"><span class="emoji">⚙️</span> Change hand, range or breaks</a>
+      <a class="link-btn" href="../grownups.html?settings"><span class="emoji">⚙️</span> Change settings or details</a>
     </section>
 
     <section class="card week" aria-labelledby="weekTitle">
@@ -251,6 +251,8 @@ function render() {
     ['Break reminder', p.break_minutes ? `every ${p.break_minutes} min` : 'off'],
     ['Treasure Reach level', p.level ?? '—'],
     ['Treasures found', (p.found || []).length],
+    ['Pip\u2019s voice', p.child && p.child.voice_ok ? 'on' : 'off'],
+    ['Favourite things', p.child && p.child.interests && p.child.interests.length ? p.child.interests.join(', ') : '—'],
   ].map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')
     : `<div style="grid-column:1/-1"><dt>Settings</dt><dd style="font-weight:500;font-size:15px">Open this page from the game board to see the hand and range settings.</dd></div>`;
 
