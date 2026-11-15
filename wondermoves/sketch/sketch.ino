@@ -4,8 +4,15 @@
 
 #include <Arduino_RouterBridge.h>
 #include <Modulino.h>
+#include <vl53l4cd_class.h>
+#include <vl53l4ed_class.h>
 
-ModulinoDistance distance;
+// Distance: we drive the VL53L4CD/ED chip directly instead of ModulinoDistance, because
+// that class drops every reading with a range-status *warning* (1 = noisy, 2 = weak signal).
+// A hand 15-30 cm away usually comes with such a warning, so the game only "saw" hands
+// closer than ~12 cm. We keep statuses 0-2 (real distance) and drop real errors (>2).
+VL53L4CD* tofCD = nullptr;
+VL53L4ED* tofED = nullptr;
 ModulinoMovement movement;
 ModulinoThermo thermo;
 
@@ -14,9 +21,51 @@ unsigned long lastFast = 0, lastThermo = 0, lastStatus = 0;
 unsigned long distanceSeen = 0, imuSeen = 0;   // samples since the last status report
 int lastDistanceMm = -1;
 
+bool beginDistance() {
+  Wire1.beginTransmission(0x29);
+  if (Wire1.endTransmission() != 0) return false;
+  tofCD = new VL53L4CD(&Wire1, -1);
+  if (tofCD->InitSensor() == VL53L4CD_ERROR_NONE) {
+    tofCD->VL53L4CD_SetRangeTiming(30, 0);   // 30 ms budget: better range than 20 ms
+    tofCD->VL53L4CD_StartRanging();
+    return true;
+  }
+  delete tofCD; tofCD = nullptr;
+  tofED = new VL53L4ED(&Wire1, -1);
+  if (tofED->InitSensor() == VL53L4ED_ERROR_NONE) {
+    tofED->VL53L4ED_SetRangeTiming(30, 0);
+    tofED->VL53L4ED_StartRanging();
+    return true;
+  }
+  delete tofED; tofED = nullptr;
+  return false;
+}
+
+// Returns distance in mm, or -1 when there is no new valid reading.
+int readDistance() {
+  uint8_t ready = 0;
+  if (tofCD) {
+    tofCD->VL53L4CD_CheckForDataReady(&ready);
+    if (!ready) return -1;
+    tofCD->VL53L4CD_ClearInterrupt();
+    VL53L4CD_Result_t r;
+    tofCD->VL53L4CD_GetResult(&r);
+    return (r.range_status <= 2 && r.distance_mm > 0) ? r.distance_mm : -1;
+  }
+  if (tofED) {
+    tofED->VL53L4ED_CheckForDataReady(&ready);
+    if (!ready) return -1;
+    tofED->VL53L4ED_ClearInterrupt();
+    VL53L4ED_ResultsData_t r;
+    tofED->VL53L4ED_GetResult(&r);
+    return (r.range_status <= 2 && r.distance_mm > 0) ? r.distance_mm : -1;
+  }
+  return -1;
+}
+
 void probeSensors() {
   // Retry any sensor that is missing, so a loose Qwiic plug can be fixed without a restart.
-  if (!hasDistance) hasDistance = distance.begin();
+  if (!hasDistance) hasDistance = beginDistance();
   if (!hasMovement) hasMovement = movement.begin();
   if (!hasThermo) hasThermo = thermo.begin();
 }
@@ -47,9 +96,10 @@ void loop() {
   // ~50 Hz: distance + IMU
   if (now - lastFast >= 20) {
     lastFast = now;
-    // available() is false when nothing is in range (e.g. the sensor faces the ceiling).
-    if (hasDistance && distance.available()) {
-      lastDistanceMm = (int)distance.get();
+    // -1 when nothing is in range (e.g. the sensor faces the ceiling).
+    int mm = hasDistance ? readDistance() : -1;
+    if (mm > 0) {
+      lastDistanceMm = mm;
       distanceSeen++;
       Bridge.notify("distance", lastDistanceMm);  // millimetres
     }
