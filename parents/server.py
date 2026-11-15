@@ -1,6 +1,6 @@
 """WonderMoves parent website + Databricks link. Runs on the laptop next to the board.
 
-    python3 parents/server.py --child "Alex"     # real board over USB (needs adb), page at http://localhost:8090
+    python3 parents/server.py               # real board over USB (needs adb), page at http://localhost:8090
     python3 parents/server.py --demo             # no board: reads the simulated log (parents/simulate_board.py)
 
 Shows ONE child: whoever plays on the board. Nothing needs touching once it runs: sessions appear

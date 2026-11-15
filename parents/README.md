@@ -11,7 +11,7 @@ child plays → board saves events → laptop helper → parent page (instant)
 ## Run it
 
 ```bash
-python3 parents/server.py --child "Alex"     # real board over USB (needs adb, like the board README)
+python3 parents/server.py               # real board over USB (needs adb, like the board README)
 python3 parents/server.py --demo             # no board: simulated board log
 ```
 
@@ -25,7 +25,7 @@ Then open **http://localhost:8090**.
 ## Try it without the board
 
 ```bash
-python3 parents/server.py --demo --child "Alex"
+python3 parents/server.py --demo 
 python3 parents/simulate_board.py play brush     # in another terminal: watch the page update live
 ```
 

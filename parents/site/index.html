@@ -133,7 +133,7 @@ function render() {
   // One child (the normal case): just show their name. The picker only appears in testing with sample children.
   const many = kids.length > 1;
   sel.hidden = !many; $('#childLabel').hidden = !many; $('#childName').hidden = many;
-  $('#childName').textContent = `👧 ${firstName(chosen)}`;
+  $('#childName').textContent = `🧒 ${firstName(chosen)}`;
 
   // status pills
   const b = state.board, bOk = /connected|simulated/.test(b) && !/not/.test(b);
