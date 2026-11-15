@@ -272,7 +272,9 @@ def on_sensor_status(has_d, has_m, has_t, distance_hz, imu_hz, last_mm):
 
 # ---------------- Browser -> board messages ----------------
 def on_start(_client, data):
-    state.update(mode="playing", phase="rest", game=(data or {}).get("game", "reach"),
+    # phase "reached": a reach only counts after the hand has first been seen back at rest,
+    # so a hand (or object) already near the sensor at Start is never counted as a reach.
+    state.update(mode="playing", phase="reached", game=(data or {}).get("game", "reach"),
                  layers=0, hold_start=None)
     sync_camera()
     emit("session_started", game=state["game"], **level_info())
