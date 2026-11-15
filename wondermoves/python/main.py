@@ -38,6 +38,7 @@ def load_profile():
 profile = load_profile()
 profile.setdefault("found", [])  # rewards the child has uncovered (shown in the Grown-ups tab)
 profile.setdefault("lift_height", 0.16)  # Bubble Lift: caregiver-set lift (fraction of camera height)
+profile.setdefault("break_minutes", 10)  # gentle break suggestion after this much continuous play (0 = off)
 profile.pop("bubble_area", None)
 
 # Illustrative game settings, not prescribed distances. Level 5 uses the child's own range.
@@ -71,11 +72,21 @@ def level_info(level=None):
             "capped": bool(lv["target_mm"] and target_mm(level) < lv["target_mm"])}
 
 
+# Practice dose since the board was switched on (dose matters: docs/evidence-brief.html).
+practice = {"reaches": 0, "strokes": 0, "bubbles": 0, "pairs": 0, "seconds": 0, "since_break": 0}
+
+
 def emit(event, **data):
     data["t"] = time.time()
     ui.send_message(event, data)
     with SESSIONS.open("a") as f:
         f.write(json.dumps({"event": event, **data}) + "\n")
+    counted = {"reach_completed": "reaches", "brush_stroke": "strokes", "bubble_popped": "bubbles"}.get(event)
+    if counted:
+        practice[counted] += 2 if data.get("kind") == "pair" else 1
+        if data.get("kind") == "pair":
+            practice["pairs"] += 1
+        ui.send_message("practice", practice)
 
 
 # ---------------- Treasure Reach (distance) ----------------
@@ -339,6 +350,15 @@ def on_sensor_status(has_d, has_m, has_t, distance_hz, imu_hz, last_mm):
                          distance_hz=distance_hz, imu_hz=imu_hz,
                          last_distance_mm=last_mm if last_mm >= 0 else None)
     ui.send_message("sensors", sensor_status)
+    if state["mode"] == "playing":
+        practice["seconds"] += 1
+        practice["since_break"] += 1
+        limit = int(profile.get("break_minutes") or 0) * 60
+        if limit and practice["since_break"] >= limit:
+            practice["since_break"] = 0                  # suggest again after another block
+            emit("break_suggested", reason="long_play", minutes=limit // 60)
+        if practice["seconds"] % 10 == 0:
+            ui.send_message("practice", practice)
     # Tell the caregiver right away when the Distance sensor can't see the hand during
     # calibration or Treasure Reach (its beam is narrow), instead of waiting silently.
     needs_hand = state["mode"] in ("calib_baseline", "calib_reach") or (
@@ -365,6 +385,7 @@ def on_start(_client, data):
 
 
 def on_pause(_client, _data):
+    practice["since_break"] = 0
     state["mode"] = "idle"
     sync_camera()
     emit("break_requested")
@@ -384,6 +405,8 @@ def on_set_limits(_client, data):
     profile["level"] = min(max(int(data.get("level", profile["level"])), 1), max(LEVELS))
     if "lift_height" in data:
         profile["lift_height"] = min(max(float(data["lift_height"]), 0.08), 0.35)
+    if "break_minutes" in data:
+        profile["break_minutes"] = min(max(int(data["break_minutes"]), 0), 30)
     if data.get("assist_hand") in ("left", "right"):
         profile["assist_hand"] = data["assist_hand"]
         vision.set_assist_hand(profile["assist_hand"])
@@ -400,6 +423,7 @@ def on_bubble_pop(_client, data):
 def on_get_state(client, _data):
     playing = state["game"] if state["mode"] == "playing" else None
     ui.send_message("profile", {**profile, **level_info(), "playing": playing})
+    ui.send_message("practice", practice)
     ui.send_message("camera_status", {"ok": True, "on": vision.enabled.is_set(),
                                       "backend": vision.backend_name})
 
@@ -408,8 +432,17 @@ Bridge.provide("distance", on_distance)
 Bridge.provide("imu", on_imu)
 Bridge.provide("thermo", on_thermo)
 Bridge.provide("sensor_status", on_sensor_status)
-Bridge.provide("distance_debug", lambda s0, s1, s2, s_err, raw_mm, raw_status: ui.send_message(
-    "distance_debug", {"ok": s0, "noisy": s1, "weak": s2, "error": s_err, "raw_mm": raw_mm, "raw_status": raw_status}))
+def on_distance_debug(s0, s1, s2, s_err, raw_mm, raw_status):
+    ui.send_message("distance_debug", {"ok": s0, "noisy": s1, "weak": s2, "error": s_err,
+                                       "raw_mm": raw_mm, "raw_status": raw_status})
+    # Only weak readings closer than 45 mm for 5 s in a row: the chip sees its own window
+    # (protective film, fingerprint, tape or something touching it), not the hand.
+    blocked = s0 == 0 and s2 > 20 and 0 < raw_mm < 45
+    state["window_blocked_s"] = state.get("window_blocked_s", 0) + 1 if blocked else 0
+    ui.send_message("sensor_hint", {"distance_window_blocked": state["window_blocked_s"] >= 5})
+
+
+Bridge.provide("distance_debug", on_distance_debug)
 Bridge.provide("i2c_scan", lambda found: ui.send_message("i2c_scan", {"found": found}))
 ui.on_message("start", on_start)
 ui.on_message("pause", on_pause)

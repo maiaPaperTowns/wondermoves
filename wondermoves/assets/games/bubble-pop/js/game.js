@@ -3,7 +3,7 @@
    Two modes (BP.Store.s.lift):
    - Lift (default, WonderMoves evidence rules): no timer, no countdown, no missed bubbles.
      A bubble waits directly above a resting hand; lifting that hand straight up pops it.
-     Order: left, right, then a pair that needs both hands up together (bimanual training).
+     Order: affected hand, other hand, affected hand, then a pair that needs both hands up together (bimanual training).
      The next bubble only counts after the hand comes back to rest. Lift height comes from the
      caregiver setting on the board (Grown-ups → Bubble Lift height), never raised by the game.
    - Timed original: countdown → bubbles rise for N seconds → results.
@@ -262,7 +262,14 @@
 
   const Lift = BP.Lift = {
     rest: { left: [], right: [] }, ready: { left: true, right: true },
-    order: ['left', 'right', 'pair'], step: 0, target: null, nextAt: 0, waitingSince: 0, lastSay: 0, pops: 0,
+    /* Affected hand first and most often (caregiver sets it in Grown-ups): 2 of every 3 single
+       bubbles go to the affected hand, then a both-hands pair (bimanual, HABIT-style). */
+    get order() {
+      const aff = (WM.Board.profile || {}).assist_hand === 'right' ? 'right' : 'left';
+      const other = aff === 'left' ? 'right' : 'left';
+      return [aff, other, aff, 'pair'];
+    },
+    step: 0, target: null, nextAt: 0, waitingSince: 0, lastSay: 0, pops: 0,
     reset() { this.rest = { left: [], right: [] }; this.ready = { left: true, right: true }; this.step = 0; this.target = null; this.nextAt = performance.now() + 1500; this.waitingSince = 0; this.pops = 0; },
     sides() { return Game.mode === 'mouse' ? ['right'] : ['left', 'right']; },
     /** Lift height in screen px: the caregiver's setting (fraction of camera height), through the hand mapping. */

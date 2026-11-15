@@ -110,9 +110,19 @@
     <select id="liftHeight"><option value="0.10">Small</option><option value="0.16">Medium</option>
       <option value="0.22">Large</option><option value="0.28">Extra large</option></select></label>
   <p><small>The camera turns on only during Bubble Pop. Video is processed on the device and never saved or sent anywhere. Only hand positions reach the game.</small></p>
+  <label>Affected hand (the hand to practise most; Bubble Pop gives it 2 of every 3 single bubbles)
+    <select id="assistHand"><option value="left">Left</option><option value="right">Right</option></select></label>
+  <label>Suggest a break after (minutes of play; the child can always keep going or stop)
+    <select id="breakMin"><option value="0">Never</option><option value="5">5</option><option value="10">10</option>
+      <option value="15">15</option><option value="20">20</option></select></label>
   <button onclick="saveLimits()">Save limits</button>
   <p id="profile"></p>
   <p id="sensors">Sensors: waiting for the board…</p>
+  <p id="sensorHint" style="display:none;background:#fff3cd;border-radius:10px;padding:10px"><b>Distance sensor sees only its own window.</b>
+    Peel off any clear film, wipe the small black window with a soft cloth, and keep 5 cm in front of it clear (no tape, cable or towel edge).</p>
+  <h2>Today</h2>
+  <p id="practice">No practice yet today.</p>
+  <p><small>Counts completed movements only, never speed. Home practice works through many repetitions over weeks (dose), so short, frequent sessions are fine.</small></p>
   <p id="room"></p>
   <h2>This session</h2>
   <table><thead><tr><th>Time</th><th>Event</th><th>Detail</th></tr></thead><tbody id="log"></tbody></table>
@@ -131,7 +141,8 @@ function start(game){
   layers = 4; $('soil').style.height = '100%';
   send('start', { game });
 }
-function saveLimits(){ send('set_limits', { approved_max_mm: +$('approved').value, level: +$('level').value, lift_height: +$('liftHeight').value }); }
+function saveLimits(){ send('set_limits', { approved_max_mm: +$('approved').value, level: +$('level').value, lift_height: +$('liftHeight').value,
+  assist_hand: $('assistHand').value, break_minutes: +$('breakMin').value }); }
 
 // Digger: templated, event-driven lines only. Never prescribes distances or pressures the child.
 const LINES = {
@@ -145,7 +156,7 @@ const LINES = {
     : "Hmm, I couldn't quite tell. Try one more gentle brush when you like.",
   two_hand_action: () => pick(["Click! Both hands worked together!", "Teamwork hands! The lock moved!"]),
   break_requested: () => "Break time! Your treasure will wait for you.",
-  break_suggested: () => "It's a bit warm in here. Want to take a little break?",
+  break_suggested: (d) => d.reason === 'long_play' ? `Great moving! ${d.minutes} minutes of play. Time for a stretch and a drink?` : "It's a bit warm in here. Want to take a little break?",
   level_completed: () => "You uncovered the treasure! Amazing digging!",
   calibration_step: (d) => d.step === 'baseline' ? "Rest your hand still for me." : "Now make a small, comfy reach, then come back.",
   calibration_rep: (d) => `Got it, ${d.count}!`,
@@ -242,7 +253,19 @@ socket.on('camera_status', (d) => {
   $('cam').classList.toggle('on', on);
   $('cam').textContent = d && d.ok === false ? '📷 Camera not found' : on ? '🔴 Camera on' : '📷 Camera off';
 });
-socket.on('profile', (d) => { if (d && d.lift_height) $('liftHeight').value = d.lift_height.toFixed(2); });
+['profile', 'limits_updated'].forEach(ev => socket.on(ev, (d) => {
+  if (!d) return;
+  if (d.lift_height) $('liftHeight').value = d.lift_height.toFixed(2);
+  if (d.assist_hand) $('assistHand').value = d.assist_hand;
+  if (d.break_minutes != null) $('breakMin').value = String(d.break_minutes);
+}));
+socket.on('practice', (d) => {
+  const min = Math.floor(d.seconds / 60);
+  const parts = [d.reaches && `${d.reaches} reaches`, d.strokes && `${d.strokes} brush strokes`,
+                 d.bubbles && `${d.bubbles} bubble lifts (${d.pairs} with both hands)`].filter(Boolean);
+  $('practice').textContent = parts.length ? `${parts.join(' · ')} · ${min} min of play` : 'No practice yet today.';
+});
+socket.on('sensor_hint', (d) => { $('sensorHint').style.display = d.distance_window_blocked ? 'block' : 'none'; });
 socket.on('connect', () => send('get_state'));
 // Inside the WonderMoves shell this page is the Grown-ups tab: open the caregiver view, hide the old child buttons.
 if (window.parent !== window) {

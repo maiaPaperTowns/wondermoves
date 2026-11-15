@@ -194,6 +194,26 @@ a:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
   </section>
 
   <section>
+    <h2>Are the games suitable for children with CP? Our UX review</h2>
+    <p>We checked each game against the exergame design guidelines for children with CP (Hernandez et al., CHI 2013: few actions, no precise timing, low penalty for errors, adapt to each child's ability) and the therapy evidence above (Burgess 2025).</p>
+    <table>
+      <thead><tr><th>Guideline</th><th>How the games meet it</th><th>Changed in this review</th></tr></thead>
+      <tbody>
+        <tr><td>One simple action per game</td><td>Reach forward (Treasure Reach), brush back and forth (Fossil Brush), lift a hand (Bubble Pop).</td><td>No change.</td></tr>
+        <tr><td>No precise timing, no speed reward</td><td>No timers. Each completed movement counts the same, slow or fast. Bubbles wait until the hand comes up.</td><td>No change.</td></tr>
+        <tr><td>Low penalty for errors</td><td>No lives, no fail state, no score shown to the child. Uncertain gestures get a gentle hint.</td><td>No change.</td></tr>
+        <tr><td>Adapt to the child's ability</td><td>Calibrated comfortable reach. The caregiver's approved maximum is never exceeded. Bubble lift height is set by the caregiver and never grows by itself.</td><td>Caregiver sets the <b>affected hand</b>. Bubble Pop now gives it 2 of every 3 single bubbles, plus both-hands pairs.</td></tr>
+        <tr><td>Fatigue and comfort</td><td>Pause any time. Thermo sensor suggests a break in a warm room.</td><td>A <b>gentle break card</b> after 10 minutes of play (caregiver can set 5–20 or off). It has no countdown; the child chooses.</td></tr>
+        <tr><td>Show, then do (action observation)</td><td>Pip demonstrates the brush stroke before each new dig.</td><td>No change.</td></tr>
+        <tr><td>Practice dose visible to the caregiver</td><td>Session log on the board, parent website.</td><td><b>Today</b> counter in Grown-ups: completed reaches, strokes, bubble lifts (and how many used both hands), minutes played.</td></tr>
+        <tr><td>Setup a parent can manage</td><td>Sensor status and I2C scan in Grown-ups.</td><td>New hint when the distance sensor only sees its own window: "peel the film, wipe the window, keep 5 cm clear".</td></tr>
+        <tr><td>Readable, easy to press</td><td>Large buttons and spoken lines from Pip.</td><td>Break card uses 20 px text and a 56 px tall button.</td></tr>
+      </tbody>
+    </table>
+    <p class="note">Limits: these are design checks against published guidelines, not clinical evidence that our games work. We did not find studies that set an ideal session length for children with CP, so the 10-minute break is a cautious default, not a prescription. A therapist should set the approved reach, lift height and affected hand for each child.</p>
+  </section>
+
+  <section>
     <h2>What we still have to prove</h2>
     <ul style="margin:0;padding-left:20px;display:grid;gap:6px">
       <li><strong>Pilot with an OT:</strong> a small group of children with unilateral CP using one game at home for several weeks, measured with the AHA and COPM before and after.</li>
