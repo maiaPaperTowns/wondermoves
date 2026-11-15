@@ -38,7 +38,8 @@ window.FB = window.FB || {};
     star:      { name: 'a star', emoji: '⭐', d: 5, pts: () => { const o = []; for (let k = 0; k <= 5; k++) { const a = -Math.PI / 2 + k * (4 * Math.PI / 5); o.push([Math.cos(a) * 0.85, Math.sin(a) * 0.85 + 0.08]); } return o; } },
   };
 
-  /* Challenge tiers, one per rarity. Rarer treasure = longer / harder sequence. */
+  /* Shape sequence per rarity (the rarity is rolled from the dig site's odds).
+     Rarer treasure = longer / harder sequence. */
   const TIERS = [
     { rarity: 'common',    count: 2, pool: ['lineRight', 'lineDown', 'lineLeft', 'lineUp'], blurb: '2 straight lines' },
     { rarity: 'uncommon',  count: 3, pool: ['lineRight', 'lineDown', 'slide', 'rainbow', 'smile'], blurb: '3 lines & curves' },

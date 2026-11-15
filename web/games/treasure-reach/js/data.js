@@ -15,10 +15,18 @@ TR.TREASURES = [
   { id: 'trophy', name: 'Champion Cup', emoji: '🏆', w: 4,  image: null },
 ];
 
-/* Grown-up settings (defaults). */
+/* In-game difficulty: how far to reach (% of the child's own comfortable reach
+   from calibration) and how long to hold it. Kept within comfort: max 120%. */
+TR.DIFFICULTIES = [
+  { id: 'easy',   name: 'Easy',   emoji: '🐢', blurb: 'Little reach, quick hold', goalPct: 75,  holdMs: 300 },
+  { id: 'medium', name: 'Medium', emoji: '🦀', blurb: 'Comfy reach, hold a moment', goalPct: 95,  holdMs: 800 },
+  { id: 'hard',   name: 'Hard',   emoji: '🦈', blurb: 'Big reach, hold it steady', goalPct: 115, holdMs: 1500 },
+];
+TR.MAX_GOAL_PCT = 120;
+
+/* Settings (defaults). */
 TR.DEFAULTS = {
-  goalPct: 90,        // reach goal as % of the child's comfortable reach from calibration
-  holdMs: 300,        // how long the goal must be held (matches the Python protocol)
+  difficulty: 'easy',
   hands: 'either',    // 'either' hand counts, or 'both' hands must reach
   setSize: 5,         // chests per set before a celebration break
   restLevel: 0.25,    // hands must come back below this fraction of the goal before the next chest

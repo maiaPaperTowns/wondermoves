@@ -28,11 +28,12 @@
       <path class="island-hi" d="M200 640 C 360 560 560 540 720 538 C 880 540 1080 560 1240 640" fill="none"/>
     </svg>
     <div class="decor">
-      <span style="left:3%;top:36%;font-size:17vmin">🌴</span>
-      <span style="left:62%;top:30%;font-size:6vmin">⛵</span>
-      <span style="left:12%;top:20%;font-size:5vmin;animation-delay:-1s">🦜</span>
-      <span style="left:70%;top:82%;font-size:5vmin;animation-delay:-2s">🐚</span>
-      <span style="left:9%;top:84%;font-size:6vmin;animation-delay:-3s">🦀</span>
+      <!-- placed with `bottom` so they sit on the island -->
+      <span style="left:63%;bottom:22.5%;font-size:21vmin">🌴</span>
+      <span style="left:71.5%;bottom:calc(22.5% + 13vmin);font-size:5vmin;animation-delay:-1s">🦜</span>
+      <span style="left:27%;bottom:17%;font-size:6vmin;animation-delay:-2.5s">🪨</span>
+      <span style="left:36%;bottom:4%;font-size:6vmin;animation-delay:-3s">🦀</span>
+      <span style="left:58%;bottom:6%;font-size:5vmin;animation-delay:-2s">🐚</span>
     </div>
   </div>
 
@@ -85,6 +86,7 @@
       <span class="wm-emoji">💰</span>
       <span class="tp-name">Treasure Reach</span>
       <span class="set-dots" id="setDots" aria-label="Chests opened this set"></span>
+      <button class="level-chip" id="levelChip" aria-label="Change level"></button>
     </div>
     <div class="top-right">
       <button id="helpBtn" class="chunky-btn round help-btn" aria-label="How to play">?</button>
@@ -109,22 +111,6 @@
     <div class="rm-val" id="rmVal">0%</div>
   </aside>
 
-  <!-- ===== Camera panel: big for calibration, then docked bottom-left ===== -->
-  <section class="cam-panel calibrating" id="camPanel" aria-label="Camera">
-    <div class="cam-head">
-      <span class="cam-title">📷 Pip's camera</span>
-      <span class="cam-status" id="camStatus"></span>
-      <button class="cam-toggle" id="camHide" aria-label="Hide camera" title="Hide camera">👁️</button>
-    </div>
-    <div class="cam-view">
-      <video id="camVideo" playsinline muted></video>
-      <canvas id="camOverlay"></canvas>
-      <div class="cam-off"><span class="wm-emoji">📷</span><b id="camOffText">Camera is off</b></div>
-    </div>
-    <div class="cam-calib" id="camCalib"></div>
-  </section>
-  <button class="cam-pill" id="camShow">📷 Show camera</button>
-
   <!-- ===== Menu ===== -->
   <div class="drawer-backdrop" id="drawerBackdrop"></div>
   <nav class="drawer" id="drawer" aria-label="Menu">
@@ -138,22 +124,13 @@
       <button data-input="camera">📷 Camera</button>
       <button data-input="mouse">🖱️ Mouse</button>
     </div>
-    <button class="wm-btn primary" id="recalBtn">🎯 Redo reach setup</button>
+    <button class="wm-btn primary" id="drawerLevel">🐢🦀🦈 Change level</button>
+    <button class="wm-btn" id="recalBtn">🎯 Redo reach setup</button>
     <button class="wm-btn" id="drawerHelp">🎓 How to play</button>
 
     <details class="grownups" open>
       <summary>👪 For grown-ups</summary>
       <p class="gu-note" id="calibInfo"></p>
-      <div class="gu-row">
-        <label class="gu-label" for="goalPct">Reach goal <b id="goalPctVal">90%</b> of comfy reach</label>
-        <input type="range" id="goalPct" min="50" max="150" step="5">
-      </div>
-      <div class="gu-row">
-        <span class="gu-label">Hold at the goal for</span>
-        <div class="seg three" id="holdToggle">
-          <button data-hold="300">0.3 s</button><button data-hold="800">0.8 s</button><button data-hold="1500">1.5 s</button>
-        </div>
-      </div>
       <div class="gu-row">
         <span class="gu-label">Which hands count</span>
         <div class="seg two" id="handsToggle">
@@ -182,7 +159,25 @@
       <h2>Set complete!</h2>
       <p>You opened <b id="setCount">5</b> treasure chests!</p>
       <p class="set-best">Best reach: <b id="setBest">100%</b> of your goal</p>
-      <button class="wm-btn primary" id="setAgain">Keep going! 💰</button>
+      <div class="set-actions">
+        <button class="wm-btn" id="setLevel">🐢🦀🦈 Change level</button>
+        <button class="wm-btn primary" id="setAgain">Keep going! 💰</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Level picker ===== -->
+  <div class="modal" id="levelModal" role="dialog" aria-label="Pick a level">
+    <div class="panel level-panel wm-card">
+      <div class="level-head">
+        <img src="../../shared/assets/mascot.svg" alt="" class="level-pip">
+        <div>
+          <h2>How big a reach?</h2>
+          <p>Harder levels need a bigger reach and a longer hold.</p>
+        </div>
+      </div>
+      <div class="diff-grid" id="levelGrid"></div>
+      <button class="wm-btn primary level-go" id="levelGo">💰 Let's go!</button>
     </div>
   </div>
 
@@ -191,6 +186,7 @@
   <script src="../../shared/wm-sound.js"></script>
   <script src="../../shared/wm-pip.js"></script>
   <script src="../../shared/wm-hands.js"></script>
+  <script src="../../shared/wm-campanel.js"></script>
   <script src="js/data.js"></script>
   <script src="js/calib.js"></script>
   <script src="js/ui.js"></script>

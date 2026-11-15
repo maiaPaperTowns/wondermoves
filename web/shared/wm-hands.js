@@ -7,6 +7,8 @@
    Output (WM.Hands.latest), per side ('left' / 'right' = the player's hands):
      { x, y,        palm centre, 0..1, x already mirrored like a selfie view
        size,        palm size (fraction of image height), grows as the hand nears the camera
+       tip,         index fingertip {x, y}, mirrored like x
+       pointing,    true when only the index finger is stretched out
        landmarks }  21 raw MediaPipe points (not mirrored)
 
    Usage:
@@ -19,10 +21,10 @@ WM.Hands = (function () {
   const VERSION = '0.10.14';
   const CDN = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${VERSION}`;
   const MODEL = 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task';
-  // MediaPipe labels handedness as if the image were a mirrored selfie. We feed raw
-  // camera frames, so its "Left" is the player's right hand. Flip this if a camera
-  // already mirrors its output.
-  const SWAP_HANDEDNESS = true;
+  // MediaPipe's left/right labels match the player's own hands for a normal
+  // (unmirrored) webcam feed, confirmed on a real camera. Set to true only if a
+  // camera mirrors its own output and the colours come out swapped.
+  const SWAP_HANDEDNESS = false;
   const SMOOTH = 0.45;      // 0..1, higher = more responsive, lower = steadier
   const GRACE_MS = 250;     // keep a hand through brief detection dropouts
   const COLORS = { left: '#FF5A5F', right: '#4DA3FF' };
@@ -105,8 +107,12 @@ WM.Hands = (function () {
       if (cat && SWAP_HANDEDNESS) side = side === 'left' ? 'right' : 'left';
       if (found[side]) side = side === 'left' ? 'right' : 'left'; // two hands with the same label
       if (found[side]) return;
+      // a finger is stretched out when its tip is clearly farther from the wrist than its middle joint
+      const ext = (tip, pip) => dist(lm[0], lm[tip], asp) > dist(lm[0], lm[pip], asp) * 1.12;
       found[side] = {
         x: 1 - cx, y: cy,
+        tip: { x: 1 - lm[8].x, y: lm[8].y },
+        pointing: ext(8, 6) && !ext(12, 10) && !ext(16, 14),
         size: (dist(lm[0], lm[9], asp) + dist(lm[5], lm[17], asp)) / 2,
         score: cat ? cat.score : 1,
         landmarks: lm,
@@ -125,8 +131,9 @@ WM.Hands = (function () {
         h.x = p.x + (h.x - p.x) * SMOOTH;
         h.y = p.y + (h.y - p.y) * SMOOTH;
         h.size = p.size + (h.size - p.size) * SMOOTH;
+        h.tip = { x: p.tip.x + (h.tip.x - p.tip.x) * SMOOTH, y: p.tip.y + (h.tip.y - p.tip.y) * SMOOTH };
       }
-      smooth[s] = { x: h.x, y: h.y, size: h.size };
+      smooth[s] = { x: h.x, y: h.y, size: h.size, tip: h.tip };
       latest[s] = h;
     });
 

@@ -18,7 +18,7 @@ window.FB = window.FB || {};
   /* ---------------- layer bookkeeping ---------------- */
   const UI = FB.UI = {
     open: new Set(),
-    blocking() { return this.open.size > 0; },
+    blocking() { return this.open.size > 0 || !!(FB.Cam && FB.Cam.active); },
   };
   function openLayer(sel) { $(sel).classList.add('open'); $(sel).setAttribute('aria-hidden', 'false'); UI.open.add(sel); }
   function closeLayer(sel) { $(sel).classList.remove('open'); $(sel).setAttribute('aria-hidden', 'true'); UI.open.delete(sel); }
@@ -76,7 +76,7 @@ window.FB = window.FB || {};
       b.classList.remove('talk'); void b.offsetWidth;
       b.classList.add('show', 'talk');
       clearTimeout(this.timer);
-      this.timer = setTimeout(() => b.classList.remove('show'), ms);
+      if (ms > 0) this.timer = setTimeout(() => b.classList.remove('show'), ms); // ms = 0: stay until the next line
     },
     hide() { clearTimeout(this.timer); $('#buddy').classList.remove('show'); },
   };
@@ -137,10 +137,11 @@ window.FB = window.FB || {};
       const mode = FB.Game.mode;
       $$('#modeToggle [data-mode]').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
       $('#modeHint').textContent = mode === 'trace'
-        ? 'Copy the shapes Pip draws to dig. Harder shapes unlock rarer treasures!'
+        ? 'Copy the shapes Pip draws to dig. Rarer treasures need more shapes!'
         : 'Brush the sand any way you like.';
       $$('#tolToggle [data-tol]').forEach(b => b.classList.toggle('active', b.dataset.tol === FB.Store.data.tolerance));
-      $('#unlockAll').checked = !!FB.Store.data.unlockAll;
+      $$('#inputToggle [data-input]').forEach(b => b.classList.toggle('active', b.dataset.input === (FB.Store.data.input || 'touch')));
+      $('#camRecal').hidden = FB.Store.data.input !== 'camera';
       const log = FB.Store.data.traceLog;
       if (log.length) {
         const recent = log.slice(-20);
@@ -152,32 +153,6 @@ window.FB = window.FB || {};
     },
     open() { this.render(); this.renderSettings(); openLayer('#drawer'); $('#drawerBackdrop').classList.add('open'); },
     close() { closeLayer('#drawer'); $('#drawerBackdrop').classList.remove('open'); },
-  };
-
-  /* ---------------- Copy Pip: challenge picker ---------------- */
-  const Challenge = FB.Challenge = {
-    open() { this.render(); openLayer('#challengeModal'); },
-    close() { closeLayer('#challengeModal'); },
-    render() {
-      $('#chMascot').src = FB.MASCOT.image;
-      $('#chSite').textContent = `${FB.Game.level.emoji} ${FB.Game.level.name}`;
-      $('#chGrid').innerHTML = FB.TRACE.TIERS.map((tier, i) => {
-        const r = FB.rarityById(tier.rarity);
-        const open = FB.Store.tierUnlocked(i);
-        const prev = i > 0 ? FB.RARITIES[i - 1] : null;
-        const thumbs = tier.pool.slice(0, 3).map(k => FB.TRACE.thumb(k)).join('');
-        return `
-        <button class="challenge-card ${open ? '' : 'locked'}" data-tier="${i}" style="--rc:${r.color};--rd:${r.deep}"
-          aria-label="${r.name} challenge: ${tier.blurb}${open ? '' : ' (locked)'}">
-          <span class="ch-icon">${r.icon}</span>
-          <span class="ch-name">${r.name}</span>
-          <span class="stars">${starStr(r.stars)}</span>
-          <span class="ch-thumbs">${thumbs}</span>
-          <span class="ch-blurb">${tier.blurb}</span>
-          ${open ? '' : `<span class="ch-lock">🔒 Finish ${/^[AEIOU]/.test(prev.name) ? 'an' : 'a'} ${prev.name} dig to unlock</span>`}
-        </button>`;
-      }).join('');
-    },
   };
 
   /* ---------------- Catalog ---------------- */
@@ -262,10 +237,8 @@ window.FB = window.FB || {};
       $('#foundDepth').textContent = `Found ${Math.round(depth)} m deep!`;
       $('#foundFact').textContent = item.fact;
       $('#foundTrace').hidden = !extra;
-      $('#foundUnlock').hidden = !(extra && extra.unlocked);
       if (extra) {
         $('#foundTrace').innerHTML = `✏️ ${extra.shapes} shape${extra.shapes === 1 ? '' : 's'} traced · <span class="trace-stars">${'★'.repeat(extra.stars)}${'☆'.repeat(3 - extra.stars)}</span> ${extra.msg}`;
-        if (extra.unlocked) $('#foundUnlock').innerHTML = `🔓 New challenge unlocked: <b>${extra.unlocked.icon} ${extra.unlocked.name}</b>!`;
       }
       openLayer('#foundModal');
       setTimeout(() => $('#foundAgain').focus(), 300);
@@ -315,6 +288,7 @@ window.FB = window.FB || {};
       closeLayer('#tutorial');
       if (!FB.Store.data.tutorialDone) { FB.Store.data.tutorialDone = true; FB.Store.save(); }
       if (FB.Game && FB.Game.state === 'digging' && FB.Game.mode === 'free') Buddy.say('Your turn! Brush the sand! 🖌️');
+      else if (FB.Game && FB.Game.state === 'digging') FB.Trace.replay();
     },
     next() {
       if (this.finishTyping()) return;
@@ -425,9 +399,13 @@ window.FB = window.FB || {};
       FB.Trace.relayout();
       Menu.renderSettings();
     });
-    $('#unlockAll').addEventListener('change', e => {
-      FB.Store.data.unlockAll = e.target.checked; FB.Store.save();
+    $('#inputToggle').addEventListener('click', e => {
+      const b = e.target.closest('[data-input]');
+      if (!b || b.dataset.input === (FB.Store.data.input || 'touch')) return;
+      Menu.close();
+      if (b.dataset.input === 'camera') FB.Cam.open(); else FB.Cam.off();
     });
+    $('#camRecal').addEventListener('click', () => { Menu.close(); FB.Cam.open(); });
     $('#exportLog').addEventListener('click', () => {
       const blob = new Blob([JSON.stringify(FB.Store.data.traceLog, null, 2)], { type: 'application/json' });
       const a = document.createElement('a');
@@ -437,19 +415,6 @@ window.FB = window.FB || {};
       setTimeout(() => URL.revokeObjectURL(a.href), 1000);
     });
 
-    $('#chGrid').addEventListener('click', e => {
-      const c = e.target.closest('[data-tier]');
-      if (!c) return;
-      const t = +c.dataset.tier;
-      if (!FB.Store.tierUnlocked(t)) {
-        c.classList.remove('shake'); void c.offsetWidth; c.classList.add('shake');
-        return;
-      }
-      Challenge.close();
-      FB.Game.startTrace(t);
-    });
-    $('#chSites').addEventListener('click', () => { Challenge.close(); Menu.open(); });
-    $('#chFree').addEventListener('click', () => { Challenge.close(); FB.Game.setMode('free'); });
     $('#traceReplay').addEventListener('click', () => FB.Trace.replay());
 
     $('#catalogBtn').addEventListener('click', () => Catalog.open());

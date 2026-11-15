@@ -1,5 +1,6 @@
 /* ==========================================================================
-   Treasure Reach: UI (camera panel, menu + grown-up settings, set card, tutorial).
+   Treasure Reach: UI (level picker, menu + grown-up settings, set card, tutorial).
+   The camera window itself is the shared WM.CamPanel.
    ========================================================================== */
 window.TR = window.TR || {};
 
@@ -7,42 +8,39 @@ window.TR = window.TR || {};
   const $ = s => document.querySelector(s);
   const $$ = s => [...document.querySelectorAll(s)];
 
-  /* ---------------- camera panel ---------------- */
-  const Panel = TR.Panel = {
-    el: null,
-    init() { this.el = $('#camPanel'); this.applyHidden(); },
-    calibrating() {
-      document.body.classList.add('calibrating');
-      this.el.classList.add('calibrating');
-      this.el.classList.remove('docked');
-      $('#camShow').classList.remove('show');
-      this.el.classList.remove('collapsed');
-    },
-    dock() {
-      document.body.classList.remove('calibrating');
-      this.el.classList.remove('calibrating');
-      this.el.classList.add('docked');
-      this.applyHidden();
-    },
-    cameraOn(on) {
-      this.el.classList.toggle('cam-live', on);
-      $('#camOffText').textContent = on ? '' : (TR.Store.data.inputMode === 'mouse' ? 'Using the mouse' : 'Camera is off');
-    },
-    applyHidden() {
-      const hidden = !!TR.Store.data.camHidden && this.el.classList.contains('docked');
-      this.el.classList.toggle('collapsed', hidden);
-      $('#camShow').classList.toggle('show', hidden);
-    },
-    setHidden(h) { TR.Store.data.camHidden = h; TR.Store.save(); this.applyHidden(); },
-  };
-
   /* ---------------- layers ---------------- */
   const UI = TR.UI = {
     open: new Set(),
-    blocking() { return this.open.size > 0 || WM.Tutorial.isOpen() || TR.Calib.active; },
+    tabHidden: false,
+    blocking() { return this.open.size > 0 || WM.Tutorial.isOpen() || TR.Calib.active || this.tabHidden; },
   };
-  function openLayer(sel) { $(sel).classList.add('open'); UI.open.add(sel); }
-  function closeLayer(sel) { $(sel).classList.remove('open'); UI.open.delete(sel); }
+  const openLayer = sel => { $(sel).classList.add('open'); UI.open.add(sel); };
+  const closeLayer = sel => { $(sel).classList.remove('open'); UI.open.delete(sel); };
+
+  /** Current difficulty, with the reach goal capped within comfort. */
+  TR.level = function () {
+    const d = TR.DIFFICULTIES.find(x => x.id === TR.Store.s.difficulty) || TR.DIFFICULTIES[0];
+    return Object.assign({}, d, { goalPct: Math.min(TR.MAX_GOAL_PCT, d.goalPct) });
+  };
+
+  UI.updateLevelChip = function () {
+    const d = TR.level();
+    $('#levelChip').innerHTML = `<span class="wm-emoji">${d.emoji}</span><span class="lc-name">${d.name}</span>`;
+  };
+
+  /* ---------------- level picker ---------------- */
+  UI.openLevels = function () {
+    const cur = TR.Store.s.difficulty;
+    $('#levelGrid').innerHTML = TR.DIFFICULTIES.map(d => `
+      <button class="diff-card ${d.id === cur ? 'active' : ''}" data-diff="${d.id}">
+        <span class="diff-emoji wm-emoji">${d.emoji}</span>
+        <span class="diff-name">${d.name}</span>
+        <span class="diff-blurb">${d.blurb}</span>
+        <span class="diff-meta">Reach ${Math.min(TR.MAX_GOAL_PCT, d.goalPct)}% · hold ${(d.holdMs / 1000).toFixed(1)} s</span>
+      </button>`).join('');
+    openLayer('#levelModal');
+  };
+  UI.closeLevels = () => closeLayer('#levelModal');
 
   /* ---------------- menu / settings ---------------- */
   const Menu = TR.Menu = {
@@ -51,14 +49,11 @@ window.TR = window.TR || {};
     render() {
       const d = TR.Store.data, s = TR.Store.s;
       $$('#inputToggle [data-input]').forEach(b => b.classList.toggle('active', b.dataset.input === d.inputMode));
-      $('#goalPct').value = s.goalPct;
-      $('#goalPctVal').textContent = s.goalPct + '%';
-      $$('#holdToggle [data-hold]').forEach(b => b.classList.toggle('active', +b.dataset.hold === s.holdMs));
       $$('#handsToggle [data-hands]').forEach(b => b.classList.toggle('active', b.dataset.hands === s.hands));
       $$('#setToggle [data-set]').forEach(b => b.classList.toggle('active', +b.dataset.set === s.setSize));
       const c = d.calib;
-      $('#calibInfo').textContent = c
-        ? `Comfy reach: palm grows ${Math.round(c.goal * 100)}% (set ${new Date(c.at).toLocaleDateString()})`
+      $('#calibInfo').textContent = c && c.dir
+        ? `Reach setup saved ${new Date(c.at).toLocaleDateString()} (${c.reps.length} reaches).`
         : 'No reach setup yet.';
       const log = d.log;
       if (log.length) {
@@ -91,23 +86,23 @@ window.TR = window.TR || {};
       { text: mouse ? 'This chest is locked tight! Move the blue circle up to it to open it. 🖱️' : 'This chest is locked tight! Reach toward the screen to open it. 🙌', target: '#chest', round: true, pad: 4 },
       { text: mouse ? 'The blue circle is your hand. Bring it all the way to the chest! 🔵' : 'Your hands are the glowing circles: red for your left hand, blue for your right. They float to the chest as you reach! 🔴🔵', target: null },
       { text: 'This bar fills up as you reach. Fill it to the star and hold it for a moment! ⭐', target: '#reachMeter' },
+      { text: 'Tap here to pick Easy, Medium or Hard. Harder means a bigger reach and a longer hold! 🐢🦀🦈', target: '#levelChip', pad: 8 },
       { text: 'Then bring your hands back to rest, and a new chest appears. 🔁', target: '#setDots', pad: 12 },
-      { text: 'This is my camera window. Tap the eye to hide it or show it. 📷', target: '#camPanel' },
-      { text: 'Grown-ups can redo the reach setup or change the goal in the Menu. ⚙️', target: '#menuBtn' },
+      { text: 'This is my camera window. Tap the eye to hide it or show it. 📷', target: '#wmCam' },
+      { text: 'Grown-ups can redo the reach setup and change settings in the Menu. ⚙️', target: '#menuBtn' },
       { text: 'Need help? Tap ? and I\'ll come right back. Let\'s find treasure! 🎉', target: '#helpBtn' },
     ];
   };
-  TR.openTutorial = function () {
+  TR.openTutorial = function (then) {
     WM.Tutorial.open(TR.tutorialSteps(), {
       doneLabel: "Let's go! 💰",
       onClose: () => {
         if (!TR.Store.data.tutorialDone) { TR.Store.data.tutorialDone = true; TR.Store.save(); }
-        TR.Game.nudge(true);
+        if (then) then(); else TR.Game.nudge(true);
       },
     });
   };
 
-  /* ---------------- sound button ---------------- */
   function updateSoundBtn() {
     const m = WM.Sound.muted;
     $('#soundBtn').textContent = m ? '🔇' : '🔊';
@@ -116,8 +111,8 @@ window.TR = window.TR || {};
 
   /* ---------------- wiring ---------------- */
   UI.init = function () {
-    Panel.init();
     updateSoundBtn();
+    UI.updateLevelChip();
     document.addEventListener('click', e => { if (e.target.closest('button') && !e.target.closest('[data-cal],[data-act]')) WM.Sound.click(); });
 
     $('#menuBtn').addEventListener('click', () => Menu.open());
@@ -131,8 +126,19 @@ window.TR = window.TR || {};
       updateSoundBtn();
     });
 
-    $('#camHide').addEventListener('click', () => Panel.setHidden(true));
-    $('#camShow').addEventListener('click', () => Panel.setHidden(false));
+    $('#levelChip').addEventListener('click', () => UI.openLevels());
+    $('#levelGrid').addEventListener('click', e => {
+      const b = e.target.closest('[data-diff]');
+      if (!b) return;
+      TR.Store.s.difficulty = b.dataset.diff; TR.Store.save();
+      $$('#levelGrid [data-diff]').forEach(x => x.classList.toggle('active', x === b));
+    });
+    $('#levelGo').addEventListener('click', () => {
+      UI.closeLevels();
+      UI.updateLevelChip();
+      const d = TR.level();
+      WM.Buddy.say(`${d.emoji} ${d.name}! Reach to the star and hold for ${(d.holdMs / 1000).toFixed(1)} seconds!`, 3500);
+    });
 
     $('#inputToggle').addEventListener('click', e => {
       const b = e.target.closest('[data-input]');
@@ -142,12 +148,9 @@ window.TR = window.TR || {};
       else TR.Calib.open(false);
     });
     $('#recalBtn').addEventListener('click', () => { Menu.close(); TR.Calib.open(true); });
+    $('#drawerLevel').addEventListener('click', () => { Menu.close(); UI.openLevels(); });
     $('#drawerHelp').addEventListener('click', () => { Menu.close(); TR.openTutorial(); });
 
-    $('#goalPct').addEventListener('input', e => {
-      TR.Store.s.goalPct = +e.target.value; TR.Store.save();
-      $('#goalPctVal').textContent = e.target.value + '%';
-    });
     const seg = (sel, attr, key, cast) => $(sel).addEventListener('click', e => {
       const b = e.target.closest(`[data-${attr}]`);
       if (!b) return;
@@ -155,7 +158,6 @@ window.TR = window.TR || {};
       Menu.render();
       if (key === 'setSize') TR.Game.renderDots();
     });
-    seg('#holdToggle', 'hold', 'holdMs', Number);
     seg('#handsToggle', 'hands', 'hands', String);
     seg('#setToggle', 'set', 'setSize', Number);
 
@@ -175,10 +177,12 @@ window.TR = window.TR || {};
       Object.assign(TR.Store.data, keep);
       TR.Store.save();
       Menu.close();
+      UI.updateLevelChip();
       TR.Calib.open(true);
     });
 
     $('#setAgain').addEventListener('click', () => { TR.SetCard.close(); TR.Game.nudge(true); });
+    $('#setLevel').addEventListener('click', () => { TR.SetCard.close(); UI.openLevels(); });
 
     document.addEventListener('keydown', e => {
       if (e.key !== 'Escape') return;

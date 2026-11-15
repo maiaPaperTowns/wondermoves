@@ -12,10 +12,10 @@
 
   TR.Store.load();
   WM.Sound.setMuted(!!TR.Store.data.muted);
+  WM.CamPanel.mount({ storageKey: 'treasureReach.camHidden' });
 
   const fx = $('#fx'), ctx = fx.getContext('2d');
   const chest = $('#chest'), anchor = $('#chestAnchor');
-  const camCanvas = $('#camOverlay'), camCtx = camCanvas.getContext('2d');
   let W = 0, H = 0, dpr = 1, chestC = { x: 0, y: 0, r: 100 };
 
   const hexA = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`; };
@@ -25,7 +25,7 @@
     p: { left: null, right: null },
     bar: 0, shown: 0, hold: 0, openT: 0,
     setCount: 0, setBest: 0, pendingSet: false,
-    peak: 0, peakGrowth: 0, peakSide: null, repStart: 0,
+    peak: 0, peakReach: 0, peakSide: null, repStart: 0,
     said: {}, lostSince: 0, lostSaidAt: 0,
     armed: false,             // a reach only counts after the hands have been at rest
     mouse: { x: 0, y: 0, active: false },
@@ -35,24 +35,26 @@
     get mode() { return TR.Store.data.inputMode; },
 
     afterCalibration() {
-      TR.Panel.dock();
-      TR.Panel.cameraOn(WM.Hands.running);
+      WM.CamPanel.dock();
+      WM.CamPanel.cameraOn(WM.Hands.running);
+      this.startPlay();
+    },
+
+    /** First time: tutorial, then pick a level. Otherwise straight to the level picker. */
+    startPlay() {
       this.state = 'rest';
       this.resetRep();
-      if (!TR.Store.data.tutorialDone) setTimeout(() => TR.openTutorial(), 600);
-      else this.nudge(true);
+      if (!TR.Store.data.tutorialDone) setTimeout(() => TR.openTutorial(() => TR.UI.openLevels()), 500);
+      else TR.UI.openLevels();
     },
 
     useMouse() {
       WM.Hands.stop();
       TR.Calib.active = false;
       TR.Store.data.inputMode = 'mouse'; TR.Store.save();
-      TR.Panel.dock();
-      TR.Panel.cameraOn(false);
-      this.state = 'rest';
-      this.resetRep();
-      if (!TR.Store.data.tutorialDone) setTimeout(() => TR.openTutorial(), 400);
-      else this.nudge(true);
+      WM.CamPanel.dock();
+      WM.CamPanel.cameraOn(false, 'Using the mouse');
+      this.startPlay();
     },
 
     nudge(force) {
@@ -61,7 +63,7 @@
     },
 
     resetRep() {
-      this.hold = 0; this.peak = 0; this.peakGrowth = 0; this.peakSide = null; this.repStart = 0;
+      this.hold = 0; this.peak = 0; this.peakReach = 0; this.peakSide = null; this.repStart = 0;
       this.said = {};
     },
 
@@ -74,14 +76,13 @@
         const d = Math.hypot(this.mouse.x - chestC.x, this.mouse.y - chestC.y);
         return { left: null, right: clamp((far - d) / (far - near), 0, 1.25) };
       }
-      const c = TR.Store.data.calib;
-      const goal = Math.max(0.04, (c ? c.goal : 0.25) * TR.Store.s.goalPct / 100);
+      const goalFrac = TR.level().goalPct / 100;
       const L = WM.Hands.latest, out = { left: null, right: null };
       ['left', 'right'].forEach(s => {
-        const g = TR.growth(s, L[s]);
-        if (g != null) {
-          out[s] = clamp(g / goal, 0, 1.25);
-          if (this.state === 'rest' || this.state === 'holding') this.peakGrowth = Math.max(this.peakGrowth, g);
+        const r = TR.reachAmount(s, L[s]); // 1 = calibrated comfy reach
+        if (r != null) {
+          out[s] = clamp(r / goalFrac, 0, 1.25);
+          if (this.state === 'rest' || this.state === 'holding') this.peakReach = Math.max(this.peakReach, r);
         }
       });
       return out;
@@ -127,7 +128,7 @@
       } else if (this.state === 'holding') {
         if (bar >= 0.95) {
           this.hold += dt * 1000;
-          if (this.hold >= s.holdMs) this.openChest();
+          if (this.hold >= TR.level().holdMs) this.openChest();
         } else { this.state = 'rest'; this.hold = 0; }
       } else if (this.state === 'open') {
         this.openT += dt;
@@ -174,11 +175,11 @@
         mode: this.mode,
         hands: TR.Store.s.hands,
         side: this.peakSide,
-        peak: +this.peak.toFixed(2),                 // fraction of goal reached (1 = goal)
-        peakGrowth: +this.peakGrowth.toFixed(3),     // palm growth vs. rest (camera only)
-        goal: d.calib ? +d.calib.goal.toFixed(3) : null,
-        goalPct: TR.Store.s.goalPct,
-        holdMs: TR.Store.s.holdMs,
+        difficulty: TR.level().id,
+        peak: +this.peak.toFixed(2),                 // fraction of the level's goal reached (1 = goal)
+        peakReach: +this.peakReach.toFixed(2),       // fraction of the calibrated comfy reach (camera only)
+        goalPct: TR.level().goalPct,
+        holdMs: TR.level().holdMs,
         ms: Math.round(performance.now() - (this.repStart || performance.now())),
         prize: prize.id,
       });
@@ -228,7 +229,7 @@
       el.classList.toggle('show', p != null && Game.state !== 'open');
       if (p != null) el.style.bottom = Math.min(1, p) * 100 + '%';
     });
-    const hf = Game.state === 'holding' ? Math.min(1, Game.hold / TR.Store.s.holdMs) : Game.state === 'open' ? 1 : 0;
+    const hf = Game.state === 'holding' ? Math.min(1, Game.hold / TR.level().holdMs) : Game.state === 'open' ? 1 : 0;
     rmHold.style.strokeDashoffset = String(100 - hf * 100);
     const k = Game.state === 'open' || Game.state === 'return' ? 0 : clamp((Game.shown - 0.5) / 0.5, 0, 1);
     chest.style.setProperty('--p', Math.min(1, Game.shown).toFixed(3));
@@ -343,17 +344,7 @@
   }
 
   function drawCamOverlay() {
-    const panel = TR.Panel.el;
-    if (!WM.Hands.running || panel.classList.contains('collapsed')) return;
-    const w = camCanvas.clientWidth, h = camCanvas.clientHeight;
-    if (!w || !h) return;
-    if (camCanvas.width !== Math.round(w * dpr)) { camCanvas.width = Math.round(w * dpr); camCanvas.height = Math.round(h * dpr); }
-    camCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    WM.Hands.drawOverlay(camCtx, w, h);
-    const st = $('#camStatus');
-    const n = ['left', 'right'].filter(s => WM.Hands.latest[s]).length;
-    const txt = n === 2 ? '🙌 2 hands' : n === 1 ? '✋ 1 hand' : '👀 looking…';
-    if (st.textContent !== txt) st.textContent = txt;
+    WM.CamPanel.draw((c, w, h) => TR.Calib.drawExtra(c, w, h));
   }
 
   /* ---------------- layout + input ---------------- */
@@ -374,6 +365,7 @@
 
   // pause tracking while another WonderMoves tab is showing
   WM.bridge.onVisibility(v => {
+    TR.UI.tabHidden = !v;
     WM.Hands.pause(!v);
     WM.Sound.setMuted(v ? !!TR.Store.data.muted : true);
   });
@@ -395,11 +387,6 @@
     }
   }
 
-  // match the camera box to the camera's real shape so the overlay lines up
-  $('#camVideo').addEventListener('loadedmetadata', e => {
-    const v = e.target;
-    if (v.videoWidth && v.videoHeight) document.querySelector('.cam-view').style.aspectRatio = v.videoWidth + ' / ' + v.videoHeight;
-  });
   // let the idle wiggle resume after the "new chest" bounce
   chest.addEventListener('animationend', e => { if (e.animationName === 'chestFresh') chest.classList.remove('fresh'); });
 

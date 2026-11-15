@@ -85,31 +85,24 @@
 
     newDig() {
       this.resetDig();
-      if (this.mode === 'trace') {
-        // show a fresh pile behind the challenge picker; the real treasure is chosen with the tier
-        this.state = 'choosing';
-        this.item = pickItem(this.level);
-        this.depth = depthFor(this.item);
-        site.setup(this.level, this.item, this.depth, (Math.random() * 1e9) | 0);
-        return; // the game loop opens the challenge picker
-      }
+      // rarity is rolled from the dig site's odds; in Copy Pip the rarity sets
+      // how many / how tricky the shapes are (rarer = longer sequence)
       this.item = pickItem(this.level);
       this.depth = depthFor(this.item);
       this.state = 'digging';
       site.setup(this.level, this.item, this.depth, (Math.random() * 1e9) | 0);
+      if (this.mode === 'trace') {
+        this.tier = FB.rarityIndex(this.item.rarity);
+        FB.Trace.start(this.tier);
+        return;
+      }
       if (!FB.UI.blocking()) FB.Buddy.say(pick(FB.LINES.start));
     },
 
-    /** Copy Pip: start a dig for the chosen challenge tier. */
-    startTrace(tierIdx) {
-      this.resetDig();
-      const tier = FB.TRACE.TIERS[tierIdx];
-      this.tier = tierIdx;
-      this.item = pickItemOfRarity(this.level, FB.rarityIndex(tier.rarity));
-      this.depth = depthFor(this.item);
-      this.state = 'digging';
-      site.setup(this.level, this.item, this.depth, (Math.random() * 1e9) | 0);
-      FB.Trace.start(tierIdx);
+    /** Camera setup finished (or switched back to touch). */
+    cameraDone() {
+      if (!FB.Store.data.tutorialDone) { setTimeout(() => FB.Tutorial.open(), 400); return; }
+      if (this.mode === 'trace' && this.state === 'digging') FB.Trace.replay();
     },
 
     updateDepth() {
@@ -146,7 +139,6 @@
       let extra = null;
       if (this.mode === 'trace') {
         extra = FB.Trace.summary();
-        extra.unlocked = FB.Store.unlockAfter(this.tier);
         FB.Trace.stop();
       }
       FB.Sound.brush(0);
@@ -206,8 +198,61 @@
   }
   window.addEventListener('resize', layout);
 
-  /* ---------------- input ---------------- */
-  let down = false, last = null, pointerId = null;
+  /* ---------------- input (touch / mouse / camera finger all go through these) ---------------- */
+  let down = false, last = null, pointerId = null, camDown = false;
+
+  function inputDown(x, y) {
+    FB.Sound.ensure();
+    if (!Game.canDig() || down) return false;
+    down = true;
+    last = { x, y };
+    moveCursor(x, y);
+    cursor.classList.add('brushing');
+    if (Game.mode === 'trace') { FB.Trace.onDown(x, y); return true; }
+    const removed = site.tap(x, y, Game.params());
+    if (removed > 0) { site.spawnDust(x, y, 0, -1, 4); Game.lastBrushAt = performance.now(); hideHand(); Game.afterBrush(); }
+    return true;
+  }
+
+  function inputMove(x, y) {
+    moveCursor(x, y);
+    if (!down || !Game.canDig()) return;
+    if (Game.mode === 'trace') { FB.Trace.onMove(x, y); last = { x, y }; return; }
+    const dx = x - last.x, dy = y - last.y;
+    const removed = site.brushStroke(last.x, last.y, x, y, Game.params());
+    if (removed > 0.02) {
+      site.spawnDust(x, y, dx, dy, Math.min(6, 1 + Math.round(removed * 0.4)));
+      FB.Sound.brush(Math.min(0.3, Math.hypot(dx, dy) / 90));
+      Game.lastBrushAt = performance.now();
+      hideHand();
+      Game.afterBrush();
+    }
+    last = { x, y };
+  }
+
+  function inputUp() {
+    if (!down) return;
+    down = false;
+    FB.Trace.onUp();
+    cursor.classList.remove('brushing');
+  }
+
+  /** Camera play: the fingertip drives the brush; pointing = brush on the sand. */
+  function cameraInput() {
+    const f = FB.Cam.finger();
+    cursor.classList.toggle('finger', !!f);
+    if (!f) {
+      if (camDown) { inputUp(); camDown = false; }
+      if (pointerId == null) cursor.classList.remove('show');
+      return;
+    }
+    cursor.classList.add('show');
+    cursor.classList.toggle('lifted', !f.pen);
+    if (f.pen && !camDown && pointerId == null) camDown = inputDown(f.x, f.y);
+    else if (f.pen && camDown) inputMove(f.x, f.y);
+    else if (!f.pen && camDown) { inputUp(); camDown = false; }
+    else moveCursor(f.x, f.y);
+  }
 
   function moveCursor(x, y) {
     cursor.style.transform = `translate(${x - 6}px, ${y - 58}px)`;
@@ -220,46 +265,22 @@
   }
 
   canvas.addEventListener('pointerdown', e => {
-    FB.Sound.ensure();
-    if (!Game.canDig() || down) return;
-    down = true; pointerId = e.pointerId;
+    if (camDown || !inputDown(e.clientX, e.clientY)) return;
+    pointerId = e.pointerId;
     try { canvas.setPointerCapture(e.pointerId); } catch (_) { /* ignore */ }
-    last = { x: e.clientX, y: e.clientY };
-    moveCursor(last.x, last.y);
     updateCursorVisibility(e);
-    cursor.classList.add('brushing');
-
-    if (Game.mode === 'trace') { FB.Trace.onDown(last.x, last.y); return; }
-
-    const removed = site.tap(last.x, last.y, Game.params());
-    if (removed > 0) { site.spawnDust(last.x, last.y, 0, -1, 4); Game.lastBrushAt = performance.now(); hideHand(); Game.afterBrush(); }
   });
 
   canvas.addEventListener('pointermove', e => {
-    moveCursor(e.clientX, e.clientY);
-    updateCursorVisibility(e);
-    if (!down || e.pointerId !== pointerId || !Game.canDig()) return;
-    const x = e.clientX, y = e.clientY;
-
-    if (Game.mode === 'trace') { FB.Trace.onMove(x, y); last = { x, y }; return; }
-
-    const dx = x - last.x, dy = y - last.y;
-    const removed = site.brushStroke(last.x, last.y, x, y, Game.params());
-    if (removed > 0.02) {
-      site.spawnDust(x, y, dx, dy, Math.min(6, 1 + Math.round(removed * 0.4)));
-      FB.Sound.brush(Math.min(0.3, Math.hypot(dx, dy) / 90));
-      Game.lastBrushAt = performance.now();
-      hideHand();
-      Game.afterBrush();
-    }
-    last = { x, y };
+    if (camDown) return;
+    if (pointerId == null || e.pointerId === pointerId) { moveCursor(e.clientX, e.clientY); updateCursorVisibility(e); }
+    if (e.pointerId === pointerId) inputMove(e.clientX, e.clientY);
   });
 
   function endStroke(e) {
     if (e.pointerId !== pointerId) return;
-    down = false; pointerId = null;
-    FB.Trace.onUp();
-    cursor.classList.remove('brushing');
+    pointerId = null;
+    inputUp();
     if (e.pointerType !== 'mouse') cursor.classList.remove('show');
   }
   canvas.addEventListener('pointerup', endStroke);
@@ -283,10 +304,13 @@
     lastT = t;
     const blocking = FB.UI.blocking();
 
+    if (FB.Cam.active) FB.Cam.update(dt);
+    if (FB.Cam.playing() && !blocking) cameraInput();
+    else if (camDown) { inputUp(); camDown = false; }
+
     if (Game.mode === 'trace') {
-      FB.Trace.update(dt);
+      if (!blocking) FB.Trace.update(dt);
       if (Game.state === 'digging') Game.updateDepth();
-      if (Game.state === 'choosing' && !blocking && FB.Store.data.tutorialDone) FB.Challenge.open();
     }
 
     Game.shown += (Game.target - Game.shown) * Math.min(1, dt * 6);
@@ -294,6 +318,7 @@
     site.update(dt);
     site.draw();
     FB.Trace.draw(site.ctx);
+    if (WM.CamPanel.el) WM.CamPanel.draw((c, w, h) => FB.Cam.drawExtra(c, w, h));
 
     if (Game.mode === 'free' && Game.state === 'digging' && !blocking) {
       if (!Game.lastBrushAt && t - Game.startAt > 4500) showHand();
@@ -315,6 +340,7 @@
     if (!m || m.source !== 'wondermoves' || m.type !== 'visibility') return;
     FB.Sound.setMuted(m.visible ? !!FB.Store.data.muted : true);
     if (!m.visible) FB.Sound.brush(0);
+    WM.Hands.pause(!m.visible);
   });
 
   /* ---------------- boot ---------------- */
@@ -322,5 +348,6 @@
   layout();
   Game.setLevel(FB.Store.data.level);
   requestAnimationFrame(frame);
-  if (!FB.Store.data.tutorialDone) setTimeout(() => FB.Tutorial.open(), 700);
+  if (FB.Store.data.input === 'camera') FB.Cam.open();
+  else if (!FB.Store.data.tutorialDone) setTimeout(() => FB.Tutorial.open(), 700);
 })();

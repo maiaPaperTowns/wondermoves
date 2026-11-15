@@ -19,14 +19,14 @@ body.wm-calibrating .wm-buddy { z-index: 65; }
   z-index: 60;
   left: 50%; bottom: 50%;
   transform: translate(-50%, 50%);
-  width: min(640px, calc(100vw - 32px), calc((100dvh - 340px) * 1.333 + 8px));
-  min-width: min(340px, calc(100vw - 32px));
+  width: min(680px, calc(100vw - 32px), calc((100dvh - 330px) * 1.333 + 8px));
+  min-width: min(420px, calc(100vw - 32px));
 }
-.wm-cam.docked { left: 16px; bottom: 116px; transform: none; width: 232px; }
+.wm-cam.docked { left: 16px; bottom: 116px; transform: none; width: 290px; }
 .wm-cam.collapsed { opacity: 0; pointer-events: none; transform: translateY(20px) scale(.9); }
 .wm-cam-head { display: flex; align-items: center; gap: 8px; padding: 8px 10px 8px 14px; font-weight: 700; font-size: 15px; }
-.wm-cam-title { white-space: nowrap; }
-.wm-cam-status { margin-left: auto; font-size: 13px; color: var(--ink-soft); white-space: nowrap; }
+.wm-cam-title { white-space: nowrap; flex: none; }
+.wm-cam-status { margin-left: auto; min-width: 0; font-size: 13px; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .wm-cam-toggle { width: 34px; height: 34px; border-radius: 50%; background: var(--cream); border: 2px solid var(--line); font-size: 16px; flex: none; }
 .wm-cam.calibrating .wm-cam-toggle { display: none; }
 .wm-cam-view { position: relative; aspect-ratio: 4 / 3; background: #1D1A2E; margin: 0 8px; border-radius: 16px; overflow: hidden; }
@@ -66,7 +66,8 @@ body.wm-calibrating .wm-buddy { z-index: 65; }
 .wm-stepper li.done b { background: #3DBB6B; color: #fff; }
 
 @media (max-width: 640px) {
-  .wm-cam.docked { width: 150px; bottom: 92px; left: 8px; }
+  .wm-cam.docked { width: 170px; bottom: 92px; left: 8px; }
+  .wm-cam.docked .wm-cam-title { font-size: 13px; }
   .wm-cam.docked .wm-cam-status { display: none; }
   .wm-cam-pill { bottom: 96px; left: 8px; }
   .wm-cam.calibrating { width: calc(100vw - 20px); min-width: 0; }

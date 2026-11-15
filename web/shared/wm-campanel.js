@@ -52,6 +52,12 @@ WM.CamPanel = {
     return this;
   },
 
+  /** Show or remove the whole camera window (e.g. when a game switches to touch). */
+  show(on) {
+    this.el.style.display = on ? '' : 'none';
+    if (on) this.applyHidden(); else this.pill.classList.remove('show');
+  },
+
   get docked() { return this.el.classList.contains('docked'); },
   get hidden() { try { return localStorage.getItem(this.storageKey) === '1'; } catch (_) { return false; } },
 
@@ -82,6 +88,44 @@ WM.CamPanel = {
   cameraOn(on, offText = 'Camera is off') {
     this.el.classList.toggle('cam-live', on);
     this.offText.textContent = offText;
+  },
+
+  /**
+   * Dashed outline of a hand seen from above, fingers pointing up the picture.
+   * Used as a "put your hand here" guide when the camera looks down at the table.
+   * side: 'left' | 'right' (thumb position), pointing: only the index finger out.
+   */
+  drawHandGuide(ctx, cx, cy, s, { side = 'right', pointing = false, ok = false, color } = {}) {
+    const col = ok ? '#7BE0A4' : (color || 'rgba(255,255,255,0.9)');
+    const flip = side === 'right' ? 1 : -1; // right hand: thumb on the left of the picture
+    const capsule = (x, y, w, len, ang = 0) => {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(ang);
+      ctx.beginPath();
+      ctx.roundRect(-w / 2, -len, w, len, w / 2);
+      ctx.restore();
+    };
+    ctx.save();
+    ctx.lineWidth = Math.max(3, s * 0.05);
+    ctx.setLineDash([s * 0.12, s * 0.09]);
+    ctx.strokeStyle = col;
+    ctx.fillStyle = ok ? 'rgba(123,224,164,0.16)' : 'rgba(255,255,255,0.10)';
+    // palm
+    ctx.beginPath();
+    ctx.roundRect(cx - s / 2, cy - s * 0.45, s, s * 0.95, s * 0.28);
+    ctx.fill(); ctx.stroke();
+    // fingers: index → pinky, from the thumb side outward
+    const lens = pointing ? [0.9, 0.22, 0.2, 0.18] : [0.72, 0.82, 0.76, 0.58];
+    for (let i = 0; i < 4; i++) {
+      const fx = cx + flip * (-s * 0.36 + i * s * 0.24);
+      capsule(fx, cy - s * 0.42, s * 0.2, s * lens[i]);
+      ctx.fill(); ctx.stroke();
+    }
+    // thumb
+    capsule(cx - flip * s * 0.48, cy + s * 0.05, s * 0.22, s * (pointing ? 0.32 : 0.5), -flip * 0.9);
+    ctx.fill(); ctx.stroke();
+    ctx.restore();
   },
 
   draw(extra) {

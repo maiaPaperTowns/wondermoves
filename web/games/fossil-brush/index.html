@@ -9,6 +9,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../shared/wm-base.css">
+  <link rel="stylesheet" href="../../shared/wm-campanel.css">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -94,6 +96,11 @@
       <button data-mode="free">🖌️ Free Play</button>
     </div>
     <p class="mode-hint" id="modeHint"></p>
+    <div class="seg two-col" id="inputToggle" role="group" aria-label="Play with">
+      <button data-input="touch">🖐️ Touch &amp; mouse</button>
+      <button data-input="camera">📷 Camera</button>
+    </div>
+    <button class="pill-btn small" id="camRecal" hidden>🎯 Redo camera setup</button>
     <p class="drawer-sub">Pick a place to dig. Harder sites hide rarer treasures!</p>
     <div class="level-list" id="levelList"></div>
     <div class="drawer-actions">
@@ -112,13 +119,12 @@
         </div>
         <span class="gu-note">How far from the line still counts. Gentle gives the widest lane.</span>
       </div>
-      <label class="gu-check"><input type="checkbox" id="unlockAll"> Unlock all Copy Pip challenges</label>
       <div class="gu-row">
         <span class="gu-label">Practice log</span>
         <span class="gu-note" id="practiceStats"></span>
         <button class="pill-btn small" id="exportLog">⬇️ Download log (JSON)</button>
       </div>
-      <button class="link-btn" id="resetBtn">Reset collection &amp; unlocks</button>
+      <button class="link-btn" id="resetBtn">Reset collection</button>
     </details>
   </nav>
 
@@ -161,28 +167,9 @@
       <p class="found-depth" id="foundDepth"></p>
       <p class="fact" id="foundFact"></p>
       <p class="trace-result" id="foundTrace" hidden></p>
-      <p class="unlock-note" id="foundUnlock" hidden></p>
       <div class="found-actions">
         <button class="pill-btn" id="foundCatalog">📖 Collection</button>
         <button class="pill-btn primary big" id="foundAgain">Dig Again! 🖌️</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ===== Copy Pip: challenge picker ===== -->
-  <div class="modal" id="challengeModal" aria-hidden="true" role="dialog" aria-label="Pick a challenge">
-    <div class="panel challenge-panel">
-      <div class="ch-head">
-        <img id="chMascot" alt="" draggable="false">
-        <div>
-          <h2>Which treasure will you dig for?</h2>
-          <p>Copy my shapes to dig. Harder shapes reach rarer treasures! <span class="ch-site" id="chSite"></span></p>
-        </div>
-      </div>
-      <div class="ch-grid" id="chGrid"></div>
-      <div class="ch-foot">
-        <button class="pill-btn" id="chSites">🗺️ Dig Sites</button>
-        <button class="link-btn" id="chFree">Switch to Free Play</button>
       </div>
     </div>
   </div>
@@ -213,7 +200,10 @@
   <script src="js/store.js"></script>
   <script src="js/audio.js"></script>
   <script src="js/digsite.js"></script>
+  <script src="../../shared/wm-hands.js"></script>
+  <script src="../../shared/wm-campanel.js"></script>
   <script src="js/trace.js"></script>
+  <script src="js/camera.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/main.js"></script>
 </body>
