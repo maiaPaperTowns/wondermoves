@@ -201,7 +201,12 @@ class Databricks:
         return subprocess.run([self.cli, *args], capture_output=True, text=True, timeout=timeout)
 
     def notebook_path(self) -> str:
-        me = json.loads(self.db("current-user", "me", "-o", "json", timeout=30).stdout)["userName"]
+        if not Path(self.cli).exists():
+            raise RuntimeError("Databricks CLI not installed on this laptop (see parents/README.md)")
+        r = self.db("current-user", "me", "-o", "json", timeout=30)
+        if r.returncode != 0:
+            raise RuntimeError("not signed in to Databricks: run `databricks auth login --host <your workspace>`")
+        me = json.loads(r.stdout)["userName"]
         return f"/Users/{me}/wondermoves/{NOTEBOOK}"
 
     def maybe_sync(self, closed: list[dict], force: bool = False):
@@ -223,13 +228,23 @@ class Databricks:
             out.write_text("".join(json.dumps(s) + "\n" for s in closed))
             path = self.notebook_path()
             if not self.deployed:
+                # First use on this Databricks account: create the storage (fine if it already exists)
+                # and upload the notebook, so a brand-new free account works without any setup.
+                self.detail = "Setting up Databricks (first time on this account)"
+                self.db("schemas", "create", "wondermoves", "workspace")
+                self.db("volumes", "create", "workspace", "wondermoves", "raw", "MANAGED")
+                r = self.db("volumes", "read", "workspace.wondermoves.raw")
+                if r.returncode != 0:
+                    raise RuntimeError("couldn't create Databricks storage: " + r.stderr.strip()[:150])
+                for sub in ("parents", "exports"):
+                    self.db("fs", "mkdir", f"dbfs:{VOL}/{sub}")
                 self.db("workspace", "mkdirs", path.rsplit("/", 1)[0])
                 r = self.db("workspace", "import", path, "--file", str(ROOT / "databricks/notebooks/parent_progress.py"),
                             "--language", "PYTHON", "--format", "SOURCE", "--overwrite")
                 if r.returncode != 0:
                     raise RuntimeError(r.stderr.strip()[:200])
-                self.db("fs", "mkdir", f"dbfs:{VOL}/parents")
                 self.deployed = True
+                self.detail = "Uploading finished sessions to Databricks"
             r = self.db("fs", "cp", str(out), f"dbfs:{VOL}/parents/sessions.jsonl", "--overwrite")
             if r.returncode != 0:
                 raise RuntimeError(r.stderr.strip()[:200])

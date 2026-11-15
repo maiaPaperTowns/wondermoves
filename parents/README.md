@@ -22,6 +22,23 @@ Then open **http://localhost:8090**.
 - A session closes when the child pauses or leaves the game (`break_requested`), or after 3 quiet minutes.
 - The board's clock is often wrong, so times are corrected to the laptop's clock.
 
+## Set up a laptop (once)
+
+Each laptop that runs the parent website needs its own free Databricks account. It's set up automatically
+the first time a session is sent.
+
+1. Make a free account at **databricks.com** (Free Edition) and open the workspace once in the browser.
+2. Install the Databricks CLI:
+   - Mac: `curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh`
+   - Windows: `winget install Databricks.DatabricksCLI`
+3. Sign in (it opens a browser page; approve it). Use the workspace address from your browser, up to the first `/`:
+   `databricks auth login --host https://dbc-xxxxxxxx-xxxx.cloud.databricks.com`
+4. Have `adb` (the same tool used to start the games on the board).
+5. Get the code (`git pull`), plug in the board, and run `python3 parents/server.py`. Open http://localhost:8090.
+
+The first session sent creates the Databricks storage (`workspace.wondermoves`) and uploads the notebook
+to `/Users/<you>/wondermoves/parent_progress`, where judges can see its runs, tables and notes.
+
 ## Try it without the board
 
 ```bash
