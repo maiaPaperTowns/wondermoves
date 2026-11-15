@@ -105,14 +105,14 @@
       let p, bar, ok;
       if (this.mode === 'board') {
         // Camera alone fills the bar only up to S.switchAt (a gap stays between the circles and
-        // the chest). The sensor closes that gap: handoffMm (100 mm) → switchAt, openMm (50 mm) → 100%.
+        // the chest). The sensor closes that gap: handoffMm (200 mm) → switchAt, openMm (100 mm) → 100%.
         const d = TR.sensorMm(), goal = S.openMm;
         const near = d != null && d <= S.handoffMm;
         const sensorP = near ? clamp((S.handoffMm - d) / (S.handoffMm - goal), 0, 1) : null;
         if (d != null) this.minMm = this.minMm == null ? d : Math.min(this.minMm, d);
         const camPart = clamp(avg, 0, 1) * S.switchAt;
         bar = sensorP == null ? camPart : Math.max(camPart, S.switchAt + (1 - S.switchAt) * sensorP);
-        ok = d != null && d <= goal && level;               // (a) sensor at 50 mm and (b) both hands
+        ok = d != null && d <= goal && level;               // (a) sensor at openMm (100 mm) and (b) both hands
         p = {};
         ['left', 'right'].forEach(s => {
           p[s] = cam[s] == null ? null : sensorP == null ? clamp(cam[s], 0, 1) * S.switchAt : bar;
