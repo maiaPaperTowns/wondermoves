@@ -30,14 +30,16 @@ TR.TREASURES = [
 ];
 
 /* In-game difficulty: how far to reach (% of the child's own comfortable reach
-   from calibration) and how long to hold it. Kept within comfort: max 110%. */
+   from calibration) and how long to hold it. Kept within comfort: never above 100%. */
 TR.DIFFICULTIES = [
   // weights = chance of [common, uncommon, rare, epic, legendary]; harder levels find rarer treasure
   { id: 'easy',   name: 'Easy',   emoji: '🐢', lv: 1, blurb: 'Little reach, quick hold',   goalPct: 60,  holdMs: 300,  weights: [62, 28, 9, 1, 0] },
   { id: 'medium', name: 'Medium', emoji: '🦀', lv: 2, blurb: 'Comfy reach, hold a moment', goalPct: 80,  holdMs: 800,  weights: [42, 30, 17, 9, 2] },
   { id: 'hard',   name: 'Hard',   emoji: '🦈', lv: 3, blurb: 'Big reach, hold it steady',  goalPct: 100, holdMs: 1500, weights: [26, 26, 22, 16, 10] },
 ];
-TR.MAX_GOAL_PCT = 110;
+// Never above the child's calibrated comfortable reach (WonderMoves evidence rule, docs/evidence-brief.html);
+// on the board the goal is also capped at the caregiver-approved maximum.
+TR.MAX_GOAL_PCT = 100;
 
 TR.rarityById = id => TR.RARITIES.find(r => r.id === id);
 TR.rarityIndex = id => TR.RARITIES.findIndex(r => r.id === id);

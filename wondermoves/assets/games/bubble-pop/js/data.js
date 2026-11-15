@@ -20,7 +20,7 @@ BP.KINDS = [
 
 BP.DEFAULTS = {
   difficulty: 'easy',
-  lift: false,          // true = WonderMoves lift rules: one straight lift per bubble, no timer, no missed bubbles
+  lift: true,           // true = WonderMoves lift rules (team decision, evidence brief): one straight lift per bubble, no timer, no missed bubbles
                         // (bubbles wait above each resting hand; blue pairs need both hands). false = timed original.
   seconds: 60,          // session length (timed original only)
   bubbleSize: 'medium', // small | medium | big (accessibility)
