@@ -8,6 +8,7 @@
      { x, y,        palm centre, 0..1, x already mirrored like a selfie view
        size,        palm size (fraction of image height), grows as the hand nears the camera
        tip,         index fingertip {x, y}, mirrored like x
+       wrist,       wrist point {x, y}, mirrored like x (the "top of the hand" seen by a camera tilted down)
        pointing,    true when only the index finger is stretched out
        landmarks }  21 raw MediaPipe points (not mirrored)
 
@@ -133,6 +134,7 @@ WM.Hands = (function () {
       found[side] = {
         x: 1 - cx, y: cy,
         tip: { x: 1 - lm[8].x, y: lm[8].y },
+        wrist: { x: 1 - lm[0].x, y: lm[0].y },
         pointing: ext(8, 6) && !ext(12, 10) && !ext(16, 14),
         size: (dist(lm[0], lm[9], asp) + dist(lm[5], lm[17], asp)) / 2,
         score: cat ? cat.score : 1,
@@ -153,8 +155,9 @@ WM.Hands = (function () {
         h.y = p.y + (h.y - p.y) * SMOOTH;
         h.size = p.size + (h.size - p.size) * SMOOTH;
         h.tip = { x: p.tip.x + (h.tip.x - p.tip.x) * SMOOTH, y: p.tip.y + (h.tip.y - p.tip.y) * SMOOTH };
+        h.wrist = { x: p.wrist.x + (h.wrist.x - p.wrist.x) * SMOOTH, y: p.wrist.y + (h.wrist.y - p.wrist.y) * SMOOTH };
       }
-      smooth[s] = { x: h.x, y: h.y, size: h.size, tip: h.tip };
+      smooth[s] = { x: h.x, y: h.y, size: h.size, tip: h.tip, wrist: h.wrist };
       latest[s] = h;
     });
 

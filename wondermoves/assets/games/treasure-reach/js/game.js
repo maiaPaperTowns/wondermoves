@@ -1,7 +1,17 @@
 /* ==========================================================================
    Treasure Reach: main loop.
-   One rep:  rest → reach until the bar hits the goal → hold → chest opens
-             → bring hands back to rest → new chest.
+   One rep:  start spot → push both hands toward the laptop → hold → chest opens
+             → pull hands back to the start spot → new chest.
+
+   When does a chest open? Two conditions together, held for the level's time:
+     (a) the board's Distance sensor (pointed at the hands) reads within the level's
+         distance of "max forward"  [camera-only play: both wrists reach the level's
+         share of the way to max forward instead]
+     (b) the tops of BOTH hands stay in the camera picture, at about the same point
+         between start and max forward, so both hands are pushing, not just one
+         (the sensor only measures the closest object).
+   The red/blue circles sit on the horizon and slide toward the chest: first from the
+   camera (wrists moving toward max forward), then from the sensor once it reads.
    ========================================================================== */
 (function () {
   const $ = s => document.querySelector(s);
@@ -9,8 +19,6 @@
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
   const ease = t => 1 - Math.pow(1 - t, 2);
   const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
-  /** Hands that reach past the bottom of the camera picture still count (see computeProgress). */
-  const OUT_OF_VIEW = { minP: 0.5, edgeY: 0.72, ms: 2500 };
 
   TR.Store.load();
   WM.Sound.setMuted(!!TR.Store.data.muted);
@@ -32,7 +40,8 @@
     armed: false,             // a reach only counts after the hands have been at rest
     mouse: { x: 0, y: 0, active: false },
     pos: { left: null, right: null }, alpha: { left: 0, right: 0 }, trail: { left: [], right: [] },
-    seen: { left: null, right: null }, // last progress/position per hand (for hands that reach out of the picture)
+    m: null,                  // latest measurement (see measure())
+    minMm: null, unevenSaidAt: 0, outSaidAt: 0,
     particles: [],
 
     get mode() { return TR.Store.data.inputMode; },
@@ -40,6 +49,10 @@
     afterCalibration() {
       WM.CamPanel.dock();
       WM.CamPanel.cameraOn(WM.Hands.running);
+      // On the UNO Q with a Distance sensor, the sensor decides when the chest opens.
+      TR.Store.data.inputMode = TR.hasSensor() ? 'board' : 'camera';
+      TR.Store.save();
+      if (this.mode === 'board') WM.Board.send('start', { game: 'reach_ui' });
       this.startPlay();
     },
 
@@ -49,32 +62,6 @@
       this.resetRep();
       if (!TR.Store.data.tutorialDone) setTimeout(() => TR.openTutorial(() => TR.UI.openLevels()), 500);
       else TR.UI.openLevels();
-    },
-
-    /** UNO Q board: reach measured by the Modulino Distance sensor in the dig tunnel. */
-    useBoard() {
-      WM.Hands.stop();
-      TR.Calib.active = false;
-      TR.Store.data.inputMode = 'board'; TR.Store.save();
-      WM.CamPanel.dock();
-      WM.CamPanel.cameraOn(false, 'Using the dig-tunnel sensor');
-      const p = WM.Board.profile || {};
-      if (!p.comfortable_mm) {
-        // No calibration yet: run the board's (rest, then 3 comfy reaches), voiced by Pip.
-        this.state = 'idle';
-        WM.Buddy.say('First, rest your hand on the towel and keep it still. 🖐️', 0);
-        WM.Board.send('calibrate');
-        return;
-      }
-      WM.Board.send('start', { game: 'reach_ui' });
-      this.startPlay();
-    },
-
-    /** Goal in mm on the board: a share of the comfy reach, never above the approved maximum. */
-    boardGoalMm() {
-      const p = WM.Board.profile || {};
-      const comfy = p.comfortable_mm || 50;
-      return Math.max(10, Math.min(comfy * TR.level().goalPct / 100, p.approved_max_mm || Infinity));
     },
 
     useMouse() {
@@ -88,59 +75,65 @@
 
     nudge(force) {
       if (this.state !== 'rest' && !force) return;
-      WM.Buddy.say(pick(this.mode === 'mouse' ? TR.LINES.mouse : this.mode === 'board' ? TR.LINES.board : TR.LINES.rest), 3600);
+      WM.Buddy.say(pick(this.mode === 'mouse' ? TR.LINES.mouse : TR.LINES.rest), 3600);
     },
 
     resetRep() {
-      this.hold = 0; this.peak = 0; this.peakReach = 0; this.peakSide = null; this.repStart = 0;
+      this.hold = 0; this.peak = 0; this.peakReach = 0; this.peakSide = null; this.repStart = 0; this.minMm = null;
       this.said = {};
     },
 
-    /* ---------- progress toward the goal, per hand (1 = goal) ---------- */
-    computeProgress() {
+    /* ---------- measurement ----------
+       Returns { p: {left, right} per-circle progress, bar, ok (chest condition met), back (hands at start) } */
+    measure() {
+      const S = TR.SENSE;
       if (this.mode === 'mouse') {
-        if (!this.mouse.active) return { left: null, right: null };
+        if (!this.mouse.active) return { p: { left: null, right: null }, bar: 0, ok: false, back: true };
         const far = Math.max(180, Math.hypot(W * 0.15, H - chestC.y) * 0.95);
         const near = chestC.r * 0.55;
         const d = Math.hypot(this.mouse.x - chestC.x, this.mouse.y - chestC.y);
-        return { left: null, right: clamp((far - d) / (far - near), 0, 1.25) };
+        const v = clamp((far - d) / (far - near), 0, 1.25);
+        return { p: { left: null, right: v }, bar: v, ok: v >= 1, back: v < TR.Store.s.restLevel };
       }
+      const L = WM.Hands.latest;
+      const cam = { left: TR.camProgress('left', L.left), right: TR.camProgress('right', L.right) };
+      const both = cam.left != null && cam.right != null;
+      const level = both && Math.abs(cam.left - cam.right) <= S.levelTol;
+      const seen = [cam.left, cam.right].filter(v => v != null);
+      const avg = seen.length ? seen.reduce((a, b) => a + b, 0) / 2 : 0; // a missing hand counts as 0
+      const back = seen.length > 0 && Math.max(...seen) < S.restBelow;
+      let p, bar, ok;
       if (this.mode === 'board') {
-        const fresh = performance.now() - WM.Board.reachAt < 600;
-        if (!fresh || WM.Board.reachMm == null) return { left: null, right: null };
-        const frac = clamp(WM.Board.reachMm / this.boardGoalMm(), 0, 1.25);
-        if (this.state === 'rest' || this.state === 'holding') this.peakReach = Math.max(this.peakReach, frac);
-        return { left: null, right: frac };
+        // (a) Distance sensor within the level's distance of max forward
+        const d = TR.sensorMm(), goal = TR.sensorGoalMm();
+        const sensorP = d == null ? null : clamp((S.trustMm - d) / (S.trustMm - goal), 0, 1);
+        if (d != null) this.minMm = this.minMm == null ? d : Math.min(this.minMm, d);
+        const camPart = clamp(avg, 0, 1) * S.switchAt;
+        bar = sensorP == null ? camPart : Math.max(camPart, S.switchAt + (1 - S.switchAt) * sensorP);
+        ok = d != null && d <= goal && level;               // (a) and (b)
+        p = {};
+        ['left', 'right'].forEach(s => {
+          p[s] = cam[s] == null ? null : sensorP == null ? clamp(cam[s], 0, 1) * S.switchAt : bar;
+        });
+        this.m = { cam, both, level, d, goal, sensorP };
+      } else {
+        // camera only: both wrists reach the level's share of the way to max forward
+        const goalFrac = TR.level().goalPct / 100;
+        p = { left: cam.left == null ? null : clamp(cam.left / goalFrac, 0, 1.25), right: cam.right == null ? null : clamp(cam.right / goalFrac, 0, 1.25) };
+        bar = clamp(avg / goalFrac, 0, 1.25);
+        ok = level && Math.min(cam.left, cam.right) >= goalFrac;
+        this.m = { cam, both, level };
       }
-      const goalFrac = TR.level().goalPct / 100;
-      const L = WM.Hands.latest, out = { left: null, right: null };
-      const now = performance.now();
-      ['left', 'right'].forEach(s => {
-        const r = TR.reachAmount(s, L[s]); // 1 = calibrated comfy reach
-        if (r != null) {
-          out[s] = clamp(r / goalFrac, 0, 1.25);
-          this.seen[s] = { p: out[s], y: L[s].y, t: now };
-          if (this.state === 'rest' || this.state === 'holding') this.peakReach = Math.max(this.peakReach, r);
-        } else {
-          // A front camera loses hands that reach all the way to the computer: they slide off
-          // the bottom of the picture. If a hand was well on its way and left through the
-          // bottom edge, count it as reaching the goal for a moment instead of dropping to 0.
-          const k = this.seen[s];
-          if (k && k.p >= OUT_OF_VIEW.minP && k.y > OUT_OF_VIEW.edgeY && now - k.t < OUT_OF_VIEW.ms) out[s] = Math.max(k.p, 1);
-        }
-      });
-      return out;
+      if (!ok) bar = Math.min(bar, 0.97); // the bar only fills when the chest really can open
+      if (this.state === 'rest' || this.state === 'holding') this.peakReach = Math.max(this.peakReach, clamp(avg, 0, 1.25));
+      return { p, bar, ok, back };
     },
 
     update(dt) {
       const now = performance.now();
-      const pr = this.computeProgress();
-      this.p = pr;
-      const s = TR.Store.s;
-      const vals = [pr.left, pr.right].filter(v => v != null);
-      this.bar = s.hands === 'both'
-        ? (pr.left != null && pr.right != null ? Math.min(pr.left, pr.right) : 0)
-        : (vals.length ? Math.max(...vals) : 0);
+      const m = this.measure();
+      this.p = m.p;
+      this.bar = m.bar;
       this.shown += (this.bar - this.shown) * Math.min(1, dt * 10);
       if (TR.UI.blocking() || this.state === 'idle') {
         this.hold = 0;
@@ -148,29 +141,37 @@
         if (this.state === 'holding') this.state = 'rest';
         return;
       }
-      if (!this.armed && this.bar < s.restLevel) this.armed = true;
+      if (!this.armed && m.back) this.armed = true;
 
-      // lost hands (camera or board sensor)
+      // hands not seen / not level (camera + board)
       if (this.mode !== 'mouse' && (this.state === 'rest' || this.state === 'holding')) {
-        if (!vals.length) {
+        const mm = this.m || {};
+        const anyHand = mm.cam && (mm.cam.left != null || mm.cam.right != null);
+        if (!anyHand) {
           if (!this.lostSince) this.lostSince = now;
-          if (now - this.lostSince > 3000 && now - this.lostSaidAt > 9000) { this.lostSaidAt = now; WM.Buddy.say(pick(this.mode === 'board' ? TR.LINES.boardLost : TR.LINES.lost), 4000); }
-        } else this.lostSince = 0;
+          if (now - this.lostSince > 3000 && now - this.lostSaidAt > 9000) { this.lostSaidAt = now; WM.Buddy.say(pick(TR.LINES.lost), 4000); }
+        } else {
+          this.lostSince = 0;
+          if (this.armed && this.bar > 0.4 && !mm.both && now - this.outSaidAt > 6000) { this.outSaidAt = now; WM.Buddy.say(pick(TR.LINES.handsOut), 3000); }
+          else if (this.armed && this.bar > 0.4 && mm.both && !mm.level && now - this.unevenSaidAt > 6000) { this.unevenSaidAt = now; WM.Buddy.say(pick(TR.LINES.uneven), 3000); }
+        }
       }
 
       const bar = this.bar;
       if ((this.state === 'rest' || this.state === 'holding') && this.armed) {
         if (bar > 0.15 && !this.repStart) this.repStart = now;
-        if (bar > this.peak) { this.peak = bar; this.peakSide = pr.left != null && pr.left === bar ? 'left' : 'right'; }
-        if (bar > 0.5 && !this.said.half) { this.said.half = true; WM.Sound.tick(1); WM.Buddy.say(pick(TR.LINES.half), 2200); }
-        if (bar > 0.8 && !this.said.almost) { this.said.almost = true; WM.Sound.tick(3); WM.Buddy.say(pick(TR.LINES.almost), 2200); }
+        if (bar > this.peak) { this.peak = bar; this.peakSide = this.p.left != null && this.p.left === bar ? 'left' : 'right'; }
+        // no cheering while the hands are uneven or out of the picture: Pip's hint matters more then
+        const fair = this.mode === 'mouse' || !this.m || (this.m.both && this.m.level);
+        if (fair && bar > 0.5 && !this.said.half) { this.said.half = true; WM.Sound.tick(1); WM.Buddy.say(pick(TR.LINES.half), 2200); }
+        if (fair && bar > 0.8 && !this.said.almost) { this.said.almost = true; WM.Sound.tick(3); WM.Buddy.say(pick(TR.LINES.almost), 2200); }
       }
 
       if (this.state === 'rest') {
-        if (bar >= 1 && this.armed) { this.state = 'holding'; this.hold = 0; }
-        else if (bar >= 1 && !this.said.rest) { this.said.rest = true; WM.Buddy.say('First, rest your hands. Then reach! 🙌', 2600); }
+        if (m.ok && this.armed) { this.state = 'holding'; this.hold = 0; }
+        else if (m.ok && !this.said.rest) { this.said.rest = true; WM.Buddy.say('First, pull your hands back to your starting spot. Then reach! 🙌', 2600); }
       } else if (this.state === 'holding') {
-        if (bar >= 0.95) {
+        if (m.ok) {
           this.hold += dt * 1000;
           if (this.hold >= TR.level().holdMs) this.openChest();
         } else { this.state = 'rest'; this.hold = 0; }
@@ -178,14 +179,14 @@
         this.openT += dt;
         if (this.openT > 2.4) { this.state = 'return'; WM.Buddy.say(pick(TR.LINES.back), 0); }
       } else if (this.state === 'return') {
-        if (bar < s.restLevel) this.closeChest();
+        if (m.back) this.closeChest();
       }
     },
 
     openChest() {
       if (this.mode === 'board') {
         // Log the rep on the board (caregiver session log / parent website).
-        WM.Board.send('reach_rep', { reach_mm: Math.round(WM.Board.reachMm || 0), goal_mm: Math.round(this.boardGoalMm()),
+        WM.Board.send('reach_rep', { sensor_mm: this.minMm == null ? null : Math.round(this.minMm), goal_mm: Math.round(TR.sensorGoalMm()),
           level: TR.level().id, hold_ms: TR.level().holdMs });
       }
       this.state = 'open';
@@ -226,11 +227,12 @@
       TR.Store.logRep({
         at: Date.now(),
         mode: this.mode,
-        hands: TR.Store.s.hands,
         side: this.peakSide,
         difficulty: TR.level().id,
-        peak: +this.peak.toFixed(2),                 // fraction of the level's goal reached (1 = goal)
-        peakReach: +this.peakReach.toFixed(2),       // fraction of the calibrated comfy reach (camera only)
+        peak: +this.peak.toFixed(2),                 // bar at its fullest (1 = chest condition met)
+        peakReach: +this.peakReach.toFixed(2),       // wrists' share of the way from start to max forward (camera)
+        sensorMm: this.minMm == null ? null : Math.round(this.minMm),   // closest sensor reading (board)
+        goalMm: this.mode === 'board' ? Math.round(TR.sensorGoalMm()) : null,
         goalPct: TR.level().goalPct,
         holdMs: TR.level().holdMs,
         ms: Math.round(performance.now() - (this.repStart || performance.now())),
@@ -378,15 +380,14 @@
       if (!blockingCalib) {
         if (Game.mode === 'mouse') {
           if (side === 'right' && Game.mouse.active) target = { x: Game.mouse.x, y: Game.mouse.y };
-        } else {
-          const h = WM.Hands.latest[side] || (p != null && Game.seen[side] ? { x: Game.pos[side] ? Game.pos[side].x / W : 0.5, y: 1 } : null);
-          if (h && p != null) {
-            const cam = { x: h.x * W, y: h.y * H };
-            const off = side === 'left' ? -1 : 1;
-            const tgt = { x: chestC.x + off * chestC.r * 0.42, y: chestC.y + chestC.r * 0.05 };
-            const e = ease(Math.min(1, p));
-            target = { x: cam.x + (tgt.x - cam.x) * e, y: cam.y + (tgt.y - cam.y) * e };
-          }
+        } else if (p != null) {
+          // Not where the hand is on camera: the circles sit on the horizon (chest height)
+          // and slide toward the chest as the reach progresses.
+          const off = side === 'left' ? -1 : 1;
+          const startX = chestC.x + off * startSpread();
+          const endX = chestC.x + off * chestC.r * 0.42;
+          const e = ease(Math.min(1, p));
+          target = { x: startX + (endX - startX) * e, y: chestC.y + chestC.r * 0.05 };
         }
       }
       if (target) {
@@ -410,6 +411,15 @@
       ctx.globalAlpha = 1;
       drawHand(side, pos.x, pos.y, p || 0, Game.alpha[side]);
     });
+  }
+
+  /** How far from the chest the circles start: symmetric, clear of the camera window and the reach bar. */
+  function startSpread() {
+    let left = 70;
+    const cam = WM.CamPanel.el;
+    if (cam && cam.style.display !== 'none' && !cam.classList.contains('collapsed')) left = Math.max(left, cam.getBoundingClientRect().right + 50);
+    const right = W - (W < 640 ? 76 : 130) - 70;
+    return Math.max(chestC.r * 0.9, Math.min(W * 0.34, chestC.x - left, right - chestC.x));
   }
 
   function drawCamOverlay() {
@@ -463,19 +473,13 @@
   TR.UI.init();
   resize();
   Game.renderDots();
-  /* UNO Q board: use the Distance sensor when the board is there and the sensor is plugged in. */
-  WM.Board.on('calibration_step', d => WM.Buddy.say(d.step === 'baseline'
-    ? 'Rest your hand on the towel and keep it still. 🖐️' : 'Now 3 small, comfy reaches toward the cave, then back. 🙌', 0));
-  WM.Board.on('calibration_rep', d => WM.Buddy.say(`Got it, ${d.count}! ⭐`, 1800));
-  WM.Board.on('calibration_done', () => { WM.Buddy.say('All set up. Let\'s dig for treasure! 🎉', 2600); if (Game.mode === 'board') Game.useBoard(); });
-  WM.Board.on('calibration_busy', () => WM.Buddy.say('Let\'s finish setting up first: rest, then 3 small reaches.', 3000));
-  WM.Board.on('hand_not_seen', () => { if (Game.mode === 'board') WM.Buddy.say(pick(TR.LINES.boardLost), 3500); });
+  /* UNO Q board: camera + Distance sensor (the sensor decides when the chest opens). The board's
+     own in-tunnel calibration is not used: the camera setup above covers it. */
   WM.bridge.onVisibility(v => { if (v && Game.mode === 'board' && Game.state !== 'idle') WM.Board.send('start', { game: 'reach_ui' }); });
   WM.Board.ready(() => {
-    const sensorOk = WM.Board.available && WM.Board.sensors && WM.Board.sensors.distance !== false;
-    // Every launch starts with the camera (or the board's sensor on the UNO Q); Mouse lasts until reload.
-    if (WM.Board.available && sensorOk !== false) Game.useBoard();
-    else { TR.Store.data.inputMode = 'camera'; TR.Calib.open(false); }
+    // Every launch starts with the camera setup (Mouse lasts until reload).
+    TR.Store.data.inputMode = TR.hasSensor() ? 'board' : 'camera';
+    TR.Calib.open(false);
   });
   requestAnimationFrame(frame);
 })();

@@ -4,29 +4,47 @@ Reach toward the screen to open a treasure chest. The game uses the webcam and o
 
 ## Flow
 
-1. **Camera setup:** uses the computer's front camera. The hands rest on the table in front of the screen, so they appear near the bottom of the picture with fingers pointing down toward the camera. The camera panel opens large in the center of the screen and Pip gives instructions from the bottom-left. Setup has three steps:
-   1. **Hands:** both hands flat on the table, inside the red and blue (upside-down) hand outlines at the top of the picture. The rest of the picture is room to reach; moving the laptop back gives even more.
-   2. **Rest:** hold still for 3 seconds. This records each hand's resting position. If the hands rest too low in the picture, Pip asks the child to move the laptop back or sit back.
-   3. **Reach:** make 3 comfortable reaches toward the camera, keeping the hands on the table and sliding them forward.
-2. **Docking:** the panel shrinks to the bottom-left. Tap the 👁️ to hide it and the **📷 Show camera** pill to bring it back.
-3. **Level:** pick a level with the chip in the top bar, or from the Menu. Each level sets how far to reach (a share of the child's comfortable reach, capped at 110%) and how long to hold:
+1. **Camera setup.** The laptop's front camera is tilted down at the hands on the table. The camera panel opens large in the center of the screen, and Pip gives instructions from the bottom-left. There are three steps:
+   1. **Max forward:** press both hands against the laptop, then tilt the screen down until the tops of the hands (the wrists) just show at the bottom of the picture, on the dashed red line. The game records where each wrist sits; this is "max forward". On the UNO Q it also records the Distance sensor's reading there.
+   2. **Make space:** push the laptop forward until there's room to stretch comfortably, then tap **Next**. The camera moves with the laptop, so "max forward" (hands touching the laptop) stays valid.
+   3. **Start spot:** pull the hands back to a natural starting position and keep still. The game records where each wrist sits; this is "start".
 
-   | Level | Reach goal | Hold |
-   | --- | --- | --- |
-   | 🐢 Easy | 60% | 0.3 s |
-   | 🦀 Medium | 80% | 0.8 s |
-   | 🦈 Hard | 100% | 1.5 s |
-
-4. **Each rep:** the bar on the right fills as the child reaches. The red (left) and blue (right) circles glide toward the chest. Fill the bar to ⭐ and hold, and the chest opens with a treasure. Bring the hands back to rest and a new chest appears.
+   **↩ Use my last setup** skips straight to play.
+2. **Docking:** the panel shrinks to the bottom-left. 👁️ hides it.
+3. **Level:** pick Easy, Medium or Hard with the chip in the top bar.
+4. **Each rep:** push both hands toward the laptop. The chest opens when both conditions below hold for the level's hold time. Then pull the hands back to the start spot, and a new chest appears.
 5. **Sets:** after every set of chests (5 by default), a celebration card appears.
 
-**How reach is measured:** each hand is described by its position in the picture and its palm size. Seen from above, a reach moves the hand across the picture; seen from the front, it makes the hand look bigger. Calibration learns the child's own reach direction from the 3 reaches, and the goal is the median comfortable reach. Progress is how far the hand has moved along that direction. This works for either camera position. The hand-outline positions are set in `GUIDE` at the top of `js/calib.js`; adjust them for your camera mount.
+## When does the chest open?
 
-**Reaching out of view:** a front camera can lose hands that reach all the way to the computer, because they slide off the bottom of the picture. A hand that was already at least halfway to the goal and leaves through the bottom edge counts as reaching the goal for up to 2.5 seconds. That's enough time for the hold, and the chest can open. Tune this with `OUT_OF_VIEW` in `js/game.js`.
+Two conditions must hold together:
 
-**Re-arming:** a new reach only counts after the hands have come back to rest. This stops a chest opening by accident after a popup closes.
+**(a) Far enough.**
+- **On the UNO Q:** the Distance sensor, pointed at the hands, must read within the level's distance of the max-forward reading from setup:
 
-**Mouse mode:** if there's no camera, or for testing, the blue circle follows the pointer. Bringing it to the chest fills the bar.
+  | Level | Within | Hold |
+  | --- | --- | --- |
+  | 🐢 Easy | 5 cm | 0.3 s |
+  | 🦀 Medium | 2.5 cm | 0.8 s |
+  | 🦈 Hard | 0.8 cm | 1.5 s |
+
+- **Camera only (no board):** both wrists must be 60% (Easy), 80% (Medium) or 100% (Hard) of the way from the start spot to max forward.
+
+**(b) Both hands pushing.** The tops of both hands must stay in the camera picture, at about the same point between the start spot and max forward. The default tolerance is a quarter of the way. This matters because the sensor only measures the closest object, so one hand alone could otherwise open the chest.
+
+If the hands are uneven, Pip says "Push with both hands together!". If a hand leaves the picture, Pip says "Keep the tops of both hands in the picture".
+
+**The red and blue circles** don't show where the hands are on camera. They sit on the horizon beside the chest and slide toward it as the reach progresses:
+- **Camera first:** the wrists moving toward max forward fill the first 70%. This is needed because the sensor only sees the hands up close.
+- **Sensor after that:** once the sensor reads 15 cm or closer, it fills the rest.
+
+The bar on the right only reaches the top when the chest can really open.
+
+**Re-arming:** a new reach only counts after the hands have been back near the start spot.
+
+**Mouse mode:** the blue circle follows the pointer. Bringing it to the chest fills the bar.
+
+All the sensor numbers are in `TR.SENSE` and `TR.DIFFICULTIES` (`slackMm`) in `js/data.js`, so they're easy to tune on the real kit.
 
 ## Treasure collection
 
@@ -43,8 +61,8 @@ The game gently favors treasures the child hasn't found yet. The 📖 Collection
 ## Grown-up settings (Menu)
 
 - Camera or mouse. **Redo camera setup** appears under it in Camera mode.
-- Either hand or both hands, and chests per set (3, 5 or 10). Reach goal and hold time come from the level.
-- **Practice log:** one record per chest, with time to reach, peak (% of goal), palm growth, goal, settings and which hand. Download it as JSON.
+- Chests per set (3, 5 or 10). Reach goal and hold time come from the level. Both hands are always required.
+- **Practice log:** one record per chest, with time to reach, peak, how far the wrists got (share of start → max forward), closest sensor reading and goal in mm (board), level and hold time. Download it as JSON.
 
 ## Files
 
@@ -62,5 +80,5 @@ Shared modules come from `../../shared/`: `wm-hands.js`, `wm-pip.*`, `wm-sound.j
 ## Tuning notes
 
 - `SWAP_HANDEDNESS` in `shared/wm-hands.js` is off, which matches a real webcam. Turn it on only if a camera mirrors its own picture and the colors come out swapped.
-- The calibration thresholds (`OUT_AT`, `BACK_AT`, `MIN_PEAK`) are at the top of `js/calib.js`.
+- Setup thresholds (where the wrists must sit at max forward, how still to hold, the minimum travel between start and max forward) are at the top of `js/calib.js`.
 - To use real treasure art, set `image` on an item in `TR.TREASURES`.

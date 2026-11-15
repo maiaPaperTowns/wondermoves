@@ -7,7 +7,7 @@ Under the sea, bubbles float up from the sea floor. Move a glowing hand circle o
 1. **Camera setup** (same panel and Pip guidance as Treasure Reach):
    1. **Sit:** a body-pose model checks that the head and shoulders are centered at a good distance. Pip gives directions ("move this way", "come closer", "scoot back"). A grown-up can skip this step.
    2. **Hands:** both hands in view. If only one hand shows, "Continue with one hand" appears after 4 seconds.
-   3. **Wave:** the child waves their hands as far as is comfortable for about 6 seconds. That area of the camera picture is stretched to fill the whole play area, so a child with a small range of movement can still reach every bubble. "Use my last area" reuses the saved one.
+   3. **Stretch:** two handprints appear, a left hand in the bottom-left corner and a right hand in the top-right. The child moves each hand as far as is comfortable toward its print, then holds still for 1.5 s. Each print turns green when its hand gets close, with a chime when both do. The furthest points reached become the play window, stretched to fill the whole play area, so a child with a small range of movement can still reach every bubble. Reaching the prints isn't required. "Use my last area" reuses the saved window.
 2. **Docking:** the camera panel shrinks to the bottom-left. 👁️ hides it.
 3. **Start card:** choose a difficulty (🐢 Easy, 🐠 Medium, 🐬 Hard), then a 3-2-1 countdown.
 4. **Session:** 60 seconds by default. The air tank on the right drains as time passes. Bubbles are worth different amounts:
@@ -42,7 +42,7 @@ The game saves one record per session: difficulty, length, settings, score, popp
 index.html       layout: sea scene, top bar, air tank, start/results cards, menu
 css/style.css    under-the-sea styles
 js/data.js       difficulties, bubble kinds, settings, Pip's lines, saved data
-js/calib.js      camera start + sit / hands / wave calibration
+js/calib.js      camera start + sit / hands / stretch calibration
 js/ui.js         menu, start + results cards, tutorial steps
 js/game.js       session loop, bubbles, hand mapping, pop gate, drawing
 ```

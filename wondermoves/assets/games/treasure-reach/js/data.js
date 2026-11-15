@@ -29,17 +29,30 @@ TR.TREASURES = [
   { id: 'trident', name: 'Sea King\'s Trident', emoji: '🔱', rarity: 'legendary', image: null, fact: 'The Sea King used this trident to calm stormy waves.' },
 ];
 
-/* In-game difficulty: how far to reach (% of the child's own comfortable reach
-   from calibration) and how long to hold it. Kept within comfort: never above 100%. */
+/* In-game difficulty. A chest opens when the reach is far enough AND held for `holdMs`.
+   - With the board's Distance sensor: the sensor must read within `slackMm` of the
+     "max forward" reading from calibration (hands pressed against the laptop).
+   - Camera only (no board): both wrists must be `goalPct`% of the way from the start
+     position to max forward.
+   Max forward is the child's own comfortable maximum, so no level asks for more. */
 TR.DIFFICULTIES = [
   // weights = chance of [common, uncommon, rare, epic, legendary]; harder levels find rarer treasure
-  { id: 'easy',   name: 'Easy',   emoji: '🐢', lv: 1, blurb: 'Little reach, quick hold',   goalPct: 60,  holdMs: 300,  weights: [62, 28, 9, 1, 0] },
-  { id: 'medium', name: 'Medium', emoji: '🦀', lv: 2, blurb: 'Comfy reach, hold a moment', goalPct: 80,  holdMs: 800,  weights: [42, 30, 17, 9, 2] },
-  { id: 'hard',   name: 'Hard',   emoji: '🦈', lv: 3, blurb: 'Big reach, hold it steady',  goalPct: 100, holdMs: 1500, weights: [26, 26, 22, 16, 10] },
+  { id: 'easy',   name: 'Easy',   emoji: '🐢', lv: 1, blurb: 'Little reach, quick hold',   slackMm: 50, goalPct: 60,  holdMs: 300,  weights: [62, 28, 9, 1, 0] },
+  { id: 'medium', name: 'Medium', emoji: '🦀', lv: 2, blurb: 'Comfy reach, hold a moment', slackMm: 25, goalPct: 80,  holdMs: 800,  weights: [42, 30, 17, 9, 2] },
+  { id: 'hard',   name: 'Hard',   emoji: '🦈', lv: 3, blurb: 'All the way, hold it steady', slackMm: 8,  goalPct: 100, holdMs: 1500, weights: [26, 26, 22, 16, 10] },
 ];
-// Never above the child's calibrated comfortable reach (WonderMoves evidence rule, docs/evidence-brief.html);
-// on the board the goal is also capped at the caregiver-approved maximum.
+// Never beyond the child's calibrated maximum (WonderMoves evidence rule, docs/evidence-brief.html).
 TR.MAX_GOAL_PCT = 100;
+
+/* Reach measurement (camera + Distance sensor). Tune these for the kit. */
+TR.SENSE = {
+  trustMm: 150,          // sensor readings farther than this are ignored (the chip only sees hands up close)
+  freshMs: 400,          // a reading older than this means "sensor sees nothing"
+  fallbackTouchMm: 15,   // sensor distance at max forward, if calibration couldn't read it
+  levelTol: 0.25,        // both wrists within this share of the start→max-forward travel = "level"
+  switchAt: 0.7,         // the hand circles follow the camera up to here, then the sensor takes over
+  restBelow: 0.3,        // hands are "back at the start" below this share of the travel
+};
 
 TR.rarityById = id => TR.RARITIES.find(r => r.id === id);
 TR.rarityIndex = id => TR.RARITIES.findIndex(r => r.id === id);
@@ -49,21 +62,20 @@ TR.levelsFor = rarityId => TR.DIFFICULTIES.filter(d => d.weights[TR.rarityIndex(
 /* Settings (defaults). */
 TR.DEFAULTS = {
   difficulty: 'easy',
-  hands: 'either',    // 'either' hand counts, or 'both' hands must reach
   setSize: 5,         // chests per set before a celebration break
   restLevel: 0.25,    // hands must come back below this fraction of the goal before the next chest
 };
 
 TR.LINES = {
-  rest: ['Slide your hands toward the treasure! 🙌', 'Stretch toward the chest, hands on the table! 💰', 'Ready? Slide and reach! ✨'],
+  rest: ['Push both hands toward the laptop! 🙌', 'Slide both hands forward on the table! 💰', 'Ready? Both hands, slide and reach! ✨'],
+  uneven: ['Push with both hands together! 🙌', 'Keep both hands side by side! 🤝'],
+  handsOut: ['Keep the tops of both hands in the picture 👀'],
   half: ['Halfway there! 💪', 'Keep reaching!', 'Ooh, the chest is wiggling!'],
   almost: ['Almost there! 🌟', 'So close!'],
   hold: ['Hold it… hold it…'],
   open: ['You did it! 🎉', 'Treasure time! 💰', 'Wow, great reach! ⭐', 'Amazing! 🙌'],
   back: ['Now rest your hands. A new chest is coming! 🔁', 'Bring your hands back to rest 🙌'],
-  lost: ['I can\'t see your hands! Hold them up for me 👋'],
-  boardLost: ['I can\'t see your hand. Rest it on the towel, in front of the sensor 👋'],
-  board: ['Reach along the tunnel toward the treasure! 🙌', 'Slide your hand toward the cave! 💰', 'Ready? Reach for it! ✨'],
+  lost: ['I can\'t see your hands! Put them back on the table in front of me 👋'],
   mouse: ['Move the blue circle up to the chest! 🖱️'],
 };
 
@@ -74,8 +86,8 @@ TR.Store = {
     let saved = {};
     try { saved = JSON.parse(localStorage.getItem(this.key)) || {}; } catch (e) { saved = {}; }
     this.data = Object.assign({
-      inputMode: 'camera',      // 'camera' | 'mouse' | 'board' (Distance sensor, chosen automatically on the UNO Q)
-      calib: null,              // { goal (palm growth fraction), reps: [], at }
+      inputMode: 'camera',      // 'camera' | 'mouse' | 'board' (camera + Distance sensor, chosen automatically on the UNO Q)
+      calib: null,              // { v: 2, maxY: {left, right}, homeY: {left, right}, touchMm, at } (wrist heights in the camera picture)
       settings: {},
       tutorialDone: false,
       muted: false,
