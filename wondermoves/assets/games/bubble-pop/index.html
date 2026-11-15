@@ -59,6 +59,7 @@
       <span class="score" id="scorePill"><span class="wm-emoji">⭐</span><b id="scoreVal">0</b></span>
     </div>
     <div class="wm-top-right">
+      <button id="doneBtn" class="chunky-btn" style="display:none;padding:0 18px;font-weight:700">✓ I'm done</button>
       <button id="helpBtn" class="chunky-btn round help-btn" aria-label="How to play">?</button>
       <button id="soundBtn" class="chunky-btn round" aria-label="Toggle sound">🔊</button>
     </div>
@@ -98,8 +99,8 @@
       <p class="wm-gu-note" id="rangeInfo"></p>
       <div class="wm-gu-row">
         <span class="wm-gu-label">Game length</span>
-        <div class="wm-seg three" id="secToggle">
-          <button data-sec="30">30 s</button><button data-sec="60">60 s</button><button data-sec="90">90 s</button>
+        <div class="wm-seg three" id="secToggle" style="grid-template-columns:repeat(4,1fr)">
+          <button data-sec="0">No timer</button><button data-sec="30">30 s</button><button data-sec="60">60 s</button><button data-sec="90">90 s</button>
         </div>
       </div>
       <div class="wm-gu-row">
@@ -128,7 +129,7 @@
         <img src="../../shared/assets/mascot.svg" alt="" class="start-pip">
         <div>
           <h2>Ready to pop?</h2>
-          <p>Pop as many bubbles as you can before your air runs out!</p>
+          <p id="startBlurb">Pop as many bubbles as you like. Tap “I'm done” when you want to stop!</p>
         </div>
       </div>
       <div class="diff-grid" id="diffGrid"></div>

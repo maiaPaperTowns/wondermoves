@@ -1,0 +1,389 @@
+# Lines found by walking through every screen with the voice on (tools/pip_voice.py adds these to the
+# lines it collects from the code). One line per row. Pieces of sentences with changing numbers are
+# stitched together with the recorded numbers by shared/wm-voice.js.
+Okay! Let's play Treasure Reach!
+Treasure Reach!
+Pip's camera
+Camera is off
+Hi, I'm Pip! I need to see your hands to play. Ask a grown-up to turn on the camera!
+Let's set up the camera!
+Sit at the table with the laptop in front of you. Pip will help you point the camera at your hands.
+The video stays on this device. It is never saved or sent anywhere.
+You can say "Turn on camera" or "Play with a mouse instead".
+Hi, I'm Pip! Every reach opens a treasure chest. Let me show you how!
+Say "next" to keep going.
+First, put the mouse near the bottom of the screen.
+Now move the blue circle up to the chest.
+This bar fills as you reach. Get to the star and hold still for a moment. Then the chest opens!
+Then rest your hand again, and a new chest appears. Each treasure goes in your Collection!
+Want to see this again? Tap ? any time. Ready? Let's find treasure!
+Move the blue circle up to the chest!
+A new treasure for your collection!
+New!
+Uncommon
+Ocean Pearl
+Bring your hands back to rest
+Magic Ring
+Now rest your hands. A new chest is coming!
+Set complete!
+You can say "Change level" or "Keep going!".
+How big a reach?
+Harder levels need a bigger reach and a longer hold.
+Easy
+Little reach, quick hold
+Best loot: Epic
+Medium
+Comfy reach, hold a moment
+Best loot: Legendary
+Hard
+Medium! Reach to the star and hold for 0.8 seconds!
+Treasure Collection
+Harder levels hide rarer treasures. Try Hard for a Legendary find!
+Common
+Rare
+Epic
+Legendary
+You can say "Close collection", "Common", "Uncommon", "Rare", "Epic" or "Legendary".
+Treasure Reach
+Play with
+Level
+For grown-ups
+You can say "Close menu", "Camera", "Mouse", "Change level", "My collection", "How to play" or "Download log (Json)".
+I'm listening!
+I didn't catch that. You can say fossil, treasure or bubbles.
+Okay! Let's play Fossil Brush!
+Fossil Brush!
+Point the camera straight at you, and sit so it can see your hand when you hold it up.
+You can say "Turn on camera" or "Use touch or mouse instead".
+Say "yes" to turn on the camera, or "mouse" to play without it.
+Hi there, explorer! I'm Pip the Dig-Dino! Let's dig up some amazing treasures together!
+I'll draw a shape on the sand pile with my brush. Watch closely!
+Then it's your turn! Put your finger on the glowing dot and follow the path. Wobbly is Ok!
+These show how many shapes are left. Tap "Show me" if you want me to draw it again!
+Every shape digs deeper. Rare treasures are buried deep, so they need more shapes to reach!
+Tap the Menu to visit new dig sites, or switch to Free Play brushing.
+Every treasure you find goes into your Collection book. Can you find them all?
+Need help? Tap the ? button and I'll come right back. Happy digging!
+Watch me one more time!
+Nice find! Every treasure counts!
+Spiral Shell
+Some seashells are millions of years old — older than the dinosaurs!
+You can say "Collection" or "Dig Again!".
+Say "dig again" to find another treasure, or "I'm done" to stop.
+Watch me draw a line going down!
+Fossil Brush
+Game mode
+Copy the shapes Pip draws to dig. Rarer treasures need more shapes!
+Dig sites
+Pick a place to dig. Harder sites hide rarer treasures!
+Ooh, an Uncommon treasure!
+Fossil Crab
+Crabs have been scuttling sideways for more than 200 million years.
+Brush the sand any way you like.
+Watch me draw a line going up!
+My Collection
+Sunny Beach
+Desert Dunes
+Rocky Canyon
+Volcano Valley
+Okay! Let's play Bubble Pop!
+Bubble Pop!
+Pip uses the camera to see you and your hands. Sit facing the screen.
+Hi, I'm Pip! Welcome under the sea! Let's pop some bubbles!
+Bubbles float up from the sea floor. Move the blue circle onto a bubble to pop it!
+This air tank shows how much time is left. Pop as many as you can before it runs out!
+Your score goes up here. Fishy bubbles are worth 2, and star bubbles are worth 3!
+Grown-ups can change the game time, bubble size and more in the Menu.
+Need help? Tap ? and I'll come right back. Let's dive in!
+Ready to pop?
+Pop as many bubbles as you like. Tap “I'm done” when you want to stop!
+Slow, big bubbles
+Bubbles drift by
+Speedy bubbles!
+You can say "Easy", "Medium", "Hard" or "Start!".
+Say "begin" when you're ready!
+Move the blue circle onto the bubbles!
+Okay, let's begin!
+Okay, all done with this game!
+Hi, explorer! Pick a game.
+Every move you make helps Pip find treasure.
+Treasure Reach. Reach forward. Reach out and hold to open the treasure chest.
+Fossil Brush. Brush the sand away. Copy Pip's brush strokes to dig up a fossil.
+Bubble Pop. Lift your hand. Move your hand onto the bubbles to pop them.
+Say the name of a game, like "Treasure Reach", to play.
+Time's up! Great popping!
+You can say "Change level" or "Play again!".
+Pop!
+Okay, let's go again!
+Okay, let's keep going!
+Okay, time for a little rest.
+Okay!
+Ask a grown-up to turn on talking with Pip in Settings.
+Resting
+Pick a game!
+Say "keep going" or tap below when you're ready.
+Reach 60 percent, hold 0.3 seconds
+Reach 80 percent, hold 0.8 seconds
+Reach 100 percent, hold 1.5 seconds
+Big reach, hold it steady
+Best loot: Rare
+Best loot: Uncommon
+Best loot: Common
+You opened
+treasure chests!
+Best reach:
+percent of your goal
+of
+treasures found
+Found
+meters deep!
+shapes traced,
+shape traced,
+Super smooth tracing!
+Great tracing!
+Nice effort, keep practising!
+Chests opened:
+Best:
+bubbles popped,
+floated away
+You've made
+moves today. Every move counts!
+Great moving! You've played
+minutes. Shake out your hands and have a sip of water?
+minute. Shake out your hands and have a sip of water?
+It's a bit warm. Want a little break and a drink of water?
+No chests opened yet.
+No shapes traced yet.
+shapes traced so far, recent accuracy
+Gold Coins
+Pirates often split their gold coins evenly with the whole crew.
+Old Compass
+A compass needle always points north, so sailors never get lost.
+Treasure Map
+X marks the spot! Treasure maps show where something is hidden.
+Pearls grow slowly inside oysters, layer by layer.
+Golden Key
+This old key opens a very special lock somewhere on the island.
+Legend says this ring sparkles brighter when you smile.
+Shiny Gem
+Diamonds are the hardest natural thing on Earth.
+Lucky Star
+Sailors used the stars to find their way across the sea at night.
+Royal Crown
+This crown belonged to the Queen of the Seven Seas.
+Magic Lamp
+Rub it gently… who knows what might pop out!
+Champion Cup
+Only the biggest, bravest reachers ever find this cup!
+Sea King's Trident
+The Sea King used this trident to calm stormy waves.
+Shark Tooth
+Sharks can lose thousands of teeth in their lives. That's why we find so many!
+Ammonite
+Ammonites were squid-like sea animals that lived inside curly, coiled shells.
+Giant Sea Turtle
+Archelon was an ancient sea turtle as big as a car!
+Plesiosaur
+Plesiosaurs had super-long necks and swam with four big flippers.
+Dino Bone
+Fossil bones are made of stone! Minerals slowly replaced the bone over millions of years.
+Dino Footprint
+Footprints tell us how fast dinosaurs walked — and whether they travelled in herds.
+Dino Egg
+Some dinosaur eggs were as big as a football!
+Ancient Lizard
+Lizards lived alongside the dinosaurs — and they are still around today.
+Golden Scarab
+Long ago, people thought scarab beetles were lucky charms.
+T. rex Skull
+A T. rex skull could be as long as a grown-up is tall!
+Petrified Wood
+Petrified wood is a tree that slowly turned into rock!
+Trilobite
+Trilobites crawled on the sea floor more than 500 million years ago.
+Mammoth Tusk
+Woolly mammoth tusks could grow longer than a car!
+Saber-tooth Skull
+Saber-toothed cats had fangs as long as a banana.
+Crystal Geode
+Geodes look like plain rocks outside, but are full of sparkly crystals inside!
+Ancient Crown
+Legends say a canyon king hid his crown where only the bravest diggers could reach.
+Lava Rock
+Lava rock has tiny holes made by gas bubbles when the lava cooled.
+Ancient Fern
+Ferns grew on Earth before there were any flowers at all.
+Amber Bug
+Amber is old tree sap that turned hard — sometimes with a tiny bug trapped inside!
+Stone Idol
+Some ancient stone statues are taller than a house.
+Mystic Orb
+Volcanoes can make shiny glass called obsidian when lava cools super fast.
+Dragon Skull
+Long ago, people who found giant dinosaur bones thought they belonged to dragons!
+You are here
+All the way, hold it steady
+easy
+2 straight lines
+3 lines & curves
+3 curvy shapes
+4 tricky shapes
+5 super shapes
+Gentle
+Normal
+Precise
+Soft sand and seashells. A great place to start!
+Dinosaurs once stomped here. Can you find their bones?
+Rocky clumps make digging tricky. Brush extra hard!
+Hard lava rock hides the rarest treasures of all!
+Expert
+You can say
+or
+Close
+Close menu
+Close collection
+Back to collection
+Back
+Menu
+Collection
+Sensor
+Camera
+Mouse
+Redo camera setup
+Change level
+My collection
+How to play
+Download log (JSON)
+Reset setup, settings & log
+Keep going!
+Let's go!
+Treasure chest
+Open menu
+Chests opened this set
+Open my treasure collection
+Toggle sound
+Reach progress
+Set complete
+Treasure collection
+Pick a level
+I'm done
+New game
+No timer
+Small
+Big
+Reset setup, scores & log
+Start!
+Keep playing this round
+Play again!
+Time left
+Start a game
+Results
+Show me
+Copy Pip
+Free Play
+New dig here
+A finger is seen
+Pointing
+Reset collection
+Dig Again!
+Skip
+Next
+Open menu: dig sites and levels
+Open my collection
+Depth meter
+Tracing tolerance
+When the camera brush touches the sand
+Treasure found
+Play with a mouse instead
+Turn on camera
+Use my last setup
+Skip this step
+Continue with one hand
+Use my last area
+/ treasures found
+Change dig site
+Use touch / mouse instead
+Games
+Play
+Repeat the new PIN
+Hide camera
+The camera only works when WonderMoves runs from a local server (see web/README.md), or open this game on its own.
+The camera was blocked. Allow camera access in the browser, or play with a mouse.
+No camera found. You can play with a mouse instead.
+The hand tracker could not load (are you offline?). You can play with a mouse instead.
+I see one hand… press the other one against the laptop too!
+Press both hands against the laptop
+Tilt the screen down until the tops of your hands touch the line
+Tilt the screen up a little, so the tops of your hands are on the line
+Both hands on the line! Now hold still…
+Keep both hands where I can see them
+Pull both hands back behind the start line, toward you
+Both hands behind the line! Now hold still…
+Tilt the camera down till the line hits your hand
+Move your hands back to the start
+Getting ready to look…
+I can't see your shoulders yet. Sit back a little so they show
+Move a little this way
+Come a little closer
+Scoot back a little
+Sit up tall, or tip the camera down a bit
+Move down a little, or tip the camera up
+Perfect! Stay right there…
+I see both hands!
+I see one hand… show me the other one too!
+Looking for hands…
+Show me both hands
+Stretch farther toward the handprints, as far as is comfy
+You reached both handprints! Now hold still…
+Great stretch! Now hold still…
+Hold it right there…
+Sit in the middle of the picture
+Show me your hands!
+Stretch toward the handprints
+The camera was blocked. Allow camera access in the browser, or use touch / mouse instead.
+The camera was blocked. Allow camera access in the browser, or use touch or mouse instead.
+No camera or hand tracker available. You can use touch or the mouse instead.
+I see your finger! Hold it up…
+I see your hand! Now point one finger up
+Hold up your hand so I can see it
+Where did your hand go?
+Bigger circle! As big as is comfy
+Lovely circle! Keep going…
+Finger up in the air
+Draw a big circle in the air
+Show camera
+Loading the hand tracker…
+This browser cannot use the camera here.
+Asking to use the camera…
+Shape
+No camera setup yet.
+Turn sound on
+Turn sound off
+Clear the reach setup, settings and practice log?
+Pop as many bubbles as you can before your air runs out!
+No sessions yet.
+No comfy area set yet.
+Let's dive in!
+Clear the camera setup, best scores, settings and practice log?
+Let's dig!
+Start a brand-new collection? All found treasures will be cleared.
+Stay comfy…
+Push the device forward
+Push until there's enough space to stretch your arms comfortably.
+Let's go under the sea! Ask a grown-up to turn on the camera.
+All set!
+All set! Time to dive in and pop some bubbles!
+Start a new round
+pops left
+Camera setup saved
+Comfy area set
+You found the
+Welcome! Choose your game: Treasure Reach, Fossil Brush, or Bubble Pop.
+A grown-up needs to help set up the camera.
+Push both hands toward the laptop to open the chest!
+Time to dive in and pop some bubbles!
+Move your finger to brush the sand!
+Point to brush the sand. Open your hand to lift the brush.
+Now pull both hands back toward you, to get a new chest!
+Now pull your hand back from the sensor, to get a new chest!
+Now move the blue circle back down, to get a new chest!

@@ -14,20 +14,45 @@
 </head>
 <body>
   <!-- Each game is its own page, loaded into an iframe inside this stage. -->
-  <main class="stage" id="stage" aria-live="polite"></main>
+  <main class="stage" id="stage" aria-live="polite">
+    <!-- Home: pick a game. Games load only when picked, so the camera isn't asked for here. -->
+    <section class="home" id="home" aria-labelledby="homeTitle">
+      <div class="home-inner">
+        <header class="home-hello">
+          <img class="home-pip" src="shared/assets/mascot.svg" alt="" width="128" height="128">
+          <div class="home-bubble">
+            <h1 id="homeTitle">Hi, explorer! Pick a game.</h1>
+            <p id="homeToday">Every move you make helps Pip find treasure.</p>
+          </div>
+          <!-- The AI voice agent (Talk to Pip) puts its button here. See SHELL-README.md. -->
+          <div class="voice-slot" id="voiceSlot"></div>
+        </header>
+        <div class="home-games" id="homeGames"></div>
+        <footer class="home-foot">
+          <a class="grownups-btn" href="parents/"><span aria-hidden="true">👪</span> For grown-ups</a>
+        </footer>
+      </div>
+    </section>
+  </main>
 
   <nav class="tabbar" aria-label="Games">
     <div class="brand" aria-hidden="true">
-      <span class="brand-mark">✨</span>
+      <img class="brand-mark" src="shared/assets/logo-mark.svg" alt="" width="34" height="34">
       <span class="brand-name">Wonder<b>Moves</b></span>
     </div>
     <div class="tabs" id="tabs" role="tablist"></div>
+    <div class="tabbar-right">
+    <!-- For grown-ups: the parent page (sessions and progress), served by the board. Opens in a new tab. -->
+    <a class="parents-link" href="parents/" title="Progress for parents and carers">👪 Grown-ups</a>
     <!-- Placeholder: becomes the camera / finger-tracking status once the camera panel exists. -->
     <div class="input-status" id="inputStatus" title="Camera tracking is coming soon. For now, play with a mouse or touch.">
       <span class="dot"></span><span class="label">Touch &amp; mouse</span>
     </div>
+    </div>
   </nav>
 
   <script src="shell.js"></script>
+  <script src="shared/wm-voice.js?v=5a25436d"></script>  <!-- Pip talks out loud + "Pip, ..." voice commands -->
+
 </body>
 </html>

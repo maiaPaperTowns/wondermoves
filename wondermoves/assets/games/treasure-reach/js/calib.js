@@ -46,8 +46,18 @@ window.TR = window.TR || {};
     return B.distMm > 0 && B.distMm <= TR.SENSE.trustMm ? B.distMm : null;
   };
 
-  /** Sensor distance that opens the chest. */
+  /** Sensor distance that opens the chest (camera + sensor 'board' mode). */
   TR.sensorGoalMm = () => TR.SENSE.openMm;
+
+  /** Sensor mode: how far (mm) the hand must move toward the sensor to open the chest.
+      The child's own limit from the board (Settings): the caregiver's approved maximum and the
+      calibrated comfortable reach, whichever is smaller. Never more than the sensor can measure. */
+  TR.sensorTargetMm = function () {
+    const p = (window.WM && WM.Board && WM.Board.profile) || {};
+    const caps = [p.approved_max_mm, p.comfortable_mm].filter(v => typeof v === 'number' && v > 0);
+    const t = caps.length ? Math.min(...caps) : TR.SENSE.openMm;
+    return Math.max(15, Math.min(t, TR.SENSE.trustMm - 30));
+  };
 
   /** A hand's progress from start (0) to max forward (1) on camera, or null. */
   TR.camProgress = function (side, hand) {
