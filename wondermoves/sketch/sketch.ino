@@ -10,7 +10,9 @@
 // Distance: we drive the VL53L4CD/ED chip directly instead of ModulinoDistance, because
 // that class drops every reading with a range-status *warning* (1 = noisy, 2 = weak signal).
 // A hand 15-30 cm away usually comes with such a warning, so the game only "saw" hands
-// closer than ~12 cm. We keep statuses 0-2 (real distance) and drop real errors (>2).
+// closer than ~12 cm. We keep status 0 at any distance, and warning statuses 1-2 only
+// beyond 45 mm: with no strong target the chip reports a weak fake ~25-30 mm reading
+// (light bouncing in its own cover window), which must not count as a hand.
 VL53L4CD* tofCD = nullptr;
 VL53L4ED* tofED = nullptr;
 ModulinoMovement movement;
@@ -41,6 +43,14 @@ bool beginDistance() {
   return false;
 }
 
+const uint16_t WARN_MIN_MM = 45;
+int validReading(uint8_t status, uint16_t mm) {
+  if (mm == 0) return -1;
+  if (status == 0) return mm;
+  if (status <= 2 && mm >= WARN_MIN_MM) return mm;
+  return -1;
+}
+
 // Returns distance in mm, or -1 when there is no new valid reading.
 int readDistance() {
   uint8_t ready = 0;
@@ -50,7 +60,7 @@ int readDistance() {
     tofCD->VL53L4CD_ClearInterrupt();
     VL53L4CD_Result_t r;
     tofCD->VL53L4CD_GetResult(&r);
-    return (r.range_status <= 2 && r.distance_mm > 0) ? r.distance_mm : -1;
+    return validReading(r.range_status, r.distance_mm);
   }
   if (tofED) {
     tofED->VL53L4ED_CheckForDataReady(&ready);
@@ -58,7 +68,7 @@ int readDistance() {
     tofED->VL53L4ED_ClearInterrupt();
     VL53L4ED_ResultsData_t r;
     tofED->VL53L4ED_GetResult(&r);
-    return (r.range_status <= 2 && r.distance_mm > 0) ? r.distance_mm : -1;
+    return validReading(r.range_status, r.distance_mm);
   }
   return -1;
 }

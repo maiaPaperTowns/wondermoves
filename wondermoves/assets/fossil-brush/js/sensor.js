@@ -19,10 +19,14 @@
   const cursor = document.getElementById('brushCursor');
   let pending = 0, framesLeft = 0, phase = 0, prev = null, strokes = 0;
 
-  socket.on('connect', () => socket.emit('start', { game: 'brush' }));
+  // Start the brush game once per page load, not on every reconnect (a reconnecting
+  // background tab used to restart Fossil Brush and cancel other games).
+  let started = false;
+  socket.on('connect', () => { if (!started && document.visibilityState === 'visible') { started = true; socket.emit('start', { game: 'brush' }); } });
+  document.addEventListener('visibilitychange', () => { if (!started && document.visibilityState === 'visible' && socket.connected) { started = true; socket.emit('start', { game: 'brush' }); } });
   socket.on('brush_stroke', () => { pending = Math.min(pending + 1, 3); strokes++; });
   socket.on('gesture_uncertain', () => FB.Buddy && FB.Buddy.say('Brush back and forth, nice and big! 🖌️', 2200));
-  window.addEventListener('pagehide', () => socket.emit('pause', {}));
+  window.addEventListener('pagehide', () => { if (started) socket.emit('pause', {}); });
   window.WM_brush = { stroke: () => { pending = Math.min(pending + 1, 3); strokes++; }, count: () => strokes };  // test hook
 
   // Way back to the WonderMoves portal (only shown when running on the board).
