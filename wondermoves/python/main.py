@@ -266,8 +266,15 @@ def track_reach_for_ui(d):
 def on_reach_rep(_client, data):
     """A chest opened in the shell's Treasure Reach: log it like the board game's reaches."""
     data = data or {}
-    emit("reach_completed", reach_mm=data.get("reach_mm"), target_mm=data.get("goal_mm"),
-         level=data.get("level"), source="treasure-reach-ui")
+
+    def num(k):
+        v = data.get(k)
+        return round(float(v)) if isinstance(v, (int, float)) and 0 <= v < 100000 else None
+    closest, start = num("sensor_mm"), num("start_mm")
+    # reach_mm: how far the hand moved toward the sensor in this rep (start - closest), when known.
+    reach = start - closest if start is not None and closest is not None and start > closest else None
+    emit("reach_completed", reach_mm=reach, closest_mm=closest, start_mm=start, rep_ms=num("rep_ms"),
+         target_mm=num("goal_mm"), level=data.get("level"), source="treasure-reach-ui")
 
 
 # ---------------- Fossil Brush (IMU) ----------------
@@ -408,6 +415,7 @@ def on_sensor_status(has_d, has_m, has_t, distance_hz, imu_hz, last_mm):
 
 # ---------------- Browser -> board messages ----------------
 def on_start(_client, data):
+    flush_quality(force=True)   # readings from the previous game belong to that game's session
     if state["mode"] in ("calib_baseline", "calib_reach"):
         # Never cancel a calibration half-way: the child's range would be saved wrong.
         emit("calibration_busy")
@@ -423,6 +431,7 @@ def on_start(_client, data):
 
 
 def on_pause(_client, _data):
+    flush_quality(force=True)
     practice["since_break"] = 0
     state["mode"] = "idle"
     sync_camera()
@@ -483,7 +492,22 @@ Bridge.provide("distance", on_distance)
 Bridge.provide("imu", on_imu)
 Bridge.provide("thermo", on_thermo)
 Bridge.provide("sensor_status", on_sensor_status)
+quality = {"ok": 0, "all": 0, "since": time.time()}
+
+
+def flush_quality(force=False):
+    """Log how many distance readings were clear during Treasure Reach play (about once a minute)."""
+    if quality["all"] and (force or time.time() - quality["since"] >= 60):
+        emit("sensor_quality", ok=quality["ok"], total=quality["all"],
+             ok_pct=round(100 * quality["ok"] / quality["all"]))
+    quality.update(ok=0, all=0, since=time.time())
+
+
 def on_distance_debug(s0, s1, s2, s_err, raw_mm, raw_status):
+    if state["mode"] == "playing" and state.get("game") in ("reach", "reach_ui"):
+        quality["ok"] += s0
+        quality["all"] += s0 + s1 + s2 + s_err
+        flush_quality()
     ui.send_message("distance_debug", {"ok": s0, "noisy": s1, "weak": s2, "error": s_err,
                                        "raw_mm": raw_mm, "raw_status": raw_status})
     # Only weak readings closer than 45 mm for 5 s in a row: the chip sees its own window

@@ -127,21 +127,61 @@ window.TR = window.TR || {};
   };
 
   /* ---------------- tutorial ---------------- */
+  /* Demo for the tutorial (sensor mode): fakes the sensor so the bar fills while Pip explains.
+     The game is paused during the tutorial, so no chest opens and nothing is logged. */
+  const Demo = TR.Demo = {
+    real: null, mm: null, timer: null,
+    start() { if (!this.real) { this.real = TR.sensorMm; TR.sensorMm = () => this.mm; } },
+    glide(from, to, ms) {
+      this.start(); clearInterval(this.timer);
+      const t0 = performance.now();
+      this.mm = from;
+      this.timer = setInterval(() => {
+        const k = Math.min(1, (performance.now() - t0) / ms);
+        this.mm = from + (to - from) * (0.5 - Math.cos(Math.PI * k) / 2);
+        if (k >= 1) clearInterval(this.timer);
+      }, 30);
+    },
+    reach() {   // rest → reach → hold → back, on a loop
+      this.glide(150, 40, 1600);
+      clearTimeout(this.loop);
+      this.loop = setTimeout(() => { this.glide(40, 150, 1200); this.loop = setTimeout(() => this.reach(), 1500); }, 2600);
+    },
+    stop() {
+      clearInterval(this.timer); clearTimeout(this.loop);
+      if (this.real) { TR.sensorMm = this.real; this.real = null; }
+      this.mm = null;
+    },
+  };
+
   TR.tutorialSteps = function () {
     const mode = TR.Store.data.inputMode;
-    const how = mode === 'sensor' ? 'Reach your hand toward the sensor until the chest pops open! 🖐️'
-      : mode === 'mouse' ? 'Move the blue circle up to the chest to open it! 🖱️'
-      : 'Push both hands toward the laptop to open the chest! 🙌';
+    const sensor = mode === 'sensor', mouse = mode === 'mouse';
+    const show = fn => (sensor ? fn : () => Demo.stop());
     return [
-      { text: `Hi, I'm ${WM.PIP.name}! ${how}`, target: '#chest', round: true, pad: 4 },
-      { text: 'Fill this bar to the star and hold for a moment. ⭐', target: '#reachMeter' },
-      { text: 'Then rest your hand, and a new chest appears. Need help? Tap ? 🎉', target: '#helpBtn' },
+      { text: `Hi, I'm ${WM.PIP.name}! Every reach opens a treasure chest. Let me show you how! 💰`,
+        target: '#chest', round: true, pad: 4, onShow: () => Demo.stop() },
+      { text: sensor ? 'First, rest your arm on the table. Put your hand about a ruler away from the little sensor. 🖐️'
+          : mouse ? 'First, put the mouse near the bottom of the screen. 🖱️'
+          : 'First, rest both hands on the table in front of the camera. 🙌',
+        target: null, onShow: () => Demo.stop() },
+      { text: sensor ? 'Now watch! Slide your hand slowly toward the sensor. Slow is great! 🐢'
+          : mouse ? 'Now move the blue circle up to the chest. 🔵'
+          : 'Now push both hands toward the laptop, nice and slow. 🐢',
+        target: '#chest', round: true, pad: 4, onShow: show(() => Demo.reach()) },
+      { text: 'This bar fills as you reach. Get to the star ⭐ and hold still for a moment. Then the chest opens!',
+        target: '#reachMeter', onShow: show(() => Demo.reach()) },
+      { text: 'Then rest your hand again, and a new chest appears. Each treasure goes in your Collection! 📖',
+        target: '#collectionBtn', onShow: () => Demo.stop() },
+      { text: 'Want to see this again? Tap ? any time. Ready? Let\'s find treasure! 🎉',
+        target: '#helpBtn', onShow: () => Demo.stop() },
     ];
   };
   TR.openTutorial = function (then) {
     WM.Tutorial.open(TR.tutorialSteps(), {
       doneLabel: "Let's go! 💰",
       onClose: () => {
+        Demo.stop();
         if (!TR.Store.data.tutorialDone) { TR.Store.data.tutorialDone = true; TR.Store.save(); }
         if (then) then(); else TR.Game.nudge(true);
       },

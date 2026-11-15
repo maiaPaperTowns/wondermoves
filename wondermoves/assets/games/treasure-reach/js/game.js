@@ -92,6 +92,7 @@
 
     resetRep() {
       this.hold = 0; this.peak = 0; this.peakReach = 0; this.peakSide = null; this.repStart = 0; this.minMm = null;
+      this.startMm = null;   // sensor mode: farthest reading while resting = where the reach started
       this.said = {};
     },
 
@@ -111,6 +112,9 @@
         // Distance sensor only: the bar fills from trustMm (150 mm) to openMm (50 mm).
         const d = TR.sensorMm(), goal = S.openMm;
         if (d != null) this.minMm = this.minMm == null ? d : Math.min(this.minMm, d);
+        // Where the reach started: the farthest reading while resting. Beyond trustMm the sensor
+        // can't measure, so a start out there counts as trustMm (reach lengths are capped at ~10 cm).
+        if (this.state === 'rest') this.startMm = Math.max(this.startMm || 0, d == null ? S.trustMm : d);
         const v = d == null ? 0 : clamp((S.trustMm - d) / (S.trustMm - goal), 0, 1);
         // A single noisy reading mid-hold doesn't reset the hold: "near" lasts 150 ms after the last near reading.
         const now = performance.now();
@@ -216,6 +220,8 @@
       if (this.mode === 'board' || this.mode === 'sensor') {
         // Log the rep on the board (caregiver session log / parent website).
         WM.Board.send('reach_rep', { sensor_mm: this.minMm == null ? null : Math.round(this.minMm), goal_mm: Math.round(TR.sensorGoalMm()),
+          start_mm: this.mode === 'sensor' && this.startMm != null ? Math.round(this.startMm) : null,
+          rep_ms: this.repStart ? Math.round(performance.now() - this.repStart) : null,
           level: TR.level().id, hold_ms: TR.level().holdMs });
       }
       this.state = 'open';
