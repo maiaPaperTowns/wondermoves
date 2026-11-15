@@ -3,89 +3,165 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#1C6FA8">
   <title>Bubble Pop</title>
+  <link rel="icon" href="../../shared/assets/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../../shared/wm-base.css">
-  <style>
-    /* PLACEHOLDER: Bubble Pop is not built yet. The floating bubbles can be popped for fun. */
-    html, body { height: 100%; overflow: hidden; }
-    body {
-      display: grid; place-items: center;
-      background: linear-gradient(180deg, #A9D8FF 0%, #D9C7FF 55%, #FFD6EC 100%);
-      touch-action: manipulation;
-    }
-    #sky { position: fixed; inset: 0; }
-    .bubble {
-      position: absolute; bottom: -140px;
-      border-radius: 50%;
-      background:
-        radial-gradient(circle at 30% 28%, rgba(255,255,255,.95) 0 9%, transparent 10%),
-        radial-gradient(circle at 50% 50%, rgba(255,255,255,0) 55%, rgba(255,255,255,.55) 70%, hsla(var(--h), 90%, 75%, .55) 100%);
-      box-shadow: inset 0 0 18px hsla(var(--h), 90%, 70%, .6);
-      animation: rise var(--t) linear forwards, sway 3s ease-in-out infinite alternate;
-      cursor: pointer;
-    }
-    .bubble.pop { animation: pop .25s ease-out forwards; pointer-events: none; }
-    @keyframes rise { to { bottom: 110%; } }
-    @keyframes sway { from { margin-left: -14px; } to { margin-left: 14px; } }
-    @keyframes pop { to { transform: scale(1.5); opacity: 0; } }
-    .card { position: relative; z-index: 1; width: min(560px, calc(100vw - 32px)); padding: 28px 28px 22px; text-align: center; pointer-events: none; }
-    .card .wm-btn, .card button { pointer-events: auto; }
-    .art { font-size: 110px; margin-top: -86px; }
-    .art .wm-emoji { display: inline-block; animation: wm-bob 2s ease-in-out infinite; }
-    h1 { margin: 6px 0 4px; font-size: 40px; }
-    .soon { display: inline-block; padding: 4px 16px; border-radius: 999px; background: #5BA8F8; color: #fff; font-weight: 700; font-size: 16px; letter-spacing: .04em; }
-    p.lead { font-size: 19px; color: var(--ink-soft); margin: 14px 0 18px; line-height: 1.4; }
-    .wm-pip { justify-content: center; text-align: left; }
-    .count { font-weight: 700; color: #2C74C9; }
-  </style>
+  <link rel="stylesheet" href="../../shared/wm-ui.css">
+  <link rel="stylesheet" href="../../shared/wm-pip.css">
+  <link rel="stylesheet" href="../../shared/wm-campanel.css">
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <div id="sky" aria-hidden="true"></div>
-  <main class="card wm-card">
-    <div class="art" aria-hidden="true"><span class="wm-emoji">🫧</span></div>
-    <h1>Bubble Pop</h1>
-    <span class="soon">COMING SOON</span>
-    <p class="lead">Pop the floating bubbles before they drift away!</p>
-    <div class="wm-pip">
-      <img src="../../shared/assets/mascot.svg" alt="Pip">
-      <div class="wm-bubble">I'm still blowing the bubbles! Try popping these ones for practice. <span class="count" id="count"></span></div>
+
+  <!-- ===== Under the sea ===== -->
+  <div class="sea" aria-hidden="true">
+    <div class="rays"><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="ambient" id="ambient"></div>
+    <div class="fish f1 wm-emoji">🐠</div>
+    <div class="fish f2 wm-emoji">🐟</div>
+    <div class="fish f3 wm-emoji">🐡</div>
+    <div class="turtle wm-emoji">🐢</div>
+    <svg class="floor" viewBox="0 0 1440 300" preserveAspectRatio="none">
+      <path class="sand-back" d="M0 120 C 240 80 420 140 720 110 C 1000 82 1200 130 1440 100 L1440 300 L0 300Z"/>
+      <path class="sand" d="M0 170 C 260 140 520 190 760 165 C 1020 140 1240 180 1440 160 L1440 300 L0 300Z"/>
+    </svg>
+    <div class="weeds">
+      <span class="weed w1"></span><span class="weed w2"></span><span class="weed w3"></span>
+      <span class="weed w4"></span><span class="weed w5"></span>
     </div>
-  </main>
+    <div class="floor-decor">
+      <span class="wm-emoji" style="left:18%">🪸</span>
+      <span class="wm-emoji" style="left:44%;font-size:5vmin">🐚</span>
+      <span class="wm-emoji" style="left:58%">🪸</span>
+      <span class="wm-emoji" style="left:70%;font-size:5vmin">⭐</span>
+      <span class="wm-emoji" style="left:30%;font-size:5vmin">🦀</span>
+    </div>
+  </div>
+
+  <canvas id="fx" aria-hidden="true"></canvas>
+  <div class="countdown" id="countdown" aria-live="assertive"></div>
+
+  <!-- ===== Top bar ===== -->
+  <header class="wm-topbar">
+    <button id="menuBtn" class="chunky-btn menu-btn" aria-label="Open menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      <span class="btn-label">Menu</span>
+    </button>
+    <div class="wm-title-pill">
+      <span class="wm-emoji">🫧</span>
+      <span class="tp-name">Bubble Pop</span>
+      <span class="tp-sep"></span>
+      <span class="score" id="scorePill"><span class="wm-emoji">⭐</span><b id="scoreVal">0</b></span>
+    </div>
+    <div class="wm-top-right">
+      <button id="helpBtn" class="chunky-btn round help-btn" aria-label="How to play">?</button>
+      <button id="soundBtn" class="chunky-btn round" aria-label="Toggle sound">🔊</button>
+    </div>
+  </header>
+
+  <!-- ===== Air tank = time left (right) ===== -->
+  <aside class="wm-side tank" id="tank" aria-label="Time left">
+    <div class="wm-side-head"><span class="wm-emoji">⏱️</span> Air</div>
+    <div class="tank-body">
+      <div class="tank-tube">
+        <div class="tank-fill" id="tankFill"><i></i><i></i><i></i><i></i></div>
+      </div>
+    </div>
+    <div class="tank-val" id="tankVal">60s</div>
+  </aside>
+
+  <!-- ===== Menu ===== -->
+  <div class="wm-drawer-backdrop" id="drawerBackdrop"></div>
+  <nav class="wm-drawer" id="drawer" aria-label="Menu">
+    <div class="wm-drawer-head">
+      <h2>🫧 Bubble Pop</h2>
+      <button class="wm-close" id="drawerClose" aria-label="Close menu">✕</button>
+    </div>
+    <button class="wm-btn primary" id="newGameBtn">🫧 New game</button>
+    <div class="wm-seg two" id="inputToggle" role="group" aria-label="Play with">
+      <button data-input="camera">📷 Camera</button>
+      <button data-input="mouse">🖱️ Mouse</button>
+    </div>
+    <button class="wm-btn" id="recalBtn">🎯 Redo camera setup</button>
+    <button class="wm-btn" id="drawerHelp">🎓 How to play</button>
+
+    <details class="wm-grownups" open>
+      <summary>👪 For grown-ups</summary>
+      <p class="wm-gu-note" id="rangeInfo"></p>
+      <div class="wm-gu-row">
+        <span class="wm-gu-label">Game length</span>
+        <div class="wm-seg three" id="secToggle">
+          <button data-sec="30">30 s</button><button data-sec="60">60 s</button><button data-sec="90">90 s</button>
+        </div>
+      </div>
+      <div class="wm-gu-row">
+        <span class="wm-gu-label">Bubble size</span>
+        <div class="wm-seg three" id="sizeToggle">
+          <button data-size="small">Small</button><button data-size="medium">Medium</button><button data-size="big">Big</button>
+        </div>
+      </div>
+      <div class="wm-gu-row">
+        <label class="wm-gu-check"><input type="checkbox" id="moveOnly"> Only pop while the hand is moving</label>
+        <span class="wm-gu-note">Bubbles won't pop by drifting into a still hand. Uses the camera for now; motion sensors will plug in here later.</span>
+      </div>
+      <div class="wm-gu-row">
+        <span class="wm-gu-label">Practice log</span>
+        <span class="wm-gu-note" id="logInfo"></span>
+        <button class="wm-btn small" id="exportLog">⬇️ Download log (JSON)</button>
+      </div>
+      <button class="wm-link" id="resetBtn">Reset setup, scores &amp; log</button>
+    </details>
+  </nav>
+
+  <!-- ===== Start card ===== -->
+  <div class="wm-modal" id="startModal" role="dialog" aria-label="Start a game">
+    <div class="wm-card start-card">
+      <div class="start-head">
+        <img src="../../shared/assets/mascot.svg" alt="" class="start-pip">
+        <div>
+          <h2>Ready to pop?</h2>
+          <p>Pop as many bubbles as you can before your air runs out!</p>
+        </div>
+      </div>
+      <div class="diff-grid" id="diffGrid"></div>
+      <button class="wm-btn primary big-go" id="startGo">🫧 Start!</button>
+    </div>
+  </div>
+
+  <!-- ===== Results card ===== -->
+  <div class="wm-modal" id="endModal" role="dialog" aria-label="Results">
+    <div class="wm-card end-card">
+      <div class="end-art wm-emoji">🫧</div>
+      <div class="new-best" id="resBest">NEW BEST!</div>
+      <p class="end-diff" id="resDiff"></p>
+      <div class="end-score"><span class="wm-emoji">⭐</span><b id="resScore">0</b></div>
+      <p class="end-line"><b id="resPopped">0</b> bubbles popped · <b id="resMissed">0</b> floated away</p>
+      <div class="end-hands" id="resHands">
+        <div class="hand-row"><span class="dot left"></span>Left hand <b id="resLeft">0</b></div>
+        <div class="hand-bars"><i class="left" id="resLeftBar"></i><i class="right" id="resRightBar"></i></div>
+        <div class="hand-row right"><b id="resRight">0</b> Right hand<span class="dot right"></span></div>
+      </div>
+      <div class="end-actions">
+        <button class="wm-btn" id="resChange">🐠 Change level</button>
+        <button class="wm-btn primary" id="resAgain">Play again! 🫧</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
   <script src="../../shared/wm-bridge.js"></script>
-  <script>
-    (function () {
-      const sky = document.getElementById('sky');
-      const countEl = document.getElementById('count');
-      let popped = 0, timer = null;
-
-      function spawn() {
-        const b = document.createElement('div');
-        const size = 50 + Math.random() * 70;
-        b.className = 'bubble';
-        b.style.width = b.style.height = size + 'px';
-        b.style.left = Math.random() * 92 + '%';
-        b.style.setProperty('--h', Math.round(Math.random() * 360));
-        b.style.setProperty('--t', 7 + Math.random() * 6 + 's');
-        b.addEventListener('pointerdown', () => {
-          b.classList.add('pop');
-          popped++;
-          countEl.textContent = `Popped: ${popped} 🎉`;
-          setTimeout(() => b.remove(), 260);
-        });
-        b.addEventListener('animationend', e => { if (e.animationName === 'rise') b.remove(); });
-        sky.appendChild(b);
-      }
-
-      function start() { if (!timer) { spawn(); timer = setInterval(spawn, 900); } }
-      function stop() { clearInterval(timer); timer = null; }
-
-      // pause bubbles while another game tab is showing
-      WM.bridge.onVisibility(v => (v ? start() : stop()));
-      start();
-    })();
-  </script>
+  <script src="../../shared/wm-sound.js"></script>
+  <script src="../../shared/wm-pip.js"></script>
+  <script src="../../shared/wm-hands.js"></script>
+  <script src="../../shared/wm-pose.js"></script>
+  <script src="../../shared/wm-campanel.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/calib.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/game.js"></script>
 </body>
 </html>

@@ -23,14 +23,17 @@ web/
   shared/
     wm-base.css                     shared look: colors, font, buttons, cards
     wm-pip.css / wm-pip.js          Pip: bottom-left helper bubble + spotlight tutorial
+    wm-ui.css                       game chrome: top bar, side meter, menu drawer, cards
+    wm-campanel.css / .js           camera window: big for calibration, docked bottom-left
     wm-hands.js                     webcam hand tracking (MediaPipe, on-device)
+    wm-pose.js                      head & shoulders framing (MediaPipe pose, on-device)
     wm-sound.js                     synthesized sound effects
     wm-bridge.js                    game ↔ shell messaging helper
     assets/                         mascot, favicon
   games/
     fossil-brush/                   Fossil Brush (Copy Pip + Free Play)
     treasure-reach/                 Treasure Reach (camera reach + calibration, or mouse)
-    bubble-pop/                     placeholder: coming soon (bubbles can be popped)
+    bubble-pop/                     Bubble Pop (under the sea, 60 s sessions, camera or mouse)
 ```
 
 ## How games plug in
@@ -65,6 +68,8 @@ WM.bridge.send('switch', { game: 'fossil-brush' });
 Fossil Brush doesn't use the helper, so it stays fully standalone. It listens for the visibility message directly in `js/main.js` and mutes itself while hidden.
 
 ## Planned: camera panel
+
+Treasure Reach still uses its own copy of the camera panel and top-bar styles. Bubble Pop uses the shared `wm-campanel` and `wm-ui`. Moving Treasure Reach over to them is a small follow-up.
 
 The **Touch & mouse** pill on the right of the tab bar is a placeholder. It will become the camera / finger-tracking status. The camera panel, where Pip helps the child get their finger in frame, is planned to live in the shell, not in each game, so every game shares one camera setup.
 

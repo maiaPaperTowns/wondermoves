@@ -49,6 +49,21 @@ WM.Sound = (() => {
       const end = t + n * 0.1;
       [523.25, 659.25, 783.99].forEach(f => tone(f * 2, end, 1.1, 'sine', 0.11));
     },
+    /** Bubble pop; pitch 0..1 (higher = smaller/brighter pop). */
+    pop(pitch = 0.5) {
+      if (!ensure()) return;
+      const t = ctx.currentTime;
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'sine';
+      const f0 = 500 + pitch * 700;
+      o.frequency.setValueAtTime(f0, t);
+      o.frequency.exponentialRampToValueAtTime(f0 * 2.4, t + 0.05);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.22, t + 0.008);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+      o.connect(g).connect(master);
+      o.start(t); o.stop(t + 0.15);
+    },
     creak() {
       if (!ensure()) return;
       const t = ctx.currentTime;
