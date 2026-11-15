@@ -334,6 +334,8 @@ Bridge.provide("distance", on_distance)
 Bridge.provide("imu", on_imu)
 Bridge.provide("thermo", on_thermo)
 Bridge.provide("sensor_status", on_sensor_status)
+Bridge.provide("distance_debug", lambda s0, s1, s2, s_err, raw_mm, raw_status: ui.send_message(
+    "distance_debug", {"ok": s0, "noisy": s1, "weak": s2, "error": s_err, "raw_mm": raw_mm, "raw_status": raw_status}))
 Bridge.provide("i2c_scan", lambda found: ui.send_message("i2c_scan", {"found": found}))
 ui.on_message("start", on_start)
 ui.on_message("pause", on_pause)

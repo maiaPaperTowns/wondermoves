@@ -44,7 +44,13 @@ bool beginDistance() {
 }
 
 const uint16_t WARN_MIN_MM = 45;
+// Diagnostics: how many raw readings per status code since the last 1 Hz report,
+// and the median-ish last raw distance, so we can see WHY readings are rejected.
+unsigned long statusCount[8] = {0};
+int lastRawMm = -1, lastRawStatus = -1;
 int validReading(uint8_t status, uint16_t mm) {
+  statusCount[status < 7 ? status : 7]++;
+  lastRawMm = mm; lastRawStatus = status;
   if (mm == 0) return -1;
   if (status == 0) return mm;
   if (status <= 2 && mm >= WARN_MIN_MM) return mm;
@@ -133,6 +139,11 @@ void loop() {
     probeSensors();
     Bridge.notify("sensor_status", hasDistance, hasMovement, hasThermo,
                   (int)distanceSeen, (int)imuSeen, lastDistanceMm);
+    // Numbers only over the Bridge (a String argument stopped all messages).
+    Bridge.notify("distance_debug", (int)statusCount[0], (int)statusCount[1], (int)statusCount[2],
+                  (int)(statusCount[3] + statusCount[4] + statusCount[5] + statusCount[6] + statusCount[7]),
+                  lastRawMm, lastRawStatus);
+    for (int i = 0; i < 8; i++) statusCount[i] = 0;
     distanceSeen = imuSeen = 0;
     if (!hasDistance || !hasMovement || !hasThermo) {
       Bridge.notify("i2c_scan", scanI2C());
