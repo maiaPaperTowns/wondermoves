@@ -332,6 +332,8 @@ function render() {
       insight = '';
     } else if (dbState === 'offline') {
       insight = `<div class="insight">Waiting for an internet connection to add the Databricks note.</div>`;
+    } else if (['not set up', 'not signed in', 'error'].includes(dbState)) {
+      insight = `<div class="insight">Databricks notes are paused: ${esc(state.databricks.detail || dbState)}</div>`;
     } else {
       insight = `<div class="insight">The Databricks note is on its way.</div>`;
     }

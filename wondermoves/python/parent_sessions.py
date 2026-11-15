@@ -38,6 +38,9 @@ def sessionize(events: list[dict], now: float) -> list[dict]:
                    "game": game, "game_name": g["name"], "icon": g["icon"], "movement_word": g["move"],
                    "movements": 0, "pairs": 0, "uncertain": 0, "breaks": 0, "rewards": [],
                    "detail": "", "comfortable_mm": None, "start_t": e["t"], "end_t": e["t"], "_last": e["t"],
+                   # the board's own clock (the laptop helper shifts t to the laptop clock): how the board
+                   # matches Databricks notes to its sessions
+                   "board_start_t": e.get("board_t", e["t"]),
                    "reach_mms": [], "closest_mms": [], "rep_mss": [], "quality_ok": 0, "quality_all": 0,
                    "closed": False}
             if game == "reach" and e.get("level_name"):
