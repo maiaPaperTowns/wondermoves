@@ -258,7 +258,9 @@ def on_imu(ax, ay, az, gx, gy, gz):
 # ---------------- Thermo (room comfort only) ----------------
 def on_thermo(temp_c, humidity):
     ui.send_message("room", {"temp_c": temp_c, "humidity": humidity})
-    if temp_c > WARM_ROOM_C and state["mode"] == "playing":
+    # Gentle suggestion, at most once every 2 minutes (real test: it fired every 5 s).
+    if temp_c > WARM_ROOM_C and state["mode"] == "playing" and time.time() - state.get("warm_said", 0) > 120:
+        state["warm_said"] = time.time()
         emit("break_suggested", reason="warm_room", temp_c=round(temp_c, 1))
 
 
