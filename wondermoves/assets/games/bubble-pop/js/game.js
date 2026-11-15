@@ -62,7 +62,7 @@
       BP.Calib.active = false;
       BP.Store.data.inputMode = 'mouse'; BP.Store.save();
       WM.CamPanel.dock();
-      WM.CamPanel.cameraOn(false, 'Using the mouse');
+      WM.CamPanel.show(false); // no camera window (or toggle) in mouse mode
       this.toReady();
     },
 

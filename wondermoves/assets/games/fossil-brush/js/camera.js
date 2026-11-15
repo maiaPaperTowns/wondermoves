@@ -1,13 +1,22 @@
 /* ==========================================================================
    Fossil Brush: camera play (prototype).
-   The camera looks DOWN at the table. One pointer finger is the brush.
-     1. point — show one hand with the pointer finger out, inside the outline
-     2. area  — draw a big circle on the table with the fingertip; that area
-                is mapped onto the sand pile
-   During play the fingertip moves the brush. Pointing (only the index finger
-   out) = brush touching the sand; open hand / fist = brush lifted.
-   A real touch sensor can later replace the "pointing = touching" rule in
-   FB.Cam.finger().
+   The camera points straight at the child. One index finger, held up in the
+   air, is the brush.
+     1. point — hold up one hand with the index finger pointing up, inside the outline
+     2. area  — draw a big circle in the air with the fingertip; that area is
+                mapped onto the sand pile
+   During play the fingertip moves the brush. When the brush touches the sand
+   depends on the grown-up setting `brushRule`:
+     'auto'  (default) — no gesture needed. Free Play: the brush is down
+             whenever a finger is seen. Copy Pip: it goes down when the
+             fingertip reaches the glowing dot, and lifts between shapes.
+     'point' — only the index finger out = touching; open hand / fist = lifted.
+   A real touch sensor can later replace these rules in FB.Cam.finger().
+
+   Setup works the same way as Treasure Reach and Bubble Pop:
+     start (tap "Turn on camera") → point → circle ("Use my last area" if saved)
+     → done → the panel docks bottom-left. If the camera fails, the panel stays
+     open with the reason and a "use touch / mouse instead" option.
    ========================================================================== */
 window.FB = window.FB || {};
 
@@ -40,11 +49,22 @@ window.FB = window.FB || {};
 
     open() {
       this.mount();
-      WM.CamPanel.show(true);
       FB.Store.data.input = 'camera'; FB.Store.save();
       this.active = true;
       WM.CamPanel.calibrating();
       this.go(WM.Hands.running ? 'point' : 'start');
+    },
+
+    /** Setup finished: dock the panel and carry on playing. */
+    done() {
+      this.go('done');
+      FB.Sound.chime();
+      setTimeout(() => {
+        this.active = false;
+        WM.CamPanel.dock();
+        WM.CamPanel.cameraOn(true);
+        FB.Game.cameraDone();
+      }, 1600);
     },
 
     /** Back to touch / mouse. */
@@ -53,7 +73,6 @@ window.FB = window.FB || {};
       WM.Hands.stop();
       FB.Store.data.input = 'touch'; FB.Store.save();
       if (WM.CamPanel.el) { WM.CamPanel.dock(); WM.CamPanel.show(false); }
-      FB.Buddy.say('Okay! Brush with your finger on the screen, or the mouse. 🖌️');
       FB.Game.cameraDone();
     },
 
@@ -64,9 +83,9 @@ window.FB = window.FB || {};
       if (step === 'area') { this.pts = { x: [], y: [] }; this.path = []; }
       this.render();
       const say = {
-        start: `Let's use the camera! Point it down at the table so it can see your hand. 📷`,
-        point: 'Put one hand on the table and point with one finger, like this! ☝️',
-        area: 'Now draw a big circle on the table with your finger! ⭕',
+        start: `Let's use the camera! Sit facing the computer so I can see you. 📷`,
+        point: 'Hold up one hand and point your finger up in the air, like this! ☝️',
+        area: 'Now draw a big circle in the air with your finger! ⭕',
         done: 'All set! Your finger is the brush now! 🖌️',
       }[step];
       if (say) FB.Buddy.say(say, 0);
@@ -81,17 +100,18 @@ window.FB = window.FB || {};
         WM.CamPanel.cameraOn(true);
         this.go('point');
       } catch (e) {
+        console.warn('[Fossil Brush] camera start failed:', e);
         if (btn) btn.disabled = false;
         const denied = e && (e.name === 'NotAllowedError' || e.name === 'SecurityError');
         const fileFrame = location.protocol === 'file:' && window.parent !== window;
         if (status) {
           status.textContent = denied && fileFrame
             ? 'The camera only works when WonderMoves runs from a local server (see web/README.md), or open this game on its own.'
-            : denied ? 'The camera was blocked. Allow camera access in the browser, or keep using touch.'
-            : 'No camera or hand tracker available. You can keep using touch or the mouse.';
+            : denied ? 'The camera was blocked. Allow camera access in the browser, or use touch / mouse instead.'
+            : 'No camera or hand tracker available. You can use touch or the mouse instead.';
           status.classList.add('error');
         }
-        console.warn('[Fossil Brush] camera start failed:', e);
+        FB.Buddy.say('Uh oh, I can\'t see the camera. We can brush with touch or the mouse instead! 🖐️', 0);
       }
     },
 
@@ -107,23 +127,17 @@ window.FB = window.FB || {};
       const [y0, y1] = grow(pct(ys, 0.04), pct(ys, 0.96));
       FB.Store.data.camArea = { x0, x1, y0, y1, at: Date.now() };
       FB.Store.save();
-      this.go('done');
-      FB.Sound.chime();
-      setTimeout(() => {
-        this.active = false;
-        WM.CamPanel.dock();
-        FB.Game.cameraDone();
-      }, 1500);
+      this.done();
     },
 
     update(dt) {
       if (!this.active) return;
       const h = activeHand();
       if (this.step === 'point') {
-        const ok = !!(h && h.pointing);
+        const ok = !!(h && (h.pointing || FB.Store.data.brushRule !== 'point'));
         this.t = ok ? this.t + dt : Math.max(0, this.t - dt * 0.6);
         this.setBar(this.t / POINT_S);
-        this.setLive(ok ? 'Great pointing! Hold it… ☝️' : h ? 'I see your hand! Now point with just one finger ☝️' : 'Looking for your hand… 👀');
+        this.setLive(ok ? 'I see your finger! Hold it up… ☝️' : h ? 'I see your hand! Now point one finger up ☝️' : 'Hold up your hand so I can see it 👀');
         if (this.t >= POINT_S) { FB.Sound.chime(); this.go('area'); }
       } else if (this.step === 'area') {
         if (h) {
@@ -143,19 +157,33 @@ window.FB = window.FB || {};
     finger() {
       const h = activeHand();
       if (!h) { this.penCount = 0; this.pen = false; return null; }
-      // a little hysteresis so a wobbly finger doesn't flicker the brush on/off
-      this.penCount = Math.max(-3, Math.min(3, this.penCount + (h.pointing ? 1 : -1)));
-      if (this.penCount >= 2) this.pen = true;
-      if (this.penCount <= -2) this.pen = false;
       const a = FB.Store.data.camArea || { x0: 0.2, x1: 0.8, y0: 0.2, y1: 0.8 };
       const u = (h.tip.x - a.x0) / (a.x1 - a.x0), v = (h.tip.y - a.y0) / (a.y1 - a.y0);
       const { cx, cy, S } = FB.site.layout;
       const k = S * 1.1;
-      return {
+      const pos = {
         x: Math.max(0, Math.min(window.innerWidth, cx + (u - 0.5) * k)),
         y: Math.max(0, Math.min(window.innerHeight, cy + (v - 0.5) * k)),
-        pen: this.pen,
       };
+      if (FB.Store.data.brushRule === 'point') {
+        // a little hysteresis so a wobbly finger doesn't flicker the brush on/off
+        this.penCount = Math.max(-3, Math.min(3, this.penCount + (h.pointing ? 1 : -1)));
+        if (this.penCount >= 2) this.pen = true;
+        if (this.penCount <= -2) this.pen = false;
+      } else {
+        this.pen = this.autoPen(pos);
+      }
+      return { ...pos, pen: this.pen };
+    },
+
+    /** 'auto' rule: no gesture needed (from the fossil-brush camera integration). */
+    autoPen(pos) {
+      if (FB.Game.mode === 'free') return true;            // Free Play: brush whenever a finger is seen
+      const T = FB.Trace;
+      if (!T.active || T.phase !== 'trace') return false;  // lift between shapes / during Pip's demo
+      if (this.pen) return true;                           // keep brushing once started
+      const dot = T.pts[Math.floor(T.p)];                  // start when the fingertip reaches the glowing dot
+      return !!dot && Math.hypot(pos.x - dot[0], pos.y - dot[1]) <= T.tol * 1.2;
     },
 
     /** Extra drawing on the camera view. */
@@ -198,7 +226,7 @@ window.FB = window.FB || {};
       if (this.step === 'start') {
         el.innerHTML = `
           <h2>Let's set up the camera!</h2>
-          <p>Point the camera down at the table, so it can see your hand on the table.</p>
+          <p>Point the camera straight at you, and sit so it can see your hand when you hold it up.</p>
           <div class="wm-calib-actions">
             <button class="pill-btn primary" id="calStart" data-cam="start">📷 Turn on camera</button>
             ${touchLink}
@@ -206,9 +234,9 @@ window.FB = window.FB || {};
           <p class="wm-calib-status" id="calStatus"></p>
           <p class="wm-calib-privacy">🔒 The video stays on this device. It is never saved or sent anywhere.</p>`;
       } else if (this.step === 'done') {
-        el.innerHTML = `${stepper}<h2>🖌️ All set!</h2><p>Point to brush the sand. Open your hand to lift the brush.</p>`;
+        el.innerHTML = `${stepper}<h2>🖌️ All set!</h2><p>${FB.Store.data.brushRule === 'point' ? 'Point to brush the sand. Open your hand to lift the brush.' : 'Move your finger to brush the sand!'}</p>`;
       } else {
-        const title = { point: 'Point with one finger ☝️', area: 'Draw a big circle on the table ⭕' }[this.step];
+        const title = { point: 'Finger up in the air ☝️', area: 'Draw a big circle in the air ⭕' }[this.step];
         el.innerHTML = `
           ${stepper}
           <h2>${title}</h2>
@@ -229,8 +257,7 @@ window.FB = window.FB || {};
     if (act === 'start') Cam.startCamera();
     else if (act === 'touch') Cam.off();
     else if (act === 'saved') {
-      Cam.go('done');
-      setTimeout(() => { Cam.active = false; WM.CamPanel.dock(); FB.Game.cameraDone(); }, 1200);
+      Cam.done();
     }
   });
 })();

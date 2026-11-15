@@ -9,6 +9,8 @@
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
   const ease = t => 1 - Math.pow(1 - t, 2);
   const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+  /** Hands that reach past the bottom of the camera picture still count (see computeProgress). */
+  const OUT_OF_VIEW = { minP: 0.5, edgeY: 0.72, ms: 2500 };
 
   TR.Store.load();
   WM.Sound.setMuted(!!TR.Store.data.muted);
@@ -30,6 +32,7 @@
     armed: false,             // a reach only counts after the hands have been at rest
     mouse: { x: 0, y: 0, active: false },
     pos: { left: null, right: null }, alpha: { left: 0, right: 0 }, trail: { left: [], right: [] },
+    seen: { left: null, right: null }, // last progress/position per hand (for hands that reach out of the picture)
     particles: [],
 
     get mode() { return TR.Store.data.inputMode; },
@@ -79,7 +82,7 @@
       TR.Calib.active = false;
       TR.Store.data.inputMode = 'mouse'; TR.Store.save();
       WM.CamPanel.dock();
-      WM.CamPanel.cameraOn(false, 'Using the mouse');
+      WM.CamPanel.show(false); // no camera window (or toggle) in mouse mode
       this.startPlay();
     },
 
@@ -111,11 +114,19 @@
       }
       const goalFrac = TR.level().goalPct / 100;
       const L = WM.Hands.latest, out = { left: null, right: null };
+      const now = performance.now();
       ['left', 'right'].forEach(s => {
         const r = TR.reachAmount(s, L[s]); // 1 = calibrated comfy reach
         if (r != null) {
           out[s] = clamp(r / goalFrac, 0, 1.25);
+          this.seen[s] = { p: out[s], y: L[s].y, t: now };
           if (this.state === 'rest' || this.state === 'holding') this.peakReach = Math.max(this.peakReach, r);
+        } else {
+          // A front camera loses hands that reach all the way to the computer: they slide off
+          // the bottom of the picture. If a hand was well on its way and left through the
+          // bottom edge, count it as reaching the goal for a moment instead of dropping to 0.
+          const k = this.seen[s];
+          if (k && k.p >= OUT_OF_VIEW.minP && k.y > OUT_OF_VIEW.edgeY && now - k.t < OUT_OF_VIEW.ms) out[s] = Math.max(k.p, 1);
         }
       });
       return out;
@@ -368,7 +379,7 @@
         if (Game.mode === 'mouse') {
           if (side === 'right' && Game.mouse.active) target = { x: Game.mouse.x, y: Game.mouse.y };
         } else {
-          const h = WM.Hands.latest[side];
+          const h = WM.Hands.latest[side] || (p != null && Game.seen[side] ? { x: Game.pos[side] ? Game.pos[side].x / W : 0.5, y: 1 } : null);
           if (h && p != null) {
             const cam = { x: h.x * W, y: h.y * H };
             const off = side === 'left' ? -1 : 1;

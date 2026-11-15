@@ -88,7 +88,7 @@ window.BP = window.BP || {};
       { text: mouse ? 'Bubbles float up from the sea floor. Move the blue circle onto a bubble to pop it! 🔵' : 'Bubbles float up from the sea floor. Move a glowing hand circle onto a bubble to pop it: red for your left hand, blue for your right! 🔴🔵', target: null },
       { text: 'This air tank shows how much time is left. Pop as many as you can before it runs out! ⏱️', target: '#tank' },
       { text: 'Your score goes up here. Fishy bubbles are worth 2, and star bubbles are worth 3! 🐠⭐', target: '#scorePill', pad: 8 },
-      { text: 'This is my camera window. Tap the eye to hide it or show it. 📷', target: '#wmCam' },
+      ...(mouse ? [] : [{ text: 'This is my camera window. Tap the eye to hide it or show it. 📷', target: '#wmCam' }]),
       { text: 'Grown-ups can change the game time, bubble size and more in the Menu. ⚙️', target: '#menuBtn' },
       { text: 'Need help? Tap ? and I\'ll come right back. Let\'s dive in! 🌊', target: '#helpBtn' },
     ];

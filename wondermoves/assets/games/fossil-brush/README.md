@@ -17,12 +17,16 @@ The game works offline. Only the Fredoka font, the confetti effect and the hand-
 
 ## Hand tracking (webcam)
 
-The game can follow your index fingertip through the webcam, so a child can play without touching the screen. It runs entirely in the browser with [MediaPipe Hand Landmarker](https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker/web_js), through the shared tracker `../../shared/wm-hands.js` (camera mode in `js/camera.js`). You don't need a separate server, and video frames never leave the page.
+The game follows the child's index fingertip through the webcam, so they can play without touching the screen. It runs entirely in the browser with MediaPipe Hand Landmarker (`shared/wm-hands.js`), and video frames never leave the page.
 
-- The model lives in `../../shared/models/hand_landmarker.task` (bundled so it works offline; the CDN copy is the fallback). The WebAssembly runtime loads from jsDelivr (`@mediapipe/tasks-vision@0.10.14`).
-- Serve the folder over `http://localhost` (see above). Browsers block the camera and the model download on `file://`. Browsers also only allow the camera on a secure origin, so a tablet that opens the game through your LAN IP needs HTTPS.
-- If a Logitech/Brio camera is plugged in, the game uses it. Otherwise it uses the default camera.
-- If the camera is denied or unavailable, the preview hides and touch and mouse keep working.
+- **Camera is the default.** Setup works the same way as Treasure Reach and Bubble Pop. The camera window opens large in the middle of the screen, and the child taps **📷 Turn on camera**. Then they hold one index finger up in the air, and draw a big circle in the air, which maps the drawing area onto the sand pile. **↩ Use my last area** skips the circle. When setup is done, the window shrinks to the bottom-left. **Menu → Redo camera setup** runs it again.
+- **No camera?** If the camera is blocked or missing, the window says why and offers **Use touch / mouse instead**. In touch mode the camera window is hidden, and touch and mouse always work alongside the camera.
+- **Which camera:** if a Logitech/Brio camera is plugged in, it is used. Otherwise the default camera is used.
+- **Model:** the model ships in `web/shared/models/hand_landmarker.task`, and all camera games use it. If that file can't be read, Google's online copy is used. The WebAssembly runtime loads from jsDelivr (`@mediapipe/tasks-vision@0.10.14`).
+- **Serving:** serve over `http://localhost`, since browsers block the camera on `file://`. A tablet that opens the game through your LAN IP needs HTTPS.
+- **When the brush touches the sand** (Menu → For grown-ups):
+  - **A finger is seen** (default, no gesture needed): in Free Play the brush digs whenever a finger is seen. In Copy Pip the brush goes down when the fingertip reaches the glowing dot and lifts between shapes.
+  - **Pointing ☝️:** only the index finger out means touching; an open hand or a fist lifts the brush.
 
 ## Modes
 
@@ -51,15 +55,6 @@ Accessibility choices, aimed at children with cerebral palsy and other motor dif
 - Each stroke is logged on the device with its shape, tier, time, accuracy and off-path fraction. Grown-ups can download the log as JSON from **Menu → For grown-ups**.
 
 Shapes and tiers live at the top of `js/trace.js`. A shape is a list of points in a -1..1 box, so adding new ones is easy.
-
-### 📷 Camera play (prototype)
-
-**Menu → Camera** switches from touch and mouse to the webcam. The camera looks down at the table, and setup has two steps:
-
-1. **Point:** the child points with one finger inside the outline.
-2. **Circle:** the child draws a big circle on the table. That area is mapped onto the sand pile.
-
-During play the fingertip moves the brush. Pointing (only the index finger out) means the brush is touching the sand; an open hand or a fist lifts it. This rule lives in `FB.Cam.finger()` in `js/camera.js`, ready to be replaced by a real touch sensor.
 
 ### 🖌️ Free Play
 
@@ -107,21 +102,10 @@ js/store.js       save/load progress
 js/audio.js       sound effects
 js/digsite.js     sand heightmap, brushing, rendering, particles
 js/trace.js       Copy Pip: shapes, tiers, path following, practice log
-js/camera.js      camera play: table-view setup + pointer-finger brush
-js/ui.js          depth meter, menu, challenge picker, collection, found card, tutorial
-js/main.js        game loop, input, webcam hand tracking, dig → reveal → collect flow
-models/           MediaPipe hand landmarker model
+js/camera.js      camera play: auto-start, table-view setup, fingertip brush rules
+js/ui.js          depth meter, menu, collection, found card, tutorial
+js/main.js        game loop, input (touch / mouse / camera finger), dig → reveal → collect flow
 ```
-
-## Playing with the WonderMoves board
-
-When the UNO Q app serves this page (portal → 🖌 Fossil Brush, or `http://<board>:7000/fossil-brush/index.html`),
-`js/sensor.js` connects to the board and brushes with the **Modulino Movement** sensor. Put the sensor in a chunky brush
-handle or wrist strap and brush back and forth: faster strokes sweep faster. Touch or mouse still works too.
-Opened standalone, the sensor bridge stays off.
-
-- `MIN_ENERGY` / `FULL_ENERGY` in `js/sensor.js` set how much motion counts (°/s from the gyro, ~1 at rest).
-- The only change to the game itself is `FB.site = …` in `js/main.js`, which exposes the dig site to the bridge.
 
 ## Playing with the WonderMoves board
 

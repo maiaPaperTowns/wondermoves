@@ -20,7 +20,7 @@ BP.KINDS = [
 
 BP.DEFAULTS = {
   difficulty: 'easy',
-  lift: true,           // WonderMoves rules: one straight lift per bubble, no timer, no missed bubbles
+  lift: false,          // true = WonderMoves lift rules: one straight lift per bubble, no timer, no missed bubbles
                         // (bubbles wait above each resting hand; blue pairs need both hands). false = timed original.
   seconds: 60,          // session length (timed original only)
   bubbleSize: 'medium', // small | medium | big (accessibility)
@@ -59,6 +59,7 @@ BP.Store = {
       log: [],              // one record per session
     }, saved);
     this.data.settings = Object.assign({}, BP.DEFAULTS, this.data.settings);
+    this.data.settings.lift = BP.DEFAULTS.lift; // no in-game switch for this yet: always follow the default
   },
   save() { try { localStorage.setItem(this.key, JSON.stringify(this.data)); } catch (e) { /* ignore */ } },
   get s() { return this.data.settings; },
