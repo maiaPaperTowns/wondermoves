@@ -1,51 +1,68 @@
-# WonderMoves — MadHacks 2026 (Qualcomm / Infer-X track)
+# WonderMoves
 
-Theme: **Let's Dig In.**
+**Turn therapy movements into play for kids with cerebral palsy, with sensors and AI running on an Arduino UNO Q.**
 
-A playful physical gaming platform on the **Arduino UNO Q** (Qualcomm QRB2210 Linux side + STM32 MCU)
-that helps children aged 6–12 with unilateral cerebral palsy take part in personalised upper-limb
-movement activities: reaching, controlled positioning and repeated movement sequences.
+🏆 MadHacks 2026 — Second Place · [Devpost](https://devpost.com/software/wondermoves) · [Live demo](https://maiapapertowns.github.io/wondermoves/)
+
+Children with cerebral palsy (CP) improve hand function through repetition: hundreds of the same movement, practiced
+at home, week after week. Home programs are hard to keep up and often feel like homework. WonderMoves turns
+therapist-recommended movements into three short games for children aged 6–12, on affordable hardware that processes
+camera footage on the board without uploading or storing video.
+
+Unlike typical motion games, WonderMoves adapts to each child's comfortable movement range instead of asking the
+child to meet a fixed difficulty.
 
 > WonderMoves is **not** a medical device and does not replace occupational or physical therapy.
-> Reach targets never auto-increase past the range a caregiver or therapist approves.
+
+## Games
+
+Each game is built around one movement.
+
+| Game | Movement | Tracking |
+|---|---|---|
+| **Fossil Brush** | Brush in preset patterns to uncover a dinosaur fossil. Pip shows the movement first, then it's the child's turn. | Camera: follows the child's index fingertip |
+| **Treasure Reach** | Reach forward and come back. Every completed reach opens a chest with a treasure. | Camera for the first part of the reach, then the Modulino Distance sensor takes over at 200 mm; the chest opens at 100 mm |
+| **Bubble Pop** | Bubbles rise from the ocean floor for a set time; the child pops them by moving their hands across the screen. | Camera (Logitech Brio 105, browser or on-device pose) |
+
+Also included:
+
+- **Pip, the AI voice guide.** Everything on screen is also spoken, in one friendly AI-generated voice (recorded once,
+  plays offline). Pip celebrates completed actions and offers gentle encouragement. Children can also give voice
+  commands ("start", "dig again"), recognised on-device with Whisper. See [docs/PIP_VOICE.md](docs/PIP_VOICE.md).
+- **Parent dashboard.** Caregivers see completed movements, play time and trends over time, with short notes
+  generated in Databricks. See [parents/README.md](parents/README.md).
+
+### Design rules
+
+- **Completion, not speed.** A slow reach counts exactly like a fast one.
+- **No fail states.** No lives, no penalty for mistakes.
+- **Never beyond the approved range.** A grown-up calibrates the child's comfortable reach and sets a maximum the
+  game never exceeds. Targets never auto-increase past it.
+- **Gentle breaks.** After 10 minutes of play (adjustable), Pip suggests a stretch and a drink.
+
+Evidence and sources: [docs/evidence-brief.html](docs/evidence-brief.html).
 
 ## Try it
 
 | Where | Link | What works |
 |---|---|---|
-| **Public demo** | https://maiapapertowns.github.io/wondermoves/ | Home, all three games with the webcam or a mouse. No sensors, play log or parent data (those need the board). |
+| **Public demo** | https://maiapapertowns.github.io/wondermoves/ | All three games with the webcam or a mouse. No sensors, play log or parent data (those need the board). |
 | **On the board** (USB) | http://localhost:7070/ after `adb forward tcp:7070 tcp:7000` | Everything: sensors, games, play log. |
-| Parent page on the board | http://localhost:7070/parents/ | Child profile, game log, chart. |
+| Parent page on the board | http://localhost:7070/parents/ | Child profile, game log, chart (parent PIN). |
 | Settings on the board | http://localhost:7070/grownups.html?settings | Hand, range, breaks, About your child, Calibrate, sensors. |
 | Parent page + Databricks notes (laptop) | http://localhost:8090/ after `python3 parents/server.py` | The same page, plus Databricks notes. |
 
 The public site redeploys automatically from `main` (`.github/workflows/pages.yml`).
 
-## Hardware we have (confirmed from photos, 3 kits: boards #21, #23, …)
+## Stack
 
-| Item | Part | Used for |
-|---|---|---|
-| Arduino UNO Q | Qualcomm Dragonwing QRB2210 MPU + STM32U585 MCU, 4 GB RAM, 32 GB eMMC, Wi-Fi/BLE | Runs everything on-device |
-| Modulino Distance | ABX00102 (ToF, Qwiic/I2C) | Treasure Reach: hand-to-sensor distance |
-| Modulino Movement | ABX00101 (6-axis IMU) | Fossil Brush: brushing gesture on a hand/forearm mount |
-| Modulino Thermo | ABX00103 (temp + humidity) | Room comfort check: suggests a break when the room is warm. Not a body or fatigue measurement. |
-| Logitech Brio 105 | 1080p USB webcam | On-device hand/pose vision (see below) |
-| StarTech USB-C multiport adapter | 100 W PD, 4K60 HDMI, GbE, USB 5 Gbps | Powers the UNO Q and connects the camera, monitor, keyboard and mouse |
-| Power brick + braided USB-C cable | — | Feed the 100 W PD port of the adapter, then connect the adapter to the board |
-
-**Keep all packaging**, including the anti-static bags and the boxes with the numbers written on them. The lab checks for it when the kits are returned.
-
-### Why the camera matters (Qualcomm edge-AI story)
-The QRB2210 can run a small hand/pose model on the Brio feed locally. Nothing leaves the board.
-- **Bubble Lift:** the camera tracks both hands. A bubble sits directly above each resting hand; lifting that hand pops it, and blue pairs need both hands up together (bimanual training).
-- **Fossil Brush mirror:** Digger demonstrates a stroke and the camera shows the child's own movement beside it (action observation).
-- **Sensor fusion:** the camera confirms what the ToF/IMU detect, which cuts false triggers. The game emits `gesture_uncertain` instead of guessing.
-- **Privacy:** process frames in memory only. Never save or stream video, and show a visible "camera on" indicator in the child portal.
-
-### Using 3 kits
-- **Board A (main):** Treasure Reach + Fossil Brush, the web portal and Digger.
-- **Board B:** Bubble Lift station (camera).
-- **Board C:** spare / dev board, so teammates can develop in parallel and a dead board doesn't kill the demo.
+- **Hardware:** Arduino UNO Q (Qualcomm QRB2210 + STM32U585), Modulino Distance (VL53L4CD ToF), Logitech Brio 105 webcam.
+- **On-device vision:** MediaPipe's pose model (ONNX) run with OpenCV DNN on the Qualcomm CPU (~119 ms per frame).
+  Frames are processed in memory and never saved or sent. In the browser, the games use MediaPipe Hand Landmarker.
+- **Games:** HTML5 canvas games inside one shell (iframes), with a board bridge so the same game works with sensors,
+  camera, touch or mouse.
+- **Voice:** ElevenLabs recordings for Pip, Whisper (transformers.js) for offline voice commands.
+- **Data:** session logs on the board, processed in Databricks for the parent dashboard and trends.
 
 ## Architecture
 
@@ -53,84 +70,97 @@ The QRB2210 can run a small hand/pose model on the Brio feed locally. Nothing le
  Modulino sensors ──I2C── STM32 MCU (sketch/)        ← reads sensors at ~50 Hz, sends raw samples
                               │  RPC Bridge
                               ▼
-                   Qualcomm Linux side (python/)      ← calibration, reach/gesture detection (edge inference),
-                              │                          game state, session log
+ Brio camera ──USB──▶ Qualcomm Linux side (python/)  ← calibration, reach detection, pose tracking,
+                              │                         caregiver limits, session log
                               │  WebUI brick (socket.io)
                               ▼
-                   Browser (assets/)                  ← Child Game Portal + Parent Portal, Pip subtitles
+                   Browser (assets/)                  ← game shell, games, Pip, Grown-ups settings, parent page
+                              │
+                              ▼  (laptop helper, parents/server.py)
+                         Databricks                   ← history tables + notes for parents
 ```
 
-Digger, the AI companion, receives only structured events: `reach_completed`, `gesture_uncertain`,
-`break_requested`, `level_completed`. It explains, celebrates and offers breaks. It never prescribes
-distances, diagnoses anything or pushes the child to keep going.
+Pip receives only structured events such as `reach_completed`, `break_requested` and `level_completed`. It explains,
+celebrates and offers breaks. It never prescribes distances, diagnoses anything or pushes the child to keep going.
 
-## Games
+## Repo layout
 
-| Game | One movement | Approach (evidence level) | Sensor | Status |
-|---|---|---|---|---|
-| Treasure Reach | Reach forward from rest, then back | Goal-directed training (moderate) | Modulino Distance | ✅ tested on the board |
-| Fossil Brush | One back-and-forth stroke; counted on completion, not speed | Action observation (emerging) | Modulino Movement | Stroke counter tested with simulated gyro; game on the board |
-| Bubble Pop (Andrew's game, lift mode) | Lift the hand straight up; pairs = both hands together | Bimanual training (strong) | Brio camera (browser or on-device pose) | Lift mode tested on the board with simulated hands; the earlier Bubble Lift page passed a real-hands test |
+| Path | What's there |
+|---|---|
+| `wondermoves/` | The Arduino App Lab app: `app.yaml`, `sketch/` (STM32), `python/` (Linux side: `main.py`, `vision.py`, `models/`) |
+| `wondermoves/assets/` | Web app: shell (`index.html`, `shell.js`), `games/`, `shared/` (board bridge, camera, Pip, voice), `grownups.html`, `parents/`. See [SHELL-README.md](wondermoves/assets/SHELL-README.md). |
+| `parents/` | Laptop helper for the parent page and the Databricks upload |
+| `databricks/notebooks/` | `parent_progress.py`, the Databricks notebook that builds history and parent notes |
+| `tools/` | `mac_camera.py` (laptop camera → board), `pip_voice.py` (generate Pip's voice lines) |
+| `board/` | Sketch build workarounds and pre-downloaded library zips |
+| `docs/` | Plan, hardware build guide, Pip voice, evidence brief, Devpost materials |
 
-Every game follows the same rules: one movement, completion not speed, no timers, and the child's approved range is never exceeded.
-Evidence and sources: [docs/evidence-brief.html](docs/evidence-brief.html).
+Each game has its own README: [Fossil Brush](wondermoves/assets/games/fossil-brush/README.md) ·
+[Treasure Reach](wondermoves/assets/games/treasure-reach/README.md) ·
+[Bubble Pop](wondermoves/assets/games/bubble-pop/README.md).
 
-**Thermo** isn't tied to one game: it watches room comfort and suggests breaks. With 3 kits, each game can run on its own board,
-so each person can own one station.
+## Board setup
 
-**UI:** Andrew's game shell (`wondermoves/assets/index.html`, `shell.js`, `shared/`, `games/`) is the main screen on the
-board: tabs for Fossil Brush, Treasure Reach, Bubble Pop and Grown-ups. `shared/wm-board.js` connects any game to the
-board (sensors, calibration, caregiver limits, session log); opened standalone, the games fall back to camera or mouse.
-His Bubble Pop is the bubble tab in its **lift mode** (default): no timer, bubbles wait above each resting hand, pairs need both hands. His original timed mode is still there with `lift: false` in `games/bubble-pop/js/data.js`. The older standalone Bubble Lift page (`assets/bubbles/`) is kept as a fallback.
+1. Install **Arduino App Lab** (not Arduino IDE): https://www.arduino.cc/en/software/
+2. Power: power brick → USB-C adapter's **PD input** → adapter → UNO Q. Plug the Brio into the adapter's USB port, and a
+   monitor into HDMI to run it standalone. Ordinary USB-A hubs often can't power the board.
+3. Select the board in App Lab, finish first-time setup and let updates complete.
+4. Copy `wondermoves/` into App Lab's apps folder (or create a new app and paste in the files), then run it.
+5. On the laptop: `adb forward tcp:7070 tcp:7000` and open http://localhost:7070.
 
-See [docs/PLAN.md](docs/PLAN.md) for the build plan and task split, and [docs/HARDWARE.md](docs/HARDWARE.md) for building the physical game stations.
-
-## Board quirks we hit (UNO Q at MadHacks)
-
-- **Wrong clock:** the board boots thinking it's 9 Sep 2025, and UWNet blocks NTP. HTTPS downloads (sketch libraries, pip) then fail with "certificate not valid yet". Fix: join a phone hotspot so NTP works, or set the clock by hand with `adb shell -t "sudo date -u -s '<UTC time>'"`.
-- **Sketch build fixes:** see [board/README.md](board/README.md) for TMPDIR, pre-staged library zips and the `Arduino_Modulino` rename.
-- **Port 7000 clash:** port 7000 on the Mac is taken by AirPlay Receiver. Forward to 7070: `adb forward tcp:7070 tcp:7000`, then open http://127.0.0.1:7070.
-- **Camera device:** `/dev/video0` and `/dev/video1` are the Qualcomm video codec, not cameras. `vision.py` finds the Brio by name. App Lab only passes in cameras that are plugged in when the app starts, so plug the Brio in first, then (re)start the app.
-- **Python packages:** the board's Python is 3.13 with OpenCV 4.12 and numpy. MediaPipe isn't installed, so vision uses the OpenCV motion fallback.
-
-## Team
-
-Maia Le (@maiaPaperTowns) · Joy Hong (@schae4999) · Andrew Kim (@Minulion) · @ArneshXCode
-
-## Bubble Lift with the camera on a laptop (dev setup)
-
-While the Brio is plugged into the Mac instead of the board, the Mac does the hand tracking (MediaPipe) and the board runs the game:
+To restart from the command line:
 
 ```bash
-uv venv -p 3.12 --managed-python .venv && uv pip install -p .venv/bin/python opencv-python numpy "mediapipe==0.10.21" "python-socketio[client]"
-adb forward tcp:7070 tcp:7000
-.venv/bin/python tools/mac_camera.py      # camera 0 = Brio on our Mac (check with --preview; try --camera 1 if you see the built-in camera)
+adb shell 'export TMPDIR=/tmp; arduino-app-cli app restart user:wondermoves'
 ```
 
-macOS must allow camera access for the app that runs it (System Settings → Privacy & Security → Camera).
+Docs: [UNO Q user manual](https://docs.arduino.cc/tutorials/uno-q/user-manual/) ·
+[App Lab quickstart](https://docs.arduino.cc/software/app-lab/getting-started/quickstart) ·
+[Hardware](https://docs.arduino.cc/hardware/uno-q/) · Physical game stations: [docs/HARDWARE.md](docs/HARDWARE.md)
 
-## Camera / vision quick test (laptop, before the board)
+### Board quirks
+
+- **Wrong clock:** the board can boot thinking it's 9 Sep 2025, and some networks block NTP. HTTPS downloads then fail
+  with "certificate not valid yet". Join a phone hotspot, or set the clock: `adb shell -t "sudo date -u -s '<UTC time>'"`.
+- **Sketch build fixes:** see [board/README.md](board/README.md) for TMPDIR, pre-staged library zips and the `Arduino_Modulino` rename.
+- **Port 7000 clash:** port 7000 on a Mac is taken by AirPlay Receiver, so forward to 7070 instead.
+- **Camera device:** `/dev/video0` and `/dev/video1` are the Qualcomm video codec, not cameras. `vision.py` finds the
+  Brio by name. App Lab only passes in cameras plugged in when the app starts, so plug the Brio in first, then (re)start the app.
+- **No MediaPipe on the board:** the UNO Q's ARMv8.0 cores (no LSE atomics) can't run MediaPipe's native library, so
+  `vision.py` uses the ONNX pose model with OpenCV DNN, and falls back to OpenCV motion detection if that fails.
+  Check `backend` and `fps` in the `hands` messages to see which one is running.
+- **Distance sensor reads ~27 mm constantly:** peel the protective film off the sensor. The sketch filters
+  cover-window crosstalk, and the Grown-ups page shows a hint when it sees this.
+
+## Development
+
+**Vision on a laptop:**
 
 ```bash
 cd wondermoves/python
 python3 test_vision.py                       # detector logic, no camera needed
 pip install mediapipe opencv-python numpy    # then, with a webcam:
-python3 vision.py --preview                  # green = left hand, orange = right; q quits
+python3 vision.py --preview                  # q quits; WM_BACKEND=opencv_pose tests the board's backend
 ```
 
-On the board, `main.py` turns the camera on only during Bubble Lift, and the portal shows a 🔴 badge while it's on.
-If MediaPipe won't install on the UNO Q, `vision.py` falls back to OpenCV motion detection on its own. Check the `backend`
-and `fps` values in the `hands` messages to see which one is running.
+**Brio on the Mac, game on the board:** the Mac does the hand tracking and sends it to the board.
 
-## Board setup (from the lab's guide)
+```bash
+uv venv -p 3.12 --managed-python .venv && uv pip install -p .venv/bin/python opencv-python numpy "mediapipe==0.10.21" "python-socketio[client]"
+adb forward tcp:7070 tcp:7000
+.venv/bin/python tools/mac_camera.py      # check with --preview; try --camera 1 if you see the built-in camera
+```
 
-1. Install **Arduino App Lab** (not Arduino IDE): https://www.arduino.cc/en/software/
-2. Power: power brick → StarTech adapter's **PD input** → adapter → UNO Q. Plug the Brio into the adapter's USB port and a monitor into HDMI if you want to run it standalone. Ordinary USB-A hubs often can't power the board.
-3. Select the board in App Lab, finish the first-time setup and let updates complete.
-4. Use the board credentials from the lab's email. They aren't stored in this repo.
-5. Skip Wi-Fi if App Lab offers a Skip option. Run the **Blink** example to confirm the board works.
-6. Copy `wondermoves/` into App Lab's apps folder (or create a new app and paste in the files), then run it.
+macOS must allow camera access for the app that runs it (System Settings → Privacy & Security → Camera).
 
-Docs: [UNO Q user manual](https://docs.arduino.cc/tutorials/uno-q/user-manual/) ·
-[App Lab quickstart](https://docs.arduino.cc/software/app-lab/getting-started/quickstart) ·
-[Hardware](https://docs.arduino.cc/hardware/uno-q/)
+**Parent page without a board:** `python3 parents/server.py --demo`, then `python3 parents/simulate_board.py play brush`.
+
+## Next steps
+
+Additional games for lower-body control, and a pilot with an occupational therapist: a small group of children with
+unilateral CP using one game at home for several weeks, measured with the Assisting Hand Assessment (AHA) and the
+Canadian Occupational Performance Measure (COPM), with research-ethics approval first.
+
+## Team
+
+Maia Le (@maiaPaperTowns) · Joy Hong (@schae4999) · Andrew Kim (@Minulion) · Arnesh Maiti (@ArneshXCode)
